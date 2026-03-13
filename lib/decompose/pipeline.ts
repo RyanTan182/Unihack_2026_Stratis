@@ -4,12 +4,9 @@ import type { DecompositionTree, SupplyChainNode, ExtractedEvidence } from "./ty
 import {
   SKELETON_SYSTEM,
   ADVERSARIAL_SYSTEM,
-  EVIDENCE_EXTRACTION_SYSTEM,
   skeletonPrompt,
-  searchQueryPrompt,
   reconciliationPrompt,
   adversarialPrompt,
-  evidenceExtractionPrompt,
 } from "./prompts";
 import { searchNode } from "./search";
 import { normalizeCountryName } from "./country-aliases";
@@ -134,30 +131,6 @@ function selectCriticalNodes(
   return candidates.slice(0, maxNodes).map(([, node]) => node);
 }
 
-async function extractEvidence(
-  rawText: string,
-  nodeName: string,
-  signal?: AbortSignal
-): Promise<ExtractedEvidence> {
-  try {
-    const raw = await llmCall(
-      EVIDENCE_EXTRACTION_SYSTEM,
-      evidenceExtractionPrompt(rawText, nodeName),
-      0.2,
-      signal
-    );
-    const parsed = parseJson(raw) as unknown as Omit<ExtractedEvidence, "rawText">;
-    return { ...parsed, rawText };
-  } catch {
-    return {
-      countries: [],
-      majorProducers: [],
-      riskFactors: [],
-      confidenceSignal: "weak",
-      rawText,
-    };
-  }
-}
 
 function findParentName(tree: DecompositionTree, nodeId: string, fallback: string): string {
   for (const candidate of Object.values(tree.nodes)) {
@@ -168,24 +141,13 @@ function findParentName(tree: DecompositionTree, nodeId: string, fallback: strin
   return fallback;
 }
 
-async function generateSearchQuery(
+function buildSearchQuery(
   node: SupplyChainNode,
   tree: DecompositionTree,
   product: string,
-  signal?: AbortSignal
-): Promise<string> {
+): string {
   const parentName = findParentName(tree, node.id, product);
-  try {
-    let query = await llmCall(
-      "Generate a search query. Return ONLY the query string.",
-      searchQueryPrompt(node.name, node.type, parentName),
-      0.3,
-      signal
-    );
-    return query.trim().replace(/^["']|["']$/g, "");
-  } catch {
-    return `${node.name} global production supply chain ${product}`;
-  }
+  return `${node.name} ${parentName} supply chain geographic production breakdown major producers ${product}`;
 }
 
 export async function* runPipeline(
@@ -221,7 +183,7 @@ export async function* runPipeline(
 
   const criticalNodes = selectCriticalNodes(tree);
   const evidence: Record<string, ExtractedEvidence> = {};
-  const BATCH_SIZE = 4;
+  const BATCH_SIZE = 6;
 
   for (let i = 0; i < criticalNodes.length; i += BATCH_SIZE) {
     const batch = criticalNodes.slice(i, i + BATCH_SIZE);
@@ -231,13 +193,12 @@ export async function* runPipeline(
       yield sseEvent("search-started", { nodeId: node.id });
     }
 
-    // Run batch in parallel: query → search → extract
+    // Run batch in parallel: build query → search (no LLM calls, just Perplexity)
     const results = await Promise.allSettled(
       batch.map(async (node) => {
-        const query = await generateSearchQuery(node, tree, product, signal);
+        const query = buildSearchQuery(node, tree, product);
         const raw = await searchNode(query, signal);
-        const extracted = await extractEvidence(raw, node.name, signal);
-        return { nodeId: node.id, raw, extracted };
+        return { nodeId: node.id, raw };
       })
     );
 
@@ -245,8 +206,15 @@ export async function* runPipeline(
     for (let j = 0; j < results.length; j++) {
       const result = results[j];
       if (result.status === "fulfilled") {
-        evidence[result.value.nodeId] = result.value.extracted;
-        tree.nodes[result.value.nodeId].search_evidence = result.value.raw;
+        const rawText = result.value.raw;
+        evidence[result.value.nodeId] = {
+          countries: [],
+          majorProducers: [],
+          riskFactors: [],
+          confidenceSignal: "moderate",
+          rawText,
+        };
+        tree.nodes[result.value.nodeId].search_evidence = rawText;
         yield sseEvent("search-complete", { nodeId: result.value.nodeId, hasEvidence: true });
       } else {
         yield sseEvent("search-complete", { nodeId: batch[j].id, hasEvidence: false });
