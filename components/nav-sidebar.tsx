@@ -17,20 +17,22 @@ import {
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
+type ActiveItem = "locations" | "inventory"
+
 interface NavItem {
   icon: React.ElementType
   label: string
-  active?: boolean
+  key?: ActiveItem
 }
 
 const navItems: NavItem[] = [
-  { icon: Home, label: "Dashboard", active: false },
+  { icon: Home, label: "Dashboard" },
   { icon: Mail, label: "Alerts" },
   { icon: BarChart2, label: "Analytics" },
   { icon: FileText, label: "Reports" },
   { icon: Flag, label: "Flags" },
-  { icon: MapPin, label: "Locations", active: true },
-  { icon: List, label: "Inventory" },
+  { icon: MapPin, label: "Locations", key: "locations" },
+  { icon: List, label: "Inventory", key: "inventory" },
   { icon: Users, label: "Suppliers" },
   { icon: Globe, label: "Global View" },
   { icon: Compass, label: "Routes" },
@@ -38,7 +40,12 @@ const navItems: NavItem[] = [
   { icon: HelpCircle, label: "Help" },
 ]
 
-export function NavSidebar() {
+interface NavSidebarProps {
+  activeItem?: ActiveItem
+  onNavigate?: (item: ActiveItem) => void
+}
+
+export function NavSidebar({ activeItem = "locations", onNavigate }: NavSidebarProps) {
   return (
     <TooltipProvider>
       <div className="flex h-full w-12 flex-col items-center border-r border-sidebar-border bg-sidebar py-4">
@@ -49,25 +56,36 @@ export function NavSidebar() {
 
         {/* Navigation Items */}
         <nav className="flex flex-1 flex-col items-center gap-1">
-          {navItems.map((item, index) => (
-            <Tooltip key={item.label} delayDuration={0}>
-              <TooltipTrigger asChild>
-                <button
-                  className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                    item.active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>{item.label}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
+          {navItems.map((item) => {
+            const isActive = item.key === activeItem
+            const isInteractive = !!item.key
+
+            return (
+              <Tooltip key={item.label} delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                      !isInteractive && "cursor-default"
+                    )}
+                    onClick={() => {
+                      if (isInteractive && onNavigate) {
+                        onNavigate(item.key!)
+                      }
+                    }}
+                  >
+                    <item.icon className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
         </nav>
 
         {/* Status Indicator */}
