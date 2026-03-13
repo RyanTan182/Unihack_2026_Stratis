@@ -18,6 +18,13 @@ interface CountryRisk {
   newsHighlights: string[]
 }
 
+interface NewsArticle {
+  title: string
+  url: string
+  date: string
+  source: string
+}
+
 interface RiskMetric {
   id: string
   name: string
@@ -115,11 +122,70 @@ const getRiskLabel = (risk: number): string => {
   return "Minimal"
 }
 
+const NEWS_CACHE_TTL_MS = 5 * 60 * 1000 // change to 30 * 1000 for 30s
+const NEWS_CACHE_PREFIX = "news-cache:"
+
+const getSessionStorage = (): Storage | null => {
+  if (typeof window === "undefined") return null
+  try {
+    return window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+const getCacheKey = (country: string) => `${NEWS_CACHE_PREFIX}${country.toLowerCase()}`
+
+const sweepNewsCache = (storage: Storage) => {
+  const now = Date.now()
+  for (let i = storage.length - 1; i >= 0; i -= 1) {
+    const key = storage.key(i)
+    if (!key || !key.startsWith(NEWS_CACHE_PREFIX)) continue
+    try {
+      const raw = storage.getItem(key)
+      if (!raw) continue
+      const data = JSON.parse(raw) as { timestamp?: number }
+      if (!data.timestamp || now - data.timestamp > NEWS_CACHE_TTL_MS) {
+        storage.removeItem(key)
+      }
+    } catch {
+      storage.removeItem(key)
+    }
+  }
+}
+
+const readCachedNews = (country: string): NewsArticle[] | null => {
+  const storage = getSessionStorage()
+  if (!storage) return null
+  const raw = storage.getItem(getCacheKey(country))
+  if (!raw) return null
+  try {
+    const data = JSON.parse(raw) as { timestamp: number; articles: NewsArticle[] }
+    if (!data.timestamp || Date.now() - data.timestamp > NEWS_CACHE_TTL_MS) {
+      storage.removeItem(getCacheKey(country))
+      return null
+    }
+    return data.articles ?? null
+  } catch {
+    storage.removeItem(getCacheKey(country))
+    return null
+  }
+}
+
+const writeCachedNews = (country: string, articles: NewsArticle[]) => {
+  const storage = getSessionStorage()
+  if (!storage) return
+  storage.setItem(
+    getCacheKey(country),
+    JSON.stringify({ timestamp: Date.now(), articles }),
+  )
+}
+
 export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onReset }: RiskSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"filters" | "metrics" | "risk" | "options">("risk")
   const [expandedMetrics, setExpandedMetrics] = useState<string[]>(["political-stability", "trade-barriers"])
-  const [liveNews, setLiveNews] = useState<{ title: string; url: string; date: string; source: string }[]>([])
+  const [liveNews, setLiveNews] = useState<NewsArticle[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
 
   const filteredCountries = countryRisks.filter((country) =>
@@ -135,6 +201,17 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
       return
     }
 
+    const storage = getSessionStorage()
+    if (storage) {
+      sweepNewsCache(storage)
+      const cached = readCachedNews(countryForNews)
+      if (cached) {
+        setLiveNews(cached)
+        setNewsLoading(false)
+        return
+      }
+    }
+
     const controller = new AbortController()
     setNewsLoading(true)
 
@@ -146,7 +223,9 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
         )
         const data = await res.json()
         if (!controller.signal.aborted) {
-          setLiveNews(data.articles ?? [])
+          const articles = data.articles ?? []
+          setLiveNews(articles)
+          writeCachedNews(countryForNews, articles)
           setNewsLoading(false)
         }
       } catch (err: unknown) {
