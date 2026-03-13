@@ -3,7 +3,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import type { DecompositionTree, SSEEvent } from "@/lib/decompose/types";
+import type { DecompositionTree, SSEEvent, SupplyChainNode } from "@/lib/decompose/types";
 
 interface DecomposeState {
   tree: DecompositionTree | null;
@@ -11,6 +11,8 @@ interface DecomposeState {
   error: string | null;
   durationMs: number | null;
   selectedNodeId: string | null;
+  searchingNodeIds: Set<string>;
+  streamingNodes: SupplyChainNode[];
 }
 
 export function useDecompose() {
@@ -20,6 +22,8 @@ export function useDecompose() {
     error: null,
     durationMs: null,
     selectedNodeId: null,
+    searchingNodeIds: new Set(),
+    streamingNodes: [],
   });
   const abortRef = useRef<AbortController | null>(null);
 
@@ -35,6 +39,8 @@ export function useDecompose() {
         error: null,
         durationMs: null,
         selectedNodeId: null,
+        searchingNodeIds: new Set(),
+        streamingNodes: [],
       });
 
       try {
@@ -109,7 +115,7 @@ function handleEvent(
 ) {
   switch (event.type) {
     case "skeleton":
-      setState((prev) => ({ ...prev, tree: event.tree }));
+      setState((prev) => ({ ...prev, tree: event.tree, streamingNodes: [] }));
       break;
     case "refining":
       setState((prev) => {
@@ -127,11 +133,32 @@ function handleEvent(
         durationMs: event.duration_ms,
       }));
       break;
+    case "node-added":
+      setState((prev) => ({
+        ...prev,
+        streamingNodes: [...prev.streamingNodes, event.node],
+      }));
+      break;
+    case "search-started":
+      setState((prev) => ({
+        ...prev,
+        searchingNodeIds: new Set([...prev.searchingNodeIds, event.nodeId]),
+      }));
+      break;
+    case "search-complete":
+      setState((prev) => {
+        const next = new Set(prev.searchingNodeIds);
+        next.delete(event.nodeId);
+        return { ...prev, searchingNodeIds: next };
+      });
+      break;
     case "error":
       setState((prev) => ({
         ...prev,
         isLoading: false,
         error: event.message,
+        searchingNodeIds: new Set(),
+        streamingNodes: [],
       }));
       break;
   }
