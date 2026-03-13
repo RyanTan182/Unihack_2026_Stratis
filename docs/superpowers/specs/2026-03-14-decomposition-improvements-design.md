@@ -21,6 +21,10 @@ export async function searchNode(
   model: string = "sonar"
 ): Promise<string> {
   // ... existing code, but use `model` param instead of hardcoded string
+  // Timeout is model-dependent: 15s for sonar, 120s for sonar-deep-research
+  const timeoutMs = model === "sonar-deep-research" ? 120_000 : 15_000;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  // ... rest unchanged
 }
 ```
 
@@ -77,27 +81,87 @@ New SSE events to communicate per-node search status:
 ```
 
 **In `lib/decompose/pipeline.ts`:**
-- Yield `search-started` before each parallel search begins
-- Yield `search-complete` when each resolves (or fails)
-- Since searches run in parallel but the generator is single-threaded, collect events in an array and yield them after `Promise.allSettled` returns
+
+The `AsyncGenerator` pattern cannot yield events from inside parallel promises. Use a **batched concurrency** approach: run searches in waves of 4 nodes. Before each wave, yield `search-started` for all nodes in that wave. After the wave's `Promise.allSettled` resolves, yield `search-complete` for each. This gives the frontend 3 visual "pulses" of activity (3 waves × 4 nodes = 12 total) rather than all-at-once.
+
+```typescript
+// Batched parallel search with progress events
+const BATCH_SIZE = 4;
+for (let i = 0; i < criticalNodes.length; i += BATCH_SIZE) {
+  const batch = criticalNodes.slice(i, i + BATCH_SIZE);
+
+  // Yield search-started for this batch
+  for (const node of batch) {
+    yield sseEvent("search-started", { nodeId: node.id });
+  }
+
+  // Run batch in parallel
+  const results = await Promise.allSettled(
+    batch.map(async (node) => {
+      const query = await generateSearchQuery(node, tree, signal);
+      const raw = await searchNode(query, signal);
+      const extracted = await extractEvidence(raw, node.name, signal);
+      return { nodeId: node.id, raw, extracted };
+    })
+  );
+
+  // Yield search-complete for each result
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      evidence[result.value.nodeId] = result.value.extracted;
+      tree.nodes[result.value.nodeId].search_evidence = result.value.raw;
+      yield sseEvent("search-complete", { nodeId: result.value.nodeId, hasEvidence: true });
+    } else {
+      yield sseEvent("search-complete", { nodeId: batch[results.indexOf(result)].id, hasEvidence: false });
+    }
+  }
+}
+```
+
+This preserves the `AsyncGenerator` pattern while giving the frontend real-time progress — each wave of 4 searches takes ~5s with `sonar`, so the frontend sees 3 pulses over ~15s.
 
 **In `hooks/use-decompose.ts`:**
 - Add `searchingNodeIds: Set<string>` to hook state
 - `search-started`: add nodeId to set
 - `search-complete`: remove nodeId from set
+- New `handleEvent` cases:
+```typescript
+case "search-started":
+  setState((prev) => ({
+    ...prev,
+    searchingNodeIds: new Set([...prev.searchingNodeIds, event.nodeId]),
+  }));
+  break;
+case "search-complete":
+  setState((prev) => {
+    const next = new Set(prev.searchingNodeIds);
+    next.delete(event.nodeId);
+    return { ...prev, searchingNodeIds: next };
+  });
+  break;
+case "node-added":
+  setState((prev) => ({
+    ...prev,
+    streamingNodes: [...prev.streamingNodes, event.node],
+  }));
+  break;
+```
 
 **In `lib/decompose/types.ts`:**
-- Add both events to `SSEEvent` union
+- Add all three events to `SSEEvent` union
+
+**SSE emission pattern:** All new events use the existing `sseEvent(eventName, data)` helper (e.g., `yield sseEvent("node-added", { node, parentId })`). The API route (`route.ts`) is transparent — it streams raw bytes from the generator. The hook reconstructs `type` via `{ type: eventType, ...data }` from the SSE `event:` line. No route changes needed.
 
 ### Expected performance
 
 | Phase | Current | Improved |
 |-------|---------|----------|
 | Skeleton | ~5-8s | ~5-8s (streaming makes it feel faster) |
-| Search (8 nodes) | ~4min serial | ~5s parallel with sonar |
+| Search (8 nodes serial) | ~2-4min | ~15s (12 nodes, 3 batches × 4 parallel with sonar) |
+| Evidence extraction | N/A | ~0s (runs in parallel with search, chained per node) |
 | Reconciliation | ~5-10s | ~5-10s (unchanged) |
 | Adversarial | ~5-10s | ~5-10s (unchanged) |
-| **Total** | **~3min** | **~20-30s** |
+| **Total** | **~2.5-5min** | **~30-40s** |
 
 ## Pillar 2: Depth & Accuracy — Structured Evidence + Normalization
 
@@ -123,9 +187,33 @@ export interface ExtractedEvidence {
 - Temperature: 0.2 (deterministic extraction)
 
 **In `lib/decompose/pipeline.ts`:**
-- After each search completes, run extraction in parallel (part of the same `Promise.allSettled` batch or chained after search)
-- Pass `ExtractedEvidence[]` to reconciliation instead of raw strings
-- Update `reconciliationPrompt()` to accept structured evidence format
+- Evidence extraction is chained after each search within the same batch promise (see section 1d code). Each node's flow: generate query → search → extract → return structured result.
+- The `evidence` map changes type from `Record<string, string>` to `Record<string, ExtractedEvidence>`
+- Raw text is still stored on `node.search_evidence` for sidebar display
+
+**Updated `reconciliationPrompt()` signature in `lib/decompose/prompts.ts`:**
+```typescript
+export function reconciliationPrompt(
+  tree: DecompositionTree,
+  evidence: Record<string, ExtractedEvidence>
+): string {
+  const evidenceText = Object.entries(evidence)
+    .map(([nodeId, ev]) => {
+      const countries = ev.countries.map(c => `${c.name}: ${c.percentage}%`).join(", ");
+      return `### Node: ${nodeId}
+Geographic data: ${countries || "none extracted"}
+Major producers: ${ev.majorProducers.join(", ") || "unknown"}
+Risk factors: ${ev.riskFactors.join(", ") || "none identified"}
+Evidence strength: ${ev.confidenceSignal}
+Raw context: ${ev.rawText.slice(0, 500)}`;
+    })
+    .join("\n\n");
+
+  // ... rest of prompt unchanged (instructions for how to merge evidence into tree)
+}
+```
+
+The structured format gives the reconciliation LLM explicit country/percentage data to copy into `geographic_concentration`, rather than parsing prose. `ExtractedEvidence.countries` maps directly to `node.geographic_concentration` — the reconciliation LLM should use extracted percentages as the source of truth and fall back to its own inference only when `countries` is empty.
 
 ### 2b. Geographic concentration normalization
 
@@ -151,6 +239,9 @@ function normalizeConcentrations(tree: DecompositionTree): void {
 Call after reconciliation and after adversarial phases, before emitting SSE events.
 
 **Country name alias map in `lib/decompose/country-aliases.ts`:**
+
+The canonical target names are the keys in `nodeCoordinates` in `supply-chain-map.tsx`. The alias map should cover ~20-30 common LLM variants for those countries. Include short forms, demonyms-as-countries, and common abbreviations.
+
 ```typescript
 export const COUNTRY_ALIASES: Record<string, string> = {
   "South Korea": "Korea, Republic of",
@@ -159,7 +250,14 @@ export const COUNTRY_ALIASES: Record<string, string> = {
   "UK": "United Kingdom",
   "DRC": "Congo, Democratic Republic of",
   "DR Congo": "Congo, Democratic Republic of",
-  // ... common variants
+  "Taiwan": "Taiwan, Province of China",
+  "Russia": "Russian Federation",
+  "Vietnam": "Viet Nam",
+  "Iran": "Iran, Islamic Republic of",
+  "Czech Republic": "Czechia",
+  "UAR": "United Arab Emirates",
+  "UAE": "United Arab Emirates",
+  // ... extend as LLM outputs reveal new variants
 }
 ```
 
@@ -206,6 +304,7 @@ Key changes:
 - Reward nodes with many children (cascade effect)
 - Skip root node (always the product itself — no need to search)
 - Reduce tier weighting (was 10, now 5)
+- **Intentionally includes tier 1 nodes** (e.g., "Battery Pack"): tier 1 subsystems often have well-documented geographic concentration data (e.g., "70% of EV batteries come from China"). The old `tier < 2` filter excluded these, but they're valuable search targets because getting a subsystem's geography right cascades to all its children.
 
 ### 2d. Retry on critical failures
 
@@ -250,9 +349,13 @@ streamingNodes?: SupplyChainNode[]  // nodes arriving before full tree
 ```
 
 **In `app/page.tsx`:**
-- New state: `streamingNodes: SupplyChainNode[]`
+- New state: `streamingNodes: SupplyChainNode[]`, `searchingNodeIds: Set<string>`
 - On `node-added` SSE: append to `streamingNodes`
 - On `skeleton` SSE (full tree): clear `streamingNodes` (full tree takes over)
+- On `error` SSE: clear `streamingNodes` (partial data should not persist after failure)
+- On `search-started`/`search-complete`: update `searchingNodeIds` (managed in hook, passed through)
+
+**Streaming fallback:** If incremental skeleton parsing fails and the pipeline falls back to emitting the full skeleton at once, no `node-added` events are emitted. The `skeleton` event still clears `streamingNodes`, so partial state is never left dangling.
 
 ### 3b. Search pulse animation
 
@@ -306,7 +409,7 @@ searchingNodeIds?: Set<string>
 CSS-driven animations triggered by phase changes:
 
 - **Skeleton → Refining:** All markers pulse once simultaneously (`animation: phasePulse 0.6s ease-out`)
-- **Refining → Verified:** Markers do a ripple animation — each marker's animation delay is proportional to its distance from the root node's geographic position, creating an outward wave. Opacity transitions from 0.5 to 1.0.
+- **Refining → Verified:** Markers do a ripple animation — each marker's animation delay is proportional to its distance from the viewport center (since the root product node has no geographic position), creating an outward wave. Opacity transitions from 0.5 to 1.0.
 - **Verified badge:** Scale-up animation on the sidebar badge (`transform: scale(0) → scale(1)` with slight overshoot via `cubic-bezier`)
 
 Implementation: `decompositionPhase` prop already implicitly available via `decompositionTree.phase`. Map component reads phase and applies appropriate CSS class to marker containers.
@@ -329,7 +432,7 @@ Implementation: `decompositionPhase` prop already implicitly available via `deco
   - Simple implementation: a colored progress bar (same as confidence but with risk color stops)
   - Stretch: SVG semi-circle arc with gradient
 
-- **Evidence toggle:** Search evidence collapsed by default
+- **Evidence toggle:** Search evidence collapsed by default. `node.search_evidence` continues to hold the raw Perplexity text (the `ExtractedEvidence` struct is used transiently in the pipeline only, not stored on nodes).
   ```tsx
   <details className="text-xs">
     <summary className="cursor-pointer text-muted-foreground">Show search evidence</summary>
