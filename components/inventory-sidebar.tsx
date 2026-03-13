@@ -191,13 +191,48 @@ const CONCENTRATION_COLORS = [
   "#06b6d4",
 ];
 
-function NodeDetail({ node }: { node: SupplyChainNode }) {
+function getAncestryPath(
+  tree: DecompositionTree,
+  nodeId: string
+): SupplyChainNode[] {
+  const path: SupplyChainNode[] = [];
+  let currentId: string | null = nodeId;
+  while (currentId) {
+    const node = tree.nodes[currentId];
+    if (!node) break;
+    path.unshift(node);
+    // Find parent
+    let parentId: string | null = null;
+    for (const candidate of Object.values(tree.nodes)) {
+      if (candidate.children.includes(currentId)) {
+        parentId = candidate.id;
+        break;
+      }
+    }
+    currentId = parentId;
+  }
+  return path;
+}
+
+function NodeDetail({ node, tree }: { node: SupplyChainNode; tree: DecompositionTree }) {
   const concentrationEntries = Object.entries(
     node.geographic_concentration
   ).sort(([, a], [, b]) => b - a);
 
   return (
     <div className="space-y-4">
+      {/* Ancestry breadcrumb */}
+      <div className="flex flex-wrap gap-1 text-xs text-muted-foreground mb-2">
+        {getAncestryPath(tree, node.id).map((ancestor, i, arr) => (
+          <span key={ancestor.id}>
+            {i > 0 && <span className="mx-0.5">&rarr;</span>}
+            <span className={cn(i === arr.length - 1 && "text-primary font-medium")}>
+              {ancestor.name}
+            </span>
+          </span>
+        ))}
+      </div>
+
       <div>
         <h3 className="text-base font-semibold text-primary">{node.name}</h3>
         <p className="text-xs text-muted-foreground">
@@ -254,27 +289,38 @@ function NodeDetail({ node }: { node: SupplyChainNode }) {
       )}
 
       {/* Risk + Confidence */}
-      <div className="flex gap-3">
-        <div className="flex-1 rounded-lg bg-muted/50 p-3">
-          <p className="text-[10px] uppercase text-muted-foreground">Risk</p>
-          <p
-            className={cn(
-              "text-xl font-bold",
-              node.risk_score >= 70
-                ? "text-red-500"
-                : node.risk_score >= 40
-                  ? "text-amber-500"
-                  : "text-green-500"
-            )}
-          >
-            {node.risk_score}
-          </p>
+      <div className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] uppercase text-muted-foreground">Risk</p>
+            <p className={cn(
+              "text-sm font-bold",
+              node.risk_score >= 70 ? "text-red-500" : node.risk_score >= 40 ? "text-amber-500" : "text-green-500"
+            )}>
+              {node.risk_score}
+            </p>
+          </div>
+          <div className="h-2 rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-2 rounded-full transition-all",
+                node.risk_score >= 70 ? "bg-red-500" : node.risk_score >= 40 ? "bg-amber-500" : "bg-green-500"
+              )}
+              style={{ width: `${node.risk_score}%` }}
+            />
+          </div>
         </div>
-        <div className="flex-1 rounded-lg bg-muted/50 p-3">
-          <p className="text-[10px] uppercase text-muted-foreground">
-            Confidence
-          </p>
-          <p className="text-xl font-bold text-blue-500">{node.confidence}</p>
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] uppercase text-muted-foreground">Confidence</p>
+            <p className="text-sm font-bold text-blue-500">{node.confidence}</p>
+          </div>
+          <div className="h-2 rounded-full bg-muted">
+            <div
+              className="h-2 rounded-full bg-blue-500 transition-all"
+              style={{ width: `${node.confidence * 100}%` }}
+            />
+          </div>
         </div>
       </div>
 
@@ -300,14 +346,14 @@ function NodeDetail({ node }: { node: SupplyChainNode }) {
 
       {/* Search Evidence */}
       {node.search_evidence && (
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-            Search Evidence
-          </p>
-          <p className="whitespace-pre-wrap rounded bg-muted/50 p-2 text-xs text-muted-foreground">
+        <details className="text-xs">
+          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+            Show search evidence
+          </summary>
+          <p className="mt-1 whitespace-pre-wrap rounded bg-muted/50 p-2 text-muted-foreground">
             {node.search_evidence}
           </p>
-        </div>
+        </details>
       )}
 
       {/* Correction */}
@@ -699,7 +745,7 @@ export function InventorySidebar({
         return (
           <ScrollArea className="flex-1">
             <div className="p-4">
-              <NodeDetail node={node} />
+              <NodeDetail node={node} tree={activeProduct!.tree} />
             </div>
           </ScrollArea>
         );
