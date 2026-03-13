@@ -177,7 +177,7 @@ Suggest alternative sourcing countries.`
         // If we know the score, enforce lower risk and below high-risk threshold
         if (riskScore !== null) {
           if (riskScore >= HIGH_RISK_THRESHOLD) continue
-          if (riskScore >= currentRisk) continue
+          if (typeof currentRisk === "number" && riskScore >= currentRisk) continue
 
           results.push({
             country: trimmedCountry,
@@ -207,7 +207,10 @@ Suggest alternative sourcing countries.`
       const safeCandidates = Object.entries(COUNTRY_RISK_SCORES)
         .filter(([name, score]) => {
           if (name.toLowerCase() === country.toLowerCase()) return false
-          return score < HIGH_RISK_THRESHOLD && score < currentRisk
+          if (typeof currentRisk === "number") {
+            return score < HIGH_RISK_THRESHOLD && score < currentRisk
+          }
+          return score < HIGH_RISK_THRESHOLD
         })
         .sort((a, b) => a[1] - b[1]) // favor lowest risk
         .slice(0, 5)
