@@ -11,6 +11,7 @@ import {
 } from "react-simple-maps"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
+import type { DecompositionTree } from "@/lib/decompose/types"
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
@@ -53,62 +54,13 @@ interface CustomRoute {
   segmentRisks: number[]
 }
 
-type ItemType = "product" | "component" | "material" | "resource"
-
-interface SupplyChainItem {
-  id: string
-  name: string
-  type: ItemType
-  country: string
-  riskPrediction: number
-  riskDirection: "up" | "down"
-  children: SupplyChainItem[]
-  isExpanded?: boolean
-}
-
-interface Product {
-  id: string
-  name: string
-  type: "product"
-  country: string
-  color: string
-  riskPrediction: number
-  riskDirection: "up" | "down"
-  components: SupplyChainItem[]
-}
-
-export interface ProductRouteSegment {
-  fromNode: string
-  toNode: string
-  riskScore: number
-  isChokepointSegment: boolean
-}
-
-export interface ProductSupplyRoute {
-  id: string
-  fromCountry: string
-  toCountry: string
-  fromItem: string
-  toItem: string
-  itemType: ItemType
-  riskScore: number
-  isDangerous: boolean
-  productColor: string
-  productId: string
-  productName: string
-  pathNodes: string[]
-  segments: ProductRouteSegment[]
-  chokepoints: string[]
-}
-
 interface SupplyChainMapProps {
   countryRisks: CountryRisk[]
   onCountrySelect: (countryId: string | null) => void
   selectedCountry: string | null
   customRoute?: CustomRoute | null
-  products?: Product[]
-  selectedRouteId?: string | null
-  onRouteClick?: (route: ProductSupplyRoute) => void
+  decompositionTree?: DecompositionTree | null
+  selectedDecompNodeId?: string | null
 }
 
 const getRiskColor = (risk: number): string => {
@@ -219,184 +171,43 @@ function extractNodeConnections(nodes: CountryRisk[]): NodeConnection[] {
   return edges
 }
 
-function buildAdjacencyMap(nodes: CountryRisk[]): Map<string, string[]> {
-  const graph = new Map<string, Set<string>>()
-
-  for (const node of nodes) {
-    if (!graph.has(node.id)) graph.set(node.id, new Set())
-
-    for (const connectedId of node.connections || []) {
-      if (!graph.has(connectedId)) graph.set(connectedId, new Set())
-
-      graph.get(node.id)!.add(connectedId)
-      graph.get(connectedId)!.add(node.id)
-    }
-  }
-
-  return new Map(
-    Array.from(graph.entries()).map(([key, value]) => [key, Array.from(value)])
-  )
+// Get leaf nodes from decomposition tree
+function getLeafNodes(tree: DecompositionTree): string[] {
+  return Object.values(tree.nodes)
+    .filter((node) => node.children.length === 0)
+    .map((node) => node.id);
 }
 
-function findShortestPath(
-  graph: Map<string, string[]>,
-  start: string,
-  end: string
-): string[] {
-  if (start === end) return [start]
-  if (!graph.has(start) || !graph.has(end)) return [start, end]
+// Build default markers: one dot per leaf node at highest-concentration country
+function getDefaultMarkers(
+  tree: DecompositionTree
+): { country: string; concentration: number; nodeId: string }[] {
+  const leafIds = getLeafNodes(tree);
+  const markers: { country: string; concentration: number; nodeId: string }[] = [];
 
-  const queue: string[][] = [[start]]
-  const visited = new Set<string>([start])
-
-  while (queue.length > 0) {
-    const path = queue.shift()!
-    const current = path[path.length - 1]
-    const neighbors = graph.get(current) || []
-
-    for (const neighbor of neighbors) {
-      if (visited.has(neighbor)) continue
-
-      const nextPath = [...path, neighbor]
-      if (neighbor === end) return nextPath
-
-      visited.add(neighbor)
-      queue.push(nextPath)
-    }
+  for (const leafId of leafIds) {
+    const node = tree.nodes[leafId];
+    const entries = Object.entries(node.geographic_concentration);
+    if (entries.length === 0) continue;
+    const [topCountry, topPct] = entries.sort(([, a], [, b]) => b - a)[0];
+    markers.push({ country: topCountry, concentration: topPct, nodeId: leafId });
   }
 
-  return [start, end]
+  return markers;
 }
 
-function buildRouteSegmentsFromPath(
-  pathNodes: string[],
-  nodes: CountryRisk[]
-): ProductRouteSegment[] {
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
-  const segments: ProductRouteSegment[] = []
-
-  for (let i = 0; i < pathNodes.length - 1; i++) {
-    const fromNode = pathNodes[i]
-    const toNode = pathNodes[i + 1]
-    const fromRisk = nodeMap.get(fromNode)?.overallRisk ?? 30
-    const toRisk = nodeMap.get(toNode)?.overallRisk ?? 30
-    const fromType = nodeMap.get(fromNode)?.type
-    const toType = nodeMap.get(toNode)?.type
-
-    segments.push({
-      fromNode,
-      toNode,
-      riskScore: Math.round((fromRisk + toRisk) / 2),
-      isChokepointSegment: fromType === "chokepoint" || toType === "chokepoint",
-    })
-  }
-
-  return segments
-}
-
-function extractProductRoutes(
-  products: Product[],
-  countryRisks: CountryRisk[]
-): ProductSupplyRoute[] {
-  const routes: ProductSupplyRoute[] = []
-  const DANGER_THRESHOLD = 60
-  const graph = buildAdjacencyMap(countryRisks)
-  const nodeMap = new Map(countryRisks.map((n) => [n.id, n]))
-
-  const getNodeRisk = (nodeId: string): number => {
-    return nodeMap.get(nodeId)?.overallRisk ?? 30
-  }
-
-  const extractFromItem = (
-    item: SupplyChainItem,
-    parentCountry: string,
-    parentName: string,
-    productColor: string,
-    productId: string,
-    productName: string,
-  ) => {
-    if (item.country !== parentCountry) {
-      const pathNodes = findShortestPath(graph, item.country, parentCountry)
-      const segments = buildRouteSegmentsFromPath(pathNodes, countryRisks)
-      const chokepoints = pathNodes.filter(
-        (nodeId) => nodeMap.get(nodeId)?.type === "chokepoint"
-      )
-
-      const segmentRiskScores = segments.map((s) => s.riskScore)
-      const avgRisk =
-        segmentRiskScores.length > 0
-          ? Math.round(
-              segmentRiskScores.reduce((sum, risk) => sum + risk, 0) /
-                segmentRiskScores.length
-            )
-          : Math.round((getNodeRisk(item.country) + getNodeRisk(parentCountry)) / 2)
-
-      routes.push({
-        id: `${item.id}-to-${parentName}`,
-        fromCountry: item.country,
-        toCountry: parentCountry,
-        fromItem: item.name || item.type,
-        toItem: parentName,
-        itemType: item.type,
-        riskScore: avgRisk,
-        isDangerous: avgRisk >= DANGER_THRESHOLD,
-        productColor,
-        productId,
-        productName,
-        pathNodes,
-        segments,
-        chokepoints,
-      })
-    }
-
-    item.children.forEach((child) => {
-      extractFromItem(
-        child,
-        item.country,
-        item.name || item.type,
-        productColor,
-        productId,
-        productName
-      )
-    })
-  }
-
-  products.forEach((product) => {
-    product.components.forEach((component) => {
-      extractFromItem(
-        component,
-        product.country,
-        product.name || "Product",
-        product.color,
-        product.id,
-        product.name || "Unnamed Product"
-      )
-    })
-  })
-
-  return routes
-}
-
-function getRouteColorForChokepoint(
-  routes: ProductSupplyRoute[],
-  chokepointId: string,
-  selectedRouteId?: string | null
-): string | null {
-  const matchedRoute = routes.find((route) => {
-    if (selectedRouteId && route.id !== selectedRouteId) return false
-    return route.chokepoints.includes(chokepointId)
-  })
-  return matchedRoute?.productColor ?? null
-}
+// Concentration dot colors (for selected node detail view)
+const CONCENTRATION_DOT_COLORS = [
+  "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4",
+];
 
 export function SupplyChainMap({
   countryRisks,
   onCountrySelect,
   selectedCountry,
   customRoute,
-  products = [],
-  selectedRouteId,
-  onRouteClick,
+  decompositionTree,
+  selectedDecompNodeId,
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
   const [tooltipContent, setTooltipContent] = useState("")
@@ -435,51 +246,24 @@ export function SupplyChainMap({
     return extractNodeConnections(countryRisks)
   }, [countryRisks])
 
-  const productRoutes = useMemo(() => {
-    return extractProductRoutes(products, countryRisks)
-  }, [products, countryRisks])
+  // Compute concentration markers from decomposition tree
+  const defaultMarkers = useMemo(() => {
+    if (!decompositionTree) return [];
+    return getDefaultMarkers(decompositionTree);
+  }, [decompositionTree]);
 
-  const activeProductChokepoints = useMemo(() => {
-    const set = new Set<string>()
-
-    productRoutes.forEach((route) => {
-      const shouldInclude = !selectedRouteId || selectedRouteId === route.id
-      if (!shouldInclude) return
-      route.chokepoints.forEach((cp) => set.add(cp))
-    })
-
-    return set
-  }, [productRoutes, selectedRouteId])
-
-  const productCountryMarkers = useMemo(() => {
-    const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean }[] = []
-    const countryMap = new Map<string, { name: string; type: ItemType }[]>()
-
-    const collectFromItem = (item: SupplyChainItem) => {
-      const existing = countryMap.get(item.country) || []
-      existing.push({ name: item.name || item.type, type: item.type })
-      countryMap.set(item.country, existing)
-      item.children.forEach(collectFromItem)
-    }
-
-    products.forEach((product) => {
-      const existing = countryMap.get(product.country) || []
-      existing.push({ name: product.name || "Product", type: "product" })
-      countryMap.set(product.country, existing)
-      product.components.forEach(collectFromItem)
-    })
-
-    countryMap.forEach((items, country) => {
-      const countryRisk = countryRisks.find((c) => c.name === country)
-      markers.push({
+  const selectedNodeMarkers = useMemo(() => {
+    if (!decompositionTree || !selectedDecompNodeId) return [];
+    const node = decompositionTree.nodes[selectedDecompNodeId];
+    if (!node) return [];
+    return Object.entries(node.geographic_concentration)
+      .sort(([, a], [, b]) => b - a)
+      .map(([country, pct], i) => ({
         country,
-        items,
-        isDangerous: (countryRisk?.overallRisk || 0) >= 60,
-      })
-    })
-
-    return markers
-  }, [products, countryRisks])
+        concentration: pct,
+        color: CONCENTRATION_DOT_COLORS[i % CONCENTRATION_DOT_COLORS.length],
+      }));
+  }, [decompositionTree, selectedDecompNodeId]);
 
   const handleMoveEnd = (nextPosition: { coordinates: [number, number]; zoom: number }) => {
     setPosition(nextPosition)
@@ -651,124 +435,51 @@ export function SupplyChainMap({
               </>
             )}
 
-            {/* product routes via chokepoints */}
-            {productRoutes.length > 0 && (
-              <>
-                {productRoutes.map((route) => {
-                  const isSelected = selectedRouteId === route.id
-                  const isDimmed = !!selectedRouteId && !isSelected
+            {/* Decomposition Concentration Markers */}
+            {!selectedDecompNodeId &&
+              defaultMarkers.map((marker) => {
+                const coords = nodeCoordinates[marker.country];
+                if (!coords) return null;
+                const radius = Math.max(3, (marker.concentration / 100) * 10);
+                return (
+                  <Marker key={`default-${marker.nodeId}`} coordinates={coords}>
+                    <circle
+                      r={radius}
+                      fill="#7c3aed"
+                      fillOpacity={0.8}
+                      stroke="#7c3aed"
+                      strokeWidth={0.5}
+                      style={{ filter: "drop-shadow(0 0 4px rgba(124, 58, 237, 0.5))" }}
+                    />
+                  </Marker>
+                );
+              })}
 
-                  return (
-                    <g key={route.id}>
-                      {route.segments.map((segment, segmentIndex) => {
-                        const fromCoords = nodeCoordinates[segment.fromNode]
-                        const toCoords = nodeCoordinates[segment.toNode]
-                        if (!fromCoords || !toCoords) return null
-
-                        const segmentIsDangerous = segment.riskScore >= 60
-
-                        return (
-                          <Line
-                            key={`${route.id}-segment-${segmentIndex}`}
-                            from={fromCoords}
-                            to={toCoords}
-                            stroke={segmentIsDangerous ? "#dc2626" : route.productColor}
-                            strokeWidth={isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5}
-                            strokeLinecap="round"
-                            strokeDasharray={segmentIsDangerous ? "none" : "6 3"}
-                            className="cursor-pointer transition-all duration-200"
-                            onClick={() => onRouteClick?.(route)}
-                            style={{
-                              opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
-                              filter: segmentIsDangerous
-                                ? "drop-shadow(0 0 5px rgba(220, 38, 38, 0.7))"
-                                : `drop-shadow(0 0 3px ${route.productColor}55)`,
-                            }}
-                          />
-                        )
-                      })}
-                    </g>
-                  )
-                })}
-
-                {/* product country markers */}
-                {productCountryMarkers.map((marker) => {
-                  const coords = nodeCoordinates[marker.country]
-                  if (!coords) return null
-
-                  const productForCountry = products.find(
-                    (p) =>
-                      p.country === marker.country ||
-                      p.components.some((c) => c.country === marker.country)
-                  )
-                  const markerColor = productForCountry?.color ?? "#2563eb"
-
-                  return (
-                    <Marker key={`product-marker-${marker.country}`} coordinates={coords}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <g>
-                            {marker.isDangerous && (
-                              <circle
-                                r={14}
-                                fill="none"
-                                stroke="#dc2626"
-                                strokeWidth={2}
-                                className="animate-ping"
-                                style={{ opacity: 0.4 }}
-                              />
-                            )}
-                            {marker.isDangerous && (
-                              <circle r={12} fill="none" stroke="#dc2626" strokeWidth={2} />
-                            )}
-                            <circle
-                              r={8}
-                              fill={markerColor}
-                              stroke="#fff"
-                              strokeWidth={2}
-                              className="cursor-pointer transition-transform duration-200 hover:scale-125"
-                            />
-                            {marker.items.length > 1 && (
-                              <>
-                                <circle cx={6} cy={-6} r={6} fill="#1f2937" stroke="#fff" strokeWidth={1} />
-                                <text
-                                  x={6}
-                                  y={-3}
-                                  textAnchor="middle"
-                                  style={{ fontSize: 7, fill: "white", fontWeight: "bold" }}
-                                >
-                                  {marker.items.length}
-                                </text>
-                              </>
-                            )}
-                          </g>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="space-y-2">
-                            <p className="font-semibold">{marker.country}</p>
-                            {marker.isDangerous && (
-                              <p className="text-xs font-medium text-red-500">High Risk Location</p>
-                            )}
-                            <div className="space-y-1">
-                              {marker.items.map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-xs">
-                                  <div
-                                    className="h-2 w-2 rounded-full"
-                                    style={{ backgroundColor: markerColor }}
-                                  />
-                                  <span className="capitalize text-muted-foreground">{item.type}:</span>
-                                  <span>{item.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </Marker>
-                  )
-                })}
-              </>
-            )}
+            {selectedDecompNodeId &&
+              selectedNodeMarkers.map((marker) => {
+                const coords = nodeCoordinates[marker.country];
+                if (!coords) return null;
+                const radius = Math.max(3, (marker.concentration / 100) * 12);
+                return (
+                  <Marker key={`selected-${marker.country}`} coordinates={coords}>
+                    <circle
+                      r={radius}
+                      fill={marker.color}
+                      fillOpacity={0.9}
+                      stroke={marker.color}
+                      strokeWidth={0.5}
+                      style={{ filter: `drop-shadow(0 0 4px ${marker.color}88)` }}
+                    />
+                    <text
+                      textAnchor="middle"
+                      y={radius + 10}
+                      style={{ fontSize: "8px", fill: marker.color, fontWeight: 500 }}
+                    >
+                      {marker.country} {marker.concentration}%
+                    </text>
+                  </Marker>
+                );
+              })}
 
             {/* chokepoint markers */}
             {chokepointNodes.map((node) => {
@@ -776,8 +487,6 @@ export function SupplyChainMap({
               if (!coords) return null
 
               const isSelected = selectedCountry === node.id
-              const isActive = activeProductChokepoints.has(node.id)
-              const activeColor = getRouteColorForChokepoint(productRoutes, node.id, selectedRouteId)
 
               return (
                 <Marker key={`chokepoint-${node.id}`} coordinates={coords}>
@@ -786,17 +495,7 @@ export function SupplyChainMap({
                       <g
                         onClick={() => onCountrySelect(selectedCountry === node.id ? null : node.id)}
                         className="cursor-pointer"
-                        style={{ opacity: isActive ? 1 : 0.4 }}
                       >
-                        {isActive && (
-                          <circle
-                            r={13}
-                            fill="none"
-                            stroke={activeColor ?? "#7c3aed"}
-                            strokeWidth={3}
-                            className="animate-pulse"
-                          />
-                        )}
                         <rect
                           x={-8}
                           y={-8}
@@ -818,11 +517,6 @@ export function SupplyChainMap({
                         <p className="text-xs text-muted-foreground">
                           Overall risk: {node.overallRisk}%
                         </p>
-                        {isActive && (
-                          <p className="text-xs font-medium text-blue-600">
-                            Used in active product route
-                          </p>
-                        )}
                         {node.newsHighlights.slice(0, 2).map((item, idx) => (
                           <p key={idx} className="text-xs">{item}</p>
                         ))}
@@ -834,48 +528,6 @@ export function SupplyChainMap({
             })}
           </ZoomableGroup>
         </ComposableMap>
-
-        {products.length > 0 && (
-          <div className="absolute bottom-4 left-4 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm">
-            <p className="mb-2 text-xs font-semibold text-foreground">Products</p>
-            <div className="space-y-1.5">
-              {products.map((product) => (
-                <div key={product.id} className="flex items-center gap-2">
-                  <div className="h-2.5 w-6 rounded-full" style={{ backgroundColor: product.color }} />
-                  <span className="max-w-[120px] truncate text-xs text-muted-foreground">
-                    {product.name || "Unnamed Product"}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 border-t border-border pt-2">
-              <p className="mb-1.5 text-xs font-semibold text-foreground">Route Status</p>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="h-0.5 w-5 rounded bg-red-600" style={{ height: 3 }} />
-                  <span className="text-xs font-medium text-red-500">Dangerous</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-5"
-                    style={{
-                      height: 3,
-                      background:
-                        "repeating-linear-gradient(90deg,#94a3b8,#94a3b8 3px,transparent 3px,transparent 7px)",
-                      borderRadius: 2,
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">Safe</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-sm border border-white bg-violet-500" />
-                  <span className="text-xs text-muted-foreground">Chokepoint</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="absolute bottom-4 right-4 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm">
           <p className="mb-2 text-xs font-semibold text-foreground">Risk Level</p>
