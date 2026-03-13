@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
       You are a supply-chain risk analyst.
 
       Evaluate supply-chain risk for multiple countries using the provided recent news headlines.
+      If the news is nothing related to supply-chain risk at all, ignore the news and give scores based on your knowledge.
 
       For EACH country, score import-side risk and export-side risk separately.
 
@@ -119,7 +120,6 @@ export async function POST(req: NextRequest) {
 
       Instructions:
       - Use the provided news headlines as evidence.
-      - Be conservative and evidence-based.
       - If evidence is weak or sparse, lower confidence.
       - Return valid JSON only.
       - Keep outputs internally consistent across countries in the same batch.

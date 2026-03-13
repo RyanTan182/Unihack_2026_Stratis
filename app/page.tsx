@@ -706,7 +706,7 @@ export default function SupplyChainCrisisDetector() {
         const results = await evaluateAllCountriesInChunks({
           countryRisks,
           existingSnapshots: riskSnapshots,
-          chunkSize: 5,
+          chunkSize: 10,
           forceRefresh: false,
           onChunkStart: (countryIds: string[]) => {
             if (cancelled) return
