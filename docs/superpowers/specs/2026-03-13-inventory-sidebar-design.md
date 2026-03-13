@@ -24,8 +24,10 @@ Replace the floating `ProductDecomposition` card with an Inventory view inside t
 ### Navigation
 
 The `NavSidebar` component gains two props:
-- `activeItem: string` — which nav item is currently active
-- `onNavigate: (item: string) => void` — callback when a nav item is clicked
+- `activeItem: "locations" | "inventory"` — which nav item is currently active
+- `onNavigate: (item: "locations" | "inventory") => void` — callback when an interactive nav item is clicked
+
+Only "Locations" and "Inventory" are interactive. All other nav items (Dashboard, Alerts, Analytics, etc.) remain inert/decorative.
 
 `page.tsx` manages an `activeView` state (`"risk" | "inventory"`) and conditionally renders either `RiskSidebar` or `InventorySidebar` in the same position.
 
@@ -46,8 +48,10 @@ The `InventorySidebar` component manages 4 internal views via local state:
 - Product name text field
 - Supplier tag input (tag chips with add/remove)
 - "Decompose Supply Chain" button (disabled until product name entered)
-- During loading: progress indicator with phase status
-- On completion: auto-navigates to View 3, product added to parent's product list
+- During loading: progress indicator with phase status (skeleton → refining)
+- On completion: calls `onProductAdd` with the finished tree, auto-navigates to View 3
+- On error: shows inline error message with retry button. Product is NOT added to the list on failure.
+- Back arrow during loading: aborts decomposition, returns to View 1
 
 **View 3 — Decomposition Tree**
 - Header: Product name with back arrow → View 1
@@ -61,18 +65,47 @@ The `InventorySidebar` component manages 4 internal views via local state:
 - Full-width node detail: geographic concentration stacked bar with legend, risk score (color-coded), confidence score, risk factor badges, search evidence text block, adversarial correction block
 - Map updates to show selected node's concentration markers
 
+### Data Model
+
+```typescript
+interface StoredProduct {
+  id: string               // crypto.randomUUID()
+  name: string
+  suppliers: string[]
+  tree: DecompositionTree
+  durationMs: number
+  createdAt: number        // Date.now()
+}
+```
+
+### Component Interface
+
+```typescript
+interface InventorySidebarProps {
+  products: StoredProduct[]
+  onProductAdd: (product: StoredProduct) => void
+  onTreeChange: (tree: DecompositionTree | null) => void
+  onNodeSelect: (nodeId: string | null) => void
+}
+```
+
+**Callback contract — when each callback fires:**
+- `onProductAdd(product)` — when a new decomposition completes successfully (View 2 → View 3 transition). `page.tsx` appends to the `products` array.
+- `onTreeChange(tree)` — when navigating to View 3 (set to product's tree), or when navigating back to View 1 / switching away (set to null). `page.tsx` sets `decompositionTree` for the map.
+- `onNodeSelect(nodeId)` — when clicking a node in View 3 (set to node ID, transitions to View 4), or when navigating back to View 3 (set to null). `page.tsx` sets `selectedDecompNodeId` for the map.
+
 ### State Management
 
 **In `page.tsx`:**
 - `activeView: "risk" | "inventory"` — which sidebar is shown
-- `products: Array<{ id, name, tree, durationMs, createdAt }>` — session-only storage of decomposed products
-- `decompositionTree: DecompositionTree | null` — currently viewed tree (passed to map)
-- `selectedDecompNodeId: string | null` — currently selected node (passed to map)
+- `products: StoredProduct[]` — session-only storage of decomposed products
+- `decompositionTree: DecompositionTree | null` — derived from active product (passed to map). Set by `onTreeChange` callback. Cleared when switching to risk view.
+- `selectedDecompNodeId: string | null` — set by `onNodeSelect` callback (passed to map)
 
 **In `InventorySidebar`:**
 - `view: "list" | "form" | "tree" | "detail"` — current internal view
-- `activeProductId: string | null` — which product is being viewed
-- `useDecompose()` hook — manages decomposition state for new products
+- `activeProductId: string | null` — which product from the `products` prop is being viewed
+- `useDecompose()` hook — used ONLY during View 2 for new decompositions. Once complete, the tree is snapshot into a `StoredProduct` via `onProductAdd`. For viewing existing products (View 3/4), the sidebar reads from the `products` prop — NOT from the hook.
 
 ### Map Integration
 
@@ -80,7 +113,7 @@ No changes to map marker logic. Behavior:
 
 - **View 3 (tree), no node selected:** Purple dots on highest-concentration country per leaf node
 - **View 4 (node detail):** Colored dots with percentage labels for selected node's countries
-- **View 1, View 2, or Risk sidebar active:** No decomposition markers (`decompositionTree` set to null)
+- **View 1, View 2, or Risk sidebar active:** No decomposition markers (`decompositionTree` set to null). Clicking a product from the list will cause markers to appear as the tree loads — this is intentional.
 - **Switching products:** Map markers update to reflect the newly selected product's tree
 
 ### Component Extraction
