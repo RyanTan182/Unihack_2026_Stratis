@@ -32,6 +32,8 @@ interface InventorySidebarProps {
   onProductAdd: (product: StoredProduct) => void;
   onTreeChange: (tree: DecompositionTree | null) => void;
   onNodeSelect: (nodeId: string | null) => void;
+  onSearchingChange?: (ids: Set<string>) => void;
+  onStreamingNodesChange?: (nodes: SupplyChainNode[]) => void;
 }
 
 type View = "list" | "form" | "tree" | "detail";
@@ -365,6 +367,8 @@ export function InventorySidebar({
   onProductAdd,
   onTreeChange,
   onNodeSelect,
+  onSearchingChange,
+  onStreamingNodesChange,
 }: InventorySidebarProps) {
   const [view, setView] = useState<View>("list");
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
@@ -377,8 +381,16 @@ export function InventorySidebar({
   // useDecompose is ONLY for new decompositions (View 2 / form).
   // Note: the hook also returns selectNode/selectedNodeId which we ignore —
   // node selection is managed as local state in this component instead.
-  const { tree: hookTree, isLoading, error, durationMs, decompose, abort } =
+  const { tree: hookTree, isLoading, error, durationMs, searchingNodeIds, streamingNodes, decompose, abort } =
     useDecompose();
+
+  useEffect(() => {
+    onSearchingChange?.(searchingNodeIds);
+  }, [searchingNodeIds, onSearchingChange]);
+
+  useEffect(() => {
+    onStreamingNodesChange?.(streamingNodes);
+  }, [streamingNodes, onStreamingNodesChange]);
 
   // Capture form values at decompose-time so the completion effect has stable refs
   const pendingFormRef = useRef<{ name: string; suppliers: string[] } | null>(null);

@@ -8,7 +8,7 @@ import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { InventorySidebar } from "@/components/inventory-sidebar"
 import { Button } from "@/components/ui/button"
 import { Route } from "lucide-react"
-import type { DecompositionTree, StoredProduct } from "@/lib/decompose/types"
+import type { DecompositionTree, StoredProduct, SupplyChainNode } from "@/lib/decompose/types"
 
 // Mock data for country risks with news-based analysis
 const countryRisks = [
@@ -669,6 +669,8 @@ export default function SupplyChainCrisisDetector() {
   const [products, setProducts] = useState<StoredProduct[]>([])
   const [decompositionTree, setDecompositionTree] = useState<DecompositionTree | null>(null)
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
+  const [searchingNodeIds, setSearchingNodeIds] = useState<Set<string>>(new Set())
+  const [streamingNodes, setStreamingNodes] = useState<SupplyChainNode[]>([])
 
   const handleReset = () => {
     setSelectedCountry(null)
@@ -711,6 +713,8 @@ export default function SupplyChainCrisisDetector() {
           onProductAdd={handleProductAdd}
           onTreeChange={setDecompositionTree}
           onNodeSelect={setSelectedDecompNodeId}
+          onSearchingChange={setSearchingNodeIds}
+          onStreamingNodesChange={setStreamingNodes}
         />
       )}
 
@@ -723,6 +727,8 @@ export default function SupplyChainCrisisDetector() {
           customRoute={customRoute}
           decompositionTree={decompositionTree}
           selectedDecompNodeId={selectedDecompNodeId}
+          searchingNodeIds={searchingNodeIds}
+          streamingNodes={streamingNodes}
         />
 
         {/* Route Builder Toggle Button */}
