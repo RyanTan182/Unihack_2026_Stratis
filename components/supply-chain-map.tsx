@@ -11,7 +11,7 @@ import {
 } from "react-simple-maps"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
-import type { DecompositionTree } from "@/lib/decompose/types"
+import type { DecompositionTree, SupplyChainNode } from "@/lib/decompose/types"
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
@@ -61,6 +61,8 @@ interface SupplyChainMapProps {
   customRoute?: CustomRoute | null
   decompositionTree?: DecompositionTree | null
   selectedDecompNodeId?: string | null
+  searchingNodeIds?: Set<string>
+  streamingNodes?: SupplyChainNode[]
 }
 
 const getRiskColor = (risk: number): string => {
@@ -201,6 +203,12 @@ const CONCENTRATION_DOT_COLORS = [
   "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899", "#06b6d4",
 ];
 
+function getRiskHaloColor(riskScore: number): string {
+  if (riskScore >= 70) return "#ef4444";
+  if (riskScore >= 40) return "#f59e0b";
+  return "#10b981";
+}
+
 export function SupplyChainMap({
   countryRisks,
   onCountrySelect,
@@ -208,6 +216,8 @@ export function SupplyChainMap({
   customRoute,
   decompositionTree,
   selectedDecompNodeId,
+  searchingNodeIds,
+  streamingNodes,
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
   const [tooltipContent, setTooltipContent] = useState("")
@@ -265,6 +275,16 @@ export function SupplyChainMap({
       }));
   }, [decompositionTree, selectedDecompNodeId]);
 
+  const streamingMarkers = useMemo(() => {
+    if (!streamingNodes || streamingNodes.length === 0) return [];
+    return streamingNodes.flatMap((node) => {
+      const entries = Object.entries(node.geographic_concentration);
+      if (entries.length === 0) return [];
+      const [topCountry, topPct] = entries.sort(([, a], [, b]) => b - a)[0];
+      return [{ country: topCountry, concentration: topPct, nodeId: node.id, riskScore: node.risk_score }];
+    });
+  }, [streamingNodes]);
+
   const handleMoveEnd = (nextPosition: { coordinates: [number, number]; zoom: number }) => {
     setPosition(nextPosition)
   }
@@ -283,6 +303,21 @@ export function SupplyChainMap({
   return (
     <TooltipProvider delayDuration={0}>
       <div className="relative h-full w-full bg-background">
+        <style>{`
+          @keyframes searchPulse {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.4); opacity: 1; }
+          }
+          @keyframes phasePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0); }
+            to { opacity: 1; transform: scale(1); }
+          }
+        `}</style>
         <ComposableMap
           projection="geoMercator"
           projectionConfig={{
@@ -435,25 +470,68 @@ export function SupplyChainMap({
               </>
             )}
 
-            {/* Decomposition Concentration Markers */}
+            {/* Default Decomposition Concentration Markers (with halos) */}
             {!selectedDecompNodeId &&
               defaultMarkers.map((marker) => {
                 const coords = nodeCoordinates[marker.country];
                 if (!coords) return null;
                 const radius = Math.max(3, (marker.concentration / 100) * 10);
+                const node = decompositionTree?.nodes[marker.nodeId];
+                const isSearching = searchingNodeIds?.has(marker.nodeId);
+                const isVerified = decompositionTree?.phase === "verified";
                 return (
                   <Marker key={`default-${marker.nodeId}`} coordinates={coords}>
+                    {/* Risk halo */}
+                    {node && (
+                      <circle
+                        r={radius + 4}
+                        fill={getRiskHaloColor(node.risk_score)}
+                        fillOpacity={isVerified ? 0.25 : 0.1}
+                      />
+                    )}
+                    {/* Main dot */}
                     <circle
                       r={radius}
                       fill="#7c3aed"
-                      fillOpacity={0.8}
+                      fillOpacity={isVerified ? 0.9 : 0.5}
                       stroke="#7c3aed"
                       strokeWidth={0.5}
-                      style={{ filter: "drop-shadow(0 0 4px rgba(124, 58, 237, 0.5))" }}
+                      style={{
+                        filter: `drop-shadow(0 0 4px rgba(124, 58, 237, 0.5))`,
+                        animation: isSearching ? "searchPulse 1.2s ease-in-out infinite" : undefined,
+                        transition: "opacity 0.3s, fill-opacity 0.5s",
+                      }}
                     />
                   </Marker>
                 );
               })}
+
+            {/* Streaming nodes (during skeleton phase, before full tree) */}
+            {!decompositionTree && streamingMarkers.map((marker) => {
+              const coords = nodeCoordinates[marker.country];
+              if (!coords) return null;
+              const radius = Math.max(3, (marker.concentration / 100) * 10);
+              return (
+                <Marker key={`stream-${marker.nodeId}`} coordinates={coords}>
+                  <circle
+                    r={radius + 4}
+                    fill={getRiskHaloColor(marker.riskScore)}
+                    fillOpacity={0.1}
+                  />
+                  <circle
+                    r={radius}
+                    fill="#7c3aed"
+                    fillOpacity={0.5}
+                    stroke="#7c3aed"
+                    strokeWidth={0.5}
+                    style={{
+                      animation: "fadeIn 0.3s ease-out",
+                      filter: "drop-shadow(0 0 4px rgba(124, 58, 237, 0.3))",
+                    }}
+                  />
+                </Marker>
+              );
+            })}
 
             {selectedDecompNodeId &&
               selectedNodeMarkers.map((marker) => {
