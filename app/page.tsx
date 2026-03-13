@@ -13,7 +13,17 @@ import { Route, Package } from "lucide-react"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import { collectCountriesFromProducts } from "./lib/risk-country-utils";
-import { CountryRisk } from "@/components/product-supply-chain"
+
+interface CountryRisk {
+  id: string
+  name: string
+  type: "country" | "chokepoint"
+  connections: string[]
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
+}
 
 // Mock data for country risks with news-based analysis
 const countryRisks: CountryRisk[] = [
@@ -685,6 +695,8 @@ export default function SupplyChainCrisisDetector() {
   const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
+  const [inventoryProducts, setInventoryProducts] = useState<Product[]>([])
+  const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
   const [isBulkEvaluating, setIsBulkEvaluating] = useState(false)
@@ -837,13 +849,23 @@ export default function SupplyChainCrisisDetector() {
         isLocationActive={!isInventorySidebarOpen}
       />
 
-      {/* Risk Analysis Sidebar */}
-      <RiskSidebar
-        countryRisks={resolvedCountryRisks}
-        selectedCountry={selectedCountry}
-        onCountrySelect={setSelectedCountry}
-        onReset={handleReset}
-      />
+      {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
+      {isInventorySidebarOpen ? (
+        <InventorySidebar
+          isOpen={true}
+          onClose={() => setIsInventorySidebarOpen(false)}
+          countryRisks={resolvedCountryRisks}
+          inventoryProducts={inventoryProducts}
+          onInventoryProductsChange={handleInventoryProductsChange}
+        />
+      ) : (
+        <RiskSidebar
+          countryRisks={resolvedCountryRisks}
+          selectedCountry={selectedCountry}
+          onCountrySelect={setSelectedCountry}
+          onReset={handleReset}
+        />
+      )}
 
       {/* Main Map Area */}
       <div className="relative flex-1">

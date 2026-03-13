@@ -53,7 +53,7 @@ import { cn } from "@/lib/utils"
 export interface CountryRisk {
   id: string
   name: string
-  type: string
+  type: "country" | "chokepoint"
   importRisk: number
   exportRisk: number
   overallRisk: number
