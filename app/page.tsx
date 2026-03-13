@@ -5,10 +5,10 @@ import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
 import { SupplyChainMap } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
-import { ProductDecomposition } from "@/components/product-decomposition"
+import { InventorySidebar } from "@/components/inventory-sidebar"
 import { Button } from "@/components/ui/button"
-import { Route, Package } from "lucide-react"
-import type { DecompositionTree } from "@/lib/decompose/types"
+import { Route } from "lucide-react"
+import type { DecompositionTree, StoredProduct } from "@/lib/decompose/types"
 
 // Mock data for country risks with news-based analysis
 const countryRisks = [
@@ -664,8 +664,9 @@ const countryRisks = [
 export default function SupplyChainCrisisDetector() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [isRouteBuilderOpen, setIsRouteBuilderOpen] = useState(false)
-  const [isProductBuilderOpen, setIsProductBuilderOpen] = useState(false)
   const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
+  const [activeView, setActiveView] = useState<"risk" | "inventory">("risk")
+  const [products, setProducts] = useState<StoredProduct[]>([])
   const [decompositionTree, setDecompositionTree] = useState<DecompositionTree | null>(null)
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
 
@@ -674,27 +675,44 @@ export default function SupplyChainCrisisDetector() {
     setCustomRoute(null)
   }
 
-  const handleTreeLoaded = useCallback((tree: DecompositionTree) => {
-    setDecompositionTree(tree)
+  const handleNavigate = useCallback((item: "locations" | "inventory") => {
+    if (item === "locations") {
+      setActiveView("risk")
+      setDecompositionTree(null)
+      setSelectedDecompNodeId(null)
+    } else {
+      setActiveView("inventory")
+    }
   }, [])
 
-  const handleNodeSelected = useCallback((nodeId: string | null, tree: DecompositionTree) => {
-    setSelectedDecompNodeId(nodeId)
-    setDecompositionTree(tree)
+  const handleProductAdd = useCallback((product: StoredProduct) => {
+    setProducts((prev) => [...prev, product])
   }, [])
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
-      <NavSidebar />
-
-      {/* Risk Analysis Sidebar */}
-      <RiskSidebar
-        countryRisks={countryRisks}
-        selectedCountry={selectedCountry}
-        onCountrySelect={setSelectedCountry}
-        onReset={handleReset}
+      <NavSidebar
+        activeItem={activeView === "risk" ? "locations" : "inventory"}
+        onNavigate={handleNavigate}
       />
+
+      {/* Sidebar — Risk or Inventory */}
+      {activeView === "risk" ? (
+        <RiskSidebar
+          countryRisks={countryRisks}
+          selectedCountry={selectedCountry}
+          onCountrySelect={setSelectedCountry}
+          onReset={handleReset}
+        />
+      ) : (
+        <InventorySidebar
+          products={products}
+          onProductAdd={handleProductAdd}
+          onTreeChange={setDecompositionTree}
+          onNodeSelect={setSelectedDecompNodeId}
+        />
+      )}
 
       {/* Main Map Area */}
       <div className="relative flex-1">
@@ -713,26 +731,10 @@ export default function SupplyChainCrisisDetector() {
             variant={isRouteBuilderOpen || customRoute ? "default" : "outline"}
             size="sm"
             className="gap-2"
-            onClick={() => {
-              setIsRouteBuilderOpen(!isRouteBuilderOpen)
-              setIsProductBuilderOpen(false)
-            }}
+            onClick={() => setIsRouteBuilderOpen(!isRouteBuilderOpen)}
           >
             <Route className="h-4 w-4" />
             {customRoute ? `Route (${customRoute.totalRisk}%)` : "Build Route"}
-          </Button>
-
-          <Button
-            variant={isProductBuilderOpen ? "default" : "outline"}
-            size="sm"
-            className="gap-2"
-            onClick={() => {
-              setIsProductBuilderOpen(!isProductBuilderOpen)
-              setIsRouteBuilderOpen(false)
-            }}
-          >
-            <Package className="h-4 w-4" />
-            Products
           </Button>
         </div>
 
@@ -743,14 +745,6 @@ export default function SupplyChainCrisisDetector() {
           countryRisks={countryRisks}
           customRoute={customRoute}
           onRouteChange={setCustomRoute}
-        />
-
-        {/* Product Decomposition Panel */}
-        <ProductDecomposition
-          isOpen={isProductBuilderOpen}
-          onClose={() => setIsProductBuilderOpen(false)}
-          onTreeLoaded={handleTreeLoaded}
-          onNodeSelected={handleNodeSelected}
         />
       </div>
     </div>
