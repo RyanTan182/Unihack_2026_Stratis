@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
-import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
+import { SupplyChainMap } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
-import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
-import { PathDetailsPanel } from "@/components/path-details-panel"
+import { ProductDecomposition } from "@/components/product-decomposition"
 import { Button } from "@/components/ui/button"
 import { Route, Package } from "lucide-react"
+import type { DecompositionTree } from "@/lib/decompose/types"
 
 // Mock data for country risks with news-based analysis
 const countryRisks = [
@@ -666,21 +666,22 @@ export default function SupplyChainCrisisDetector() {
   const [isRouteBuilderOpen, setIsRouteBuilderOpen] = useState(false)
   const [isProductBuilderOpen, setIsProductBuilderOpen] = useState(false)
   const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
-  const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
+  const [decompositionTree, setDecompositionTree] = useState<DecompositionTree | null>(null)
+  const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
 
   const handleReset = () => {
     setSelectedCountry(null)
     setCustomRoute(null)
-    setSelectedRoute(null)
   }
 
-  // Handle clicking on a product route on the map
-  const handleRouteClick = (route: ProductSupplyRoute) => {
-    setSelectedRoute(route)
-    setIsProductBuilderOpen(false)
-    setIsRouteBuilderOpen(false)
-  }
+  const handleTreeLoaded = useCallback((tree: DecompositionTree) => {
+    setDecompositionTree(tree)
+  }, [])
+
+  const handleNodeSelected = useCallback((nodeId: string | null, tree: DecompositionTree) => {
+    setSelectedDecompNodeId(nodeId)
+    setDecompositionTree(tree)
+  }, [])
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -702,9 +703,8 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={customRoute}
-          products={products}
-          selectedRouteId={selectedRoute?.id ?? null}
-          onRouteClick={handleRouteClick}
+          decompositionTree={decompositionTree}
+          selectedDecompNodeId={selectedDecompNodeId}
         />
 
         {/* Route Builder Toggle Button */}
@@ -723,7 +723,7 @@ export default function SupplyChainCrisisDetector() {
           </Button>
 
           <Button
-            variant={isProductBuilderOpen || products.length > 0 ? "default" : "outline"}
+            variant={isProductBuilderOpen ? "default" : "outline"}
             size="sm"
             className="gap-2"
             onClick={() => {
@@ -732,7 +732,7 @@ export default function SupplyChainCrisisDetector() {
             }}
           >
             <Package className="h-4 w-4" />
-            {products.length > 0 ? `Products (${products.length})` : "Products"}
+            Products
           </Button>
         </div>
 
@@ -745,19 +745,12 @@ export default function SupplyChainCrisisDetector() {
           onRouteChange={setCustomRoute}
         />
 
-        {/* Product Supply Chain Panel */}
-        <ProductSupplyChain
+        {/* Product Decomposition Panel */}
+        <ProductDecomposition
           isOpen={isProductBuilderOpen}
           onClose={() => setIsProductBuilderOpen(false)}
-          countryRisks={countryRisks}
-          products={products}
-          onProductsChange={setProducts}
-        />
-
-        {/* Path Details Panel - shows when a route is clicked */}
-        <PathDetailsPanel
-          route={selectedRoute}
-          onClose={() => setSelectedRoute(null)}
+          onTreeLoaded={handleTreeLoaded}
+          onNodeSelected={handleNodeSelected}
         />
       </div>
     </div>
