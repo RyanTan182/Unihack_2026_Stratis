@@ -131,6 +131,8 @@ function handleEvent(
         ...prev,
         isLoading: false,
         durationMs: event.duration_ms,
+        searchingNodeIds: new Set(),
+        streamingNodes: [],
       }));
       break;
     case "node-added":

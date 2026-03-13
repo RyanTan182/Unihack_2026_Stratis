@@ -745,7 +745,7 @@ export function InventorySidebar({
         return (
           <ScrollArea className="flex-1">
             <div className="p-4">
-              <NodeDetail node={node} tree={activeProduct!.tree} />
+              <NodeDetail node={node} tree={activeProduct.tree} />
             </div>
           </ScrollArea>
         );
