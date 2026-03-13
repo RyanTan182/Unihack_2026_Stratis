@@ -50,9 +50,10 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/ui/empty-state"
 
-interface CountryRisk {
+export interface CountryRisk {
   id: string
   name: string
+  type: string
   importRisk: number
   exportRisk: number
   overallRisk: number

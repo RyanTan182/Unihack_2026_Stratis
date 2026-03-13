@@ -135,27 +135,45 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
   )
 
   const selectedCountryData = countryRisks.find((c) => c.id === selectedCountry || c.name === selectedCountry)
+  const countryForNews = selectedCountryData?.name ?? selectedCountry
 
   useEffect(() => {
-    if (!selectedCountryData) {
+    if (!countryForNews) {
       setLiveNews([])
       return
     }
-    let cancelled = false
+
+    const controller = new AbortController()
     setNewsLoading(true)
-    fetch(`/api/gdelt?country=${encodeURIComponent(selectedCountryData.name)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) setLiveNews(data.articles ?? [])
-      })
-      .catch(() => {
-        if (!cancelled) setLiveNews([])
-      })
-      .finally(() => {
-        if (!cancelled) setNewsLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [selectedCountryData])
+
+    const fetchNews = async (attempt: number): Promise<void> => {
+      try {
+        const res = await fetch(
+          `/api/news?country=${encodeURIComponent(countryForNews)}`,
+          { signal: controller.signal },
+        )
+        const data = await res.json()
+        if (!controller.signal.aborted) {
+          setLiveNews(data.articles ?? [])
+          setNewsLoading(false)
+        }
+      } catch (err: unknown) {
+        if (controller.signal.aborted) return
+        if (attempt < 1) {
+          await new Promise((r) => setTimeout(r, 1500))
+          if (!controller.signal.aborted) return fetchNews(attempt + 1)
+        }
+        if (!controller.signal.aborted) {
+          setLiveNews([])
+          setNewsLoading(false)
+        }
+      }
+    }
+
+    fetchNews(0)
+
+    return () => controller.abort()
+  }, [countryForNews])
 
   const toggleMetric = (metricId: string) => {
     setExpandedMetrics((prev) =>
@@ -253,47 +271,53 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
               </div>
 
               {/* Selected Country Details */}
-              {selectedCountryData && (
+              {countryForNews && (
                 <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:border-primary/30">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-foreground">{selectedCountryData.name}</h3>
-                    <div className={cn(
-                      "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-                      selectedCountryData.overallRisk >= 60 ? "border-red-500/50 text-red-400" :
-                      selectedCountryData.overallRisk >= 40 ? "border-yellow-500/50 text-yellow-400" :
-                      "border-emerald-500/50 text-emerald-400"
-                    )}>
-                      {selectedCountryData.overallRisk >= 60 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {selectedCountryData.overallRisk}%
-                    </div>
+                    <h3 className="font-semibold text-foreground">{selectedCountryData?.name ?? countryForNews}</h3>
+                    {selectedCountryData && (
+                      <div className={cn(
+                        "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                        selectedCountryData.overallRisk >= 60 ? "border-red-500/50 text-red-400" :
+                        selectedCountryData.overallRisk >= 40 ? "border-yellow-500/50 text-yellow-400" :
+                        "border-emerald-500/50 text-emerald-400"
+                      )}>
+                        {selectedCountryData.overallRisk >= 60 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {selectedCountryData.overallRisk}%
+                      </div>
+                    )}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-muted/30 p-2.5">
-                      <p className="text-[10px] text-muted-foreground">Import Risk</p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all duration-500"
-                            style={{ width: `${selectedCountryData.importRisk}%` }}
-                          />
+                  {selectedCountryData ? (
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg bg-muted/30 p-2.5">
+                        <p className="text-[10px] text-muted-foreground">Import Risk</p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all duration-500"
+                              style={{ width: `${selectedCountryData.importRisk}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-foreground">{selectedCountryData.importRisk}%</span>
                         </div>
-                        <span className="text-xs font-medium text-foreground">{selectedCountryData.importRisk}%</span>
+                      </div>
+                      <div className="rounded-lg bg-muted/30 p-2.5">
+                        <p className="text-[10px] text-muted-foreground">Export Risk</p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-chart-2 transition-all duration-500"
+                              style={{ width: `${selectedCountryData.exportRisk}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-foreground">{selectedCountryData.exportRisk}%</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="rounded-lg bg-muted/30 p-2.5">
-                      <p className="text-[10px] text-muted-foreground">Export Risk</p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-chart-2 transition-all duration-500"
-                            style={{ width: `${selectedCountryData.exportRisk}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-foreground">{selectedCountryData.exportRisk}%</span>
-                      </div>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-muted-foreground">No risk data available — showing supply chain news only.</p>
+                  )}
 
                   <div className="mt-4">
                     <div className="flex items-center gap-2">
