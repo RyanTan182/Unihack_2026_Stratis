@@ -1,15 +1,23 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ToastContainer } from '@/components/ui/toast-notification'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geist = Geist({
+  subsets: ["latin"],
+  variable: '--font-sans',
+  display: 'swap',
+});
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: '--font-mono',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Supply Chain Crisis Detector',
-  description: 'Real-time supply chain risk analysis with import/export risk scores extracted from global news',
-  generator: 'v0.app',
+  title: 'Stratis — Supply Chain Intelligence',
+  description: 'Real-time global supply chain risk analysis with AI-powered predictions and live news monitoring',
   icons: {
     icon: [
       {
@@ -35,10 +43,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
         {children}
         <Analytics />
+        <ToastContainer />
       </body>
     </html>
   )

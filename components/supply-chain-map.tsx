@@ -1,18 +1,21 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import {
-  ComposableMap,
-  Geographies,
-  Geography,
-  Line,
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import MapGL, {
   Marker,
-  ZoomableGroup,
-} from "react-simple-maps"
+  Popup,
+  Source,
+  Layer,
+  NavigationControl,
+  MapRef,
+  MapMouseEvent,
+  ViewStateChangeEvent,
+} from "react-map-gl/mapbox"
+import type { LngLatLike } from "react-map-gl/mapbox"
+import mapboxgl from "mapbox-gl"
+import "mapbox-gl/dist/mapbox-gl.css"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
-
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
 interface CountryRisk {
   id: string
@@ -109,6 +112,7 @@ interface SupplyChainMapProps {
   products?: Product[]
   selectedRouteId?: string | null
   onRouteClick?: (route: ProductSupplyRoute) => void
+  showRiskZones?: boolean
 }
 
 const getRiskColor = (risk: number): string => {
@@ -120,12 +124,18 @@ const getRiskColor = (risk: number): string => {
 }
 
 const getCountryColor = (risk: number | undefined): string => {
-  if (risk === undefined) return "#e5e7eb"
+  if (risk === undefined) return "#1e293b"
   if (risk >= 80) return "#7c3aed"
   if (risk >= 60) return "#a78bfa"
   if (risk >= 40) return "#c4b5fd"
   if (risk >= 20) return "#ddd6fe"
   return "#ede9fe"
+}
+
+// Mapping from app country names to GeoJSON country names
+const geoJsonCountryNameMap: Record<string, string> = {
+  "United States": "United States of America",
+  // Most other names match directly
 }
 
 const nodeCoordinates: Record<string, [number, number]> = {
@@ -186,7 +196,7 @@ const nodeCoordinates: Record<string, [number, number]> = {
 }
 
 function extractNodeConnections(nodes: CountryRisk[]): NodeConnection[] {
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]))
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(nodes.map((node) => [node.id, node]))
   const edges: NodeConnection[] = []
   const seen = new Set<string>()
 
@@ -219,8 +229,8 @@ function extractNodeConnections(nodes: CountryRisk[]): NodeConnection[] {
   return edges
 }
 
-function buildAdjacencyMap(nodes: CountryRisk[]): Map<string, string[]> {
-  const graph = new Map<string, Set<string>>()
+function buildAdjacencyMap(nodes: CountryRisk[]): globalThis.Map<string, string[]> {
+  const graph: globalThis.Map<string, Set<string>> = new globalThis.Map()
 
   for (const node of nodes) {
     if (!graph.has(node.id)) graph.set(node.id, new Set())
@@ -233,13 +243,13 @@ function buildAdjacencyMap(nodes: CountryRisk[]): Map<string, string[]> {
     }
   }
 
-  return new Map(
-    Array.from(graph.entries()).map(([key, value]) => [key, Array.from(value)])
+  return new globalThis.Map(
+    Array.from(graph.entries()).map((entry: [string, Set<string>]) => [entry[0], Array.from(entry[1])])
   )
 }
 
 function findShortestPath(
-  graph: Map<string, string[]>,
+  graph: globalThis.Map<string, string[]>,
   start: string,
   end: string
 ): string[] {
@@ -272,7 +282,7 @@ function buildRouteSegmentsFromPath(
   pathNodes: string[],
   nodes: CountryRisk[]
 ): ProductRouteSegment[] {
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]))
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(nodes.map((n) => [n.id, n]))
   const segments: ProductRouteSegment[] = []
 
   for (let i = 0; i < pathNodes.length - 1; i++) {
@@ -301,7 +311,7 @@ function extractProductRoutes(
   const routes: ProductSupplyRoute[] = []
   const DANGER_THRESHOLD = 60
   const graph = buildAdjacencyMap(countryRisks)
-  const nodeMap = new Map(countryRisks.map((n) => [n.id, n]))
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(countryRisks.map((n) => [n.id, n]))
 
   const getNodeRisk = (nodeId: string): number => {
     return nodeMap.get(nodeId)?.overallRisk ?? 30
@@ -377,16 +387,97 @@ function extractProductRoutes(
   return routes
 }
 
-function getRouteColorForChokepoint(
-  routes: ProductSupplyRoute[],
-  chokepointId: string,
-  selectedRouteId?: string | null
-): string | null {
-  const matchedRoute = routes.find((route) => {
-    if (selectedRouteId && route.id !== selectedRouteId) return false
-    return route.chokepoints.includes(chokepointId)
-  })
-  return matchedRoute?.productColor ?? null
+// Generate GeoJSON for route arcs
+function generateArcLine(
+  from: [number, number],
+  to: [number, number]
+): [number, number][] {
+  const points: [number, number][] = []
+  const segments = 100
+
+  // Calculate midpoint with elevation
+  const midLon = (from[0] + to[0]) / 2
+  const midLat = (from[1] + to[1]) / 2
+  const distance = Math.sqrt(
+    Math.pow(to[0] - from[0], 2) + Math.pow(to[1] - from[1], 2)
+  )
+  const elevation = Math.min(distance * 0.15, 15) // Cap elevation
+
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments
+    const lon = from[0] + (to[0] - from[0]) * t
+    const lat = from[1] + (to[1] - from[1]) * t
+
+    // Add elevation using a parabolic curve
+    const elev = Math.sin(t * Math.PI) * elevation
+    points.push([lon, lat + elev * 0.5])
+  }
+
+  return points
+}
+
+// Custom dark map style for Stratis - OLED black matching sidebar
+const mapStyle: mapboxgl.Style = {
+  version: 8,
+  name: "Stratis OLED Dark",
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+      ],
+      tileSize: 256,
+    },
+    "countries-fill": {
+      type: "geojson",
+      data: "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
+    }
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: {
+        // Pure OLED black for oceans/background
+        "background-color": "#000000"
+      }
+    },
+    {
+      id: "carto-dark",
+      type: "raster",
+      source: "carto-dark",
+      minzoom: 0,
+      maxzoom: 22,
+      paint: {
+        "raster-saturation": 0,
+        "raster-brightness-min": 0,
+        "raster-brightness-max": 0.6,
+        "raster-opacity": 0.7,
+      }
+    },
+    {
+      id: "countries-fill",
+      type: "fill",
+      source: "countries-fill",
+      paint: {
+        // Countries visible with subtle dark grey - distinguishable from black ocean
+        "fill-color": "#2a2a3d",
+        "fill-opacity": 0.9
+      }
+    },
+    {
+      id: "countries-border",
+      type: "line",
+      source: "countries-fill",
+      paint: {
+        // Visible borders with slightly lighter tone
+        "line-color": "#3d3d5c",
+        "line-width": 0.6,
+        "line-opacity": 0.8
+      }
+    }
+  ],
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
 }
 
 export function SupplyChainMap({
@@ -397,17 +488,97 @@ export function SupplyChainMap({
   products = [],
   selectedRouteId,
   onRouteClick,
+  showRiskZones = false,
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
-  const [tooltipContent, setTooltipContent] = useState("")
-  const [position, setPosition] = useState<{ coordinates: [number, number]; zoom: number }>({
-    coordinates: [20, 20],
-    zoom: 1,
+  const [viewState, setViewState] = useState({
+    longitude: 20,
+    latitude: 20,
+    zoom: 1.5,
+    pitch: 0,
+    bearing: 0,
   })
+  const [hoveredMarker, setHoveredMarker] = useState<string | null>(null)
+  const [popupInfo, setPopupInfo] = useState<{
+    lngLat: [number, number]
+    content: React.ReactNode
+  } | null>(null)
+  const mapRef = useRef<MapRef>(null)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Handle map resize when container size changes
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+
+    // Resize map after it's fully loaded
+    const handleResize = () => {
+      map.resize()
+    }
+
+    // Initial resize after map loads
+    if (map.loaded()) {
+      handleResize()
+    } else {
+      map.once('load', handleResize)
+    }
+
+    // Also resize on window resize
+    window.addEventListener('resize', handleResize)
+
+    // Resize after a short delay to ensure container is properly sized
+    const timeoutId = setTimeout(handleResize, 100)
+
+    // Use ResizeObserver to detect container size changes
+    const container = map.getContainer()
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize()
+    })
+    resizeObserver.observe(container)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      clearTimeout(timeoutId)
+      resizeObserver.disconnect()
+    }
+  }, [mounted])
+
+  // Toggle base countries-fill layer visibility when risk zones are toggled
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+
+    // Wait for map to be fully loaded
+    const updateLayer = () => {
+      if (map.getLayer('countries-fill')) {
+        map.setPaintProperty(
+          'countries-fill',
+          'fill-opacity',
+          showRiskZones ? 0 : 0.9
+        )
+      }
+      if (map.getLayer('countries-border')) {
+        map.setPaintProperty(
+          'countries-border',
+          'line-opacity',
+          showRiskZones ? 0 : 0.8
+        )
+      }
+    }
+
+    if (map.loaded()) {
+      updateLayer()
+    } else {
+      map.once('load', updateLayer)
+    }
+
+    return () => {
+      map.off('load', updateLayer)
+    }
+  }, [showRiskZones])
 
   const countryRiskMap = useMemo(() => {
     const map: Record<string, CountryRisk> = {}
@@ -417,15 +588,20 @@ export function SupplyChainMap({
     return map
   }, [countryRisks])
 
-  const countryOnlyRiskMap = useMemo(() => {
-    const map: Record<string, CountryRisk> = {}
-    countryRisks.forEach((risk) => {
-      if (risk.type === "country") {
-        map[risk.id] = risk
-      }
+  // Generate match expression for risk zones layer
+  // Maps GeoJSON country names to risk colors
+  const riskZonesMatchExpression = useMemo(() => {
+    const matches: (string | number)[] = []
+    Object.entries(countryRiskMap).forEach(([name, risk]) => {
+      // Skip chokepoints - they're not countries in GeoJSON
+      if (risk.type === "chokepoint") return
+      // Get the GeoJSON country name (use mapping if exists)
+      const geoJsonName = geoJsonCountryNameMap[name] || name
+      matches.push(geoJsonName)
+      matches.push(getRiskColor(risk.overallRisk))
     })
-    return map
-  }, [countryRisks])
+    return matches
+  }, [countryRiskMap])
 
   const chokepointNodes = useMemo(() => {
     return countryRisks.filter((node) => node.type === "chokepoint")
@@ -453,7 +629,7 @@ export function SupplyChainMap({
 
   const productCountryMarkers = useMemo(() => {
     const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean }[] = []
-    const countryMap = new Map<string, { name: string; type: ItemType }[]>()
+    const countryMap: globalThis.Map<string, { name: string; type: ItemType }[]> = new globalThis.Map()
 
     const collectFromItem = (item: SupplyChainItem) => {
       const existing = countryMap.get(item.country) || []
@@ -469,7 +645,7 @@ export function SupplyChainMap({
       product.components.forEach(collectFromItem)
     })
 
-    countryMap.forEach((items, country) => {
+    countryMap.forEach((items: { name: string; type: ItemType }[], country: string) => {
       const countryRisk = countryRisks.find((c) => c.name === country)
       markers.push({
         country,
@@ -481,9 +657,146 @@ export function SupplyChainMap({
     return markers
   }, [products, countryRisks])
 
-  const handleMoveEnd = (nextPosition: { coordinates: [number, number]; zoom: number }) => {
-    setPosition(nextPosition)
-  }
+  // Generate GeoJSON for network connections
+  const networkGeoJSON = useMemo(() => {
+    const features = nodeConnections.map((edge) => {
+      const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
+      return {
+        type: "Feature" as const,
+        properties: {
+          id: edge.id,
+          isChokepoint,
+          avgRisk: edge.avgRisk,
+          // Use primary cyan for chokepoints, muted slate for regular connections
+          color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
+          width: isChokepoint ? 1.5 : 1,
+          opacity: isChokepoint ? 0.35 : 0.2,
+        },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
+        },
+      }
+    })
+
+    return {
+      type: "FeatureCollection" as const,
+      features,
+    }
+  }, [nodeConnections])
+
+  // Generate GeoJSON for product routes
+  const productRoutesGeoJSON = useMemo(() => {
+    const features: any[] = []
+
+    productRoutes.forEach((route) => {
+      const isSelected = selectedRouteId === route.id
+      const isDimmed = !!selectedRouteId && !isSelected
+
+      route.segments.forEach((segment) => {
+        const fromCoords = nodeCoordinates[segment.fromNode]
+        const toCoords = nodeCoordinates[segment.toNode]
+        if (!fromCoords || !toCoords) return
+
+        const segmentIsDangerous = segment.riskScore >= 60
+
+        features.push({
+          type: "Feature" as const,
+          properties: {
+            routeId: route.id,
+            riskScore: segment.riskScore,
+            isDangerous: segmentIsDangerous,
+            isSelected,
+            isDimmed,
+            color: segmentIsDangerous ? "#dc2626" : route.productColor,
+            width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
+            opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
+          },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: generateArcLine(fromCoords, toCoords),
+          },
+        })
+      })
+    })
+
+    return {
+      type: "FeatureCollection" as const,
+      features,
+    }
+  }, [productRoutes, selectedRouteId])
+
+  // Generate GeoJSON for custom route
+  const customRouteGeoJSON = useMemo(() => {
+    if (!customRoute || customRoute.waypoints.length < 2) return null
+
+    const features: any[] = []
+
+    customRoute.waypoints.slice(0, -1).forEach((waypoint, index) => {
+      const nextWaypoint = customRoute.waypoints[index + 1]
+      const fromCoords = waypoint.country.coordinates || nodeCoordinates[waypoint.country.name]
+      const toCoords = nextWaypoint.country.coordinates || nodeCoordinates[nextWaypoint.country.name]
+      const segmentRisk = customRoute.segmentRisks[index]
+
+      if (!fromCoords || !toCoords) return
+
+      features.push({
+        type: "Feature" as const,
+        properties: {
+          riskScore: segmentRisk,
+          color: getRiskColor(segmentRisk),
+        },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: generateArcLine(fromCoords, toCoords),
+        },
+      })
+    })
+
+    return {
+      type: "FeatureCollection" as const,
+      features,
+    }
+  }, [customRoute])
+
+  const handleMapClick = useCallback((event: MapMouseEvent) => {
+    // Close popup when clicking on map
+    setPopupInfo(null)
+  }, [])
+
+  const handleRouteClick = useCallback((event: MapMouseEvent, route: ProductSupplyRoute) => {
+    event.originalEvent.stopPropagation()
+    onRouteClick?.(route)
+  }, [onRouteClick])
+
+  // Handle route layer click
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!map) return
+
+    const handleRouteLayerClick = (e: any) => {
+      const feature = e.features?.[0]
+      if (feature) {
+        const routeId = feature.properties.routeId
+        const route = productRoutes.find(r => r.id === routeId)
+        if (route) {
+          onRouteClick?.(route)
+        }
+      }
+    }
+
+    map.on('click', 'product-routes', handleRouteLayerClick)
+    map.on('mouseenter', 'product-routes', () => {
+      map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'product-routes', () => {
+      map.getCanvas().style.cursor = ''
+    })
+
+    return () => {
+      map.off('click', 'product-routes', handleRouteLayerClick)
+    }
+  }, [productRoutes, onRouteClick])
 
   if (!mounted) {
     return (
@@ -498,432 +811,459 @@ export function SupplyChainMap({
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="relative h-full w-full bg-background">
-        <ComposableMap
-          projection="geoMercator"
-          projectionConfig={{
-            scale: 130,
-            center: [20, 20],
-          }}
-          className="h-full w-full"
+      <div className="relative h-full w-full overflow-hidden bg-background">
+        <MapGL
+          ref={mapRef}
+          {...viewState}
+          onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)}
+          onClick={handleMapClick}
+          style={{ width: "100%", height: "100%" }}
+          mapStyle={mapStyle}
+          mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
+          // Enable infinite horizontal scroll (world wrapping)
+          renderWorldCopies={true}
+          // Map bounds for initial view
+          maxBounds={[[-180, -85], [180, 85]]}
+          // Zoom constraints
+          minZoom={1}
+          maxZoom={8}
+          // Interactive
+          interactiveLayerIds={['product-routes']}
         >
-          <ZoomableGroup
-            zoom={position.zoom}
-            center={position.coordinates}
-            onMoveEnd={handleMoveEnd}
-            minZoom={1}
-            maxZoom={8}
+          {/* Network connections layer */}
+          <Source
+            id="network"
+            type="geojson"
+            data={networkGeoJSON}
           >
-            <Geographies geography={geoUrl}>
-              {({ geographies }) =>
-                geographies.map((geo) => {
-                  const countryRisk = countryOnlyRiskMap[geo.properties.name]
-                  const isSelected = selectedCountry === geo.properties.name
+            <Layer
+              id="network-lines"
+              type="line"
+              paint={{
+                "line-color": ["get", "color"],
+                "line-width": ["get", "width"],
+                "line-opacity": ["get", "opacity"],
+                "line-dasharray": ["case",
+                  ["get", "isChokepoint"],
+                  ["literal", [4, 3]],
+                  ["literal", [2, 4]]
+                ],
+              }}
+            />
+          </Source>
 
-                  return (
-                    <Geography
-                      key={geo.rsmKey}
-                      geography={geo}
-                      fill={getCountryColor(countryRisk?.overallRisk)}
-                      stroke={isSelected ? "#7c3aed" : "#94a3b8"}
-                      strokeWidth={isSelected ? 1.5 : 0.5}
-                      className="cursor-pointer outline-none transition-colors duration-200 hover:opacity-80"
-                      onClick={() => {
-                        onCountrySelect(
-                          selectedCountry === geo.properties.name ? null : geo.properties.name
-                        )
-                      }}
-                      onMouseEnter={() => {
-                        const risk = countryRisk
-                        if (risk) {
-                          setTooltipContent(
-                            `${risk.name}: Import ${risk.importRisk}% | Export ${risk.exportRisk}%`
-                          )
-                        } else {
-                          setTooltipContent(`${geo.properties.name}: No data`)
-                        }
-                      }}
-                      onMouseLeave={() => {
-                        setTooltipContent("")
-                      }}
-                    />
-                  )
-                })
-              }
-            </Geographies>
+          {/* Risk Zones layer - colors countries by risk level */}
+          {showRiskZones && (
+            <Source
+              id="risk-zones-source"
+              type="geojson"
+              data="https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
+            >
+              <Layer
+                id="risk-zones-fill"
+                type="fill"
+                paint={{
+                  "fill-color": [
+                    "match",
+                    ["get", "name"], // GeoJSON uses "name" property
+                    ...riskZonesMatchExpression,
+                    "#1e293b" // Default color for countries not in data
+                  ],
+                  "fill-opacity": 0.7
+                }}
+              />
+              <Layer
+                id="risk-zones-border"
+                type="line"
+                paint={{
+                  "line-color": "#3d3d5c",
+                  "line-width": 0.5,
+                  "line-opacity": 0.5
+                }}
+              />
+            </Source>
+          )}
 
-            {/* base network */}
-            {nodeConnections.map((edge) => {
-              const isChokepointEdge =
-                edge.fromType === "chokepoint" || edge.toType === "chokepoint"
+          {/* Product routes layer */}
+          {productRoutes.length > 0 && (
+            <Source
+              id="product-routes-source"
+              type="geojson"
+              data={productRoutesGeoJSON}
+            >
+              <Layer
+                id="product-routes"
+                type="line"
+                paint={{
+                  "line-color": ["get", "color"],
+                  "line-width": ["get", "width"],
+                  "line-opacity": ["get", "opacity"],
+                }}
+              />
+            </Source>
+          )}
 
-              return (
-                <Line
-                  key={edge.id}
-                  from={edge.fromCoords}
-                  to={edge.toCoords}
-                  stroke={isChokepointEdge ? getRiskColor(edge.avgRisk) : "#94a3b8"}
-                  strokeWidth={isChokepointEdge ? 1.8 : 1.1}
-                  strokeLinecap="round"
-                  strokeDasharray={isChokepointEdge ? "4 3" : "2 4"}
-                  style={{
-                    opacity: isChokepointEdge ? 0.18 : 0.12,
-                  }}
-                />
-              )
-            })}
+          {/* Custom route layer */}
+          {customRouteGeoJSON && (
+            <Source
+              id="custom-route-source"
+              type="geojson"
+              data={customRouteGeoJSON}
+            >
+              <Layer
+                id="custom-route"
+                type="line"
+                paint={{
+                  "line-color": ["get", "color"],
+                  "line-width": 3,
+                  "line-opacity": 0.9,
+                }}
+              />
+            </Source>
+          )}
 
-            {/* custom route */}
-            {customRoute && customRoute.waypoints.length >= 2 && (
-              <>
-                {customRoute.waypoints.slice(0, -1).map((waypoint, index) => {
-                  const nextWaypoint = customRoute.waypoints[index + 1]
-                  const fromCoords = waypoint.country.coordinates || nodeCoordinates[waypoint.country.name]
-                  const toCoords = nextWaypoint.country.coordinates || nodeCoordinates[nextWaypoint.country.name]
-                  const segmentRisk = customRoute.segmentRisks[index]
+          {/* Custom route markers */}
+          {customRoute && customRoute.waypoints.map((waypoint, index) => {
+            const coords = waypoint.country.coordinates || nodeCoordinates[waypoint.country.name]
+            if (!coords) return null
 
-                  if (!fromCoords || !toCoords) return null
+            const isOrigin = waypoint.type === "origin"
+            const isDestination = waypoint.type === "destination"
+            const segmentRisk = index > 0 ? customRoute.segmentRisks[index - 1] : customRoute.totalRisk
 
-                  return (
-                    <Line
-                      key={`custom-${waypoint.id}-${nextWaypoint.id}`}
-                      from={fromCoords}
-                      to={toCoords}
-                      stroke={getRiskColor(segmentRisk)}
-                      strokeWidth={3}
-                      strokeLinecap="round"
-                      className="transition-all duration-200"
-                      style={{ opacity: 0.9 }}
-                    />
-                  )
-                })}
-
-                {customRoute.waypoints.map((waypoint, index) => {
-                  const coords = waypoint.country.coordinates || nodeCoordinates[waypoint.country.name]
-                  if (!coords) return null
-
-                  const isOrigin = waypoint.type === "origin"
-                  const isDestination = waypoint.type === "destination"
-                  const segmentRisk = index > 0 ? customRoute.segmentRisks[index - 1] : customRoute.totalRisk
-
-                  return (
-                    <Marker key={`custom-marker-${waypoint.id}`} coordinates={coords}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <g>
-                            {(isOrigin || isDestination) && (
-                              <circle
-                                r={10}
-                                fill="none"
-                                stroke={isOrigin ? "#22c55e" : "#dc2626"}
-                                strokeWidth={2}
-                                className="animate-pulse"
-                              />
-                            )}
-                            <circle
-                              r={7}
-                              fill={getRiskColor(segmentRisk)}
-                              stroke="#fff"
-                              strokeWidth={2}
-                              className="cursor-pointer transition-transform duration-200 hover:scale-125"
-                            />
-                            <text
-                              textAnchor="middle"
-                              y={3}
-                              className="fill-white text-[8px] font-bold"
-                            >
-                              {index + 1}
-                            </text>
-                          </g>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="space-y-1">
-                            <p className="font-medium">{waypoint.country.name}</p>
-                            <p className="text-xs capitalize text-muted-foreground">
-                              {waypoint.type}
-                            </p>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </Marker>
-                  )
-                })}
-              </>
-            )}
-
-            {/* product routes via chokepoints */}
-            {productRoutes.length > 0 && (
-              <>
-                {productRoutes.map((route) => {
-                  const isSelected = selectedRouteId === route.id
-                  const isDimmed = !!selectedRouteId && !isSelected
-
-                  return (
-                    <g key={route.id}>
-                      {route.segments.map((segment, segmentIndex) => {
-                        const fromCoords = nodeCoordinates[segment.fromNode]
-                        const toCoords = nodeCoordinates[segment.toNode]
-                        if (!fromCoords || !toCoords) return null
-
-                        const segmentIsDangerous = segment.riskScore >= 60
-
-                        return (
-                          <Line
-                            key={`${route.id}-segment-${segmentIndex}`}
-                            from={fromCoords}
-                            to={toCoords}
-                            stroke={segmentIsDangerous ? "#dc2626" : route.productColor}
-                            strokeWidth={isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5}
-                            strokeLinecap="round"
-                            strokeDasharray={segmentIsDangerous ? "none" : "6 3"}
-                            className="cursor-pointer transition-all duration-200"
-                            onClick={() => onRouteClick?.(route)}
-                            style={{
-                              opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
-                              filter: segmentIsDangerous
-                                ? "drop-shadow(0 0 5px rgba(220, 38, 38, 0.7))"
-                                : `drop-shadow(0 0 3px ${route.productColor}55)`,
-                            }}
-                          />
-                        )
-                      })}
-                    </g>
-                  )
-                })}
-
-                {/* product country markers */}
-                {productCountryMarkers.map((marker) => {
-                  const coords = nodeCoordinates[marker.country]
-                  if (!coords) return null
-
-                  const productForCountry = products.find(
-                    (p) =>
-                      p.country === marker.country ||
-                      p.components.some((c) => c.country === marker.country)
-                  )
-                  const markerColor = productForCountry?.color ?? "#2563eb"
-
-                  return (
-                    <Marker key={`product-marker-${marker.country}`} coordinates={coords}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <g>
-                            {marker.isDangerous && (
-                              <circle
-                                r={14}
-                                fill="none"
-                                stroke="#dc2626"
-                                strokeWidth={2}
-                                className="animate-ping"
-                                style={{ opacity: 0.4 }}
-                              />
-                            )}
-                            {marker.isDangerous && (
-                              <circle r={12} fill="none" stroke="#dc2626" strokeWidth={2} />
-                            )}
-                            <circle
-                              r={8}
-                              fill={markerColor}
-                              stroke="#fff"
-                              strokeWidth={2}
-                              className="cursor-pointer transition-transform duration-200 hover:scale-125"
-                            />
-                            {marker.items.length > 1 && (
-                              <>
-                                <circle cx={6} cy={-6} r={6} fill="#1f2937" stroke="#fff" strokeWidth={1} />
-                                <text
-                                  x={6}
-                                  y={-3}
-                                  textAnchor="middle"
-                                  style={{ fontSize: 7, fill: "white", fontWeight: "bold" }}
-                                >
-                                  {marker.items.length}
-                                </text>
-                              </>
-                            )}
-                          </g>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="space-y-2">
-                            <p className="font-semibold">{marker.country}</p>
-                            {marker.isDangerous && (
-                              <p className="text-xs font-medium text-red-500">High Risk Location</p>
-                            )}
-                            <div className="space-y-1">
-                              {marker.items.map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-xs">
-                                  <div
-                                    className="h-2 w-2 rounded-full"
-                                    style={{ backgroundColor: markerColor }}
-                                  />
-                                  <span className="capitalize text-muted-foreground">{item.type}:</span>
-                                  <span>{item.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </Marker>
-                  )
-                })}
-              </>
-            )}
-
-            {/* chokepoint markers */}
-            {chokepointNodes.map((node) => {
-              const coords = nodeCoordinates[node.id]
-              if (!coords) return null
-
-              const isSelected = selectedCountry === node.id
-              const isActive = activeProductChokepoints.has(node.id)
-              const activeColor = getRouteColorForChokepoint(productRoutes, node.id, selectedRouteId)
-
-              return (
-                <Marker key={`chokepoint-${node.id}`} coordinates={coords}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <g
-                        onClick={() => onCountrySelect(selectedCountry === node.id ? null : node.id)}
-                        className="cursor-pointer"
-                        style={{ opacity: isActive ? 1 : 0.4 }}
-                      >
-                        {isActive && (
-                          <circle
-                            r={13}
-                            fill="none"
-                            stroke={activeColor ?? "#7c3aed"}
-                            strokeWidth={3}
-                            className="animate-pulse"
-                          />
-                        )}
-                        <rect
-                          x={-8}
-                          y={-8}
-                          width={16}
-                          height={16}
-                          rx={3}
-                          fill={getRiskColor(node.overallRisk)}
-                          stroke={isSelected ? "#111827" : "#fff"}
-                          strokeWidth={isSelected ? 2.5 : 1.5}
-                          className="transition-transform duration-200 hover:scale-110"
+            return (
+              <Marker
+                key={`custom-marker-${waypoint.id}`}
+                longitude={coords[0]}
+                latitude={coords[1]}
+                anchor="center"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="group relative cursor-pointer"
+                      onMouseEnter={() => setHoveredMarker(`custom-${waypoint.id}`)}
+                      onMouseLeave={() => setHoveredMarker(null)}
+                    >
+                      {(isOrigin || isDestination) && (
+                        <div
+                          className="absolute inset-0 animate-ping rounded-full opacity-40"
+                          style={{
+                            width: 36,
+                            height: 36,
+                            margin: -2,
+                            border: `2px solid ${isOrigin ? "#22c55e" : "#dc2626"}`,
+                          }}
                         />
-                        <circle cx={0} cy={0} r={2} fill="white" />
-                      </g>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="space-y-1">
-                        <p className="font-semibold">{node.name}</p>
-                        <p className="text-xs text-muted-foreground">Chokepoint</p>
-                        <p className="text-xs text-muted-foreground">
-                          Overall risk: {node.overallRisk}%
-                        </p>
-                        {isActive && (
-                          <p className="text-xs font-medium text-blue-600">
-                            Used in active product route
-                          </p>
+                      )}
+                      <div
+                        className="flex items-center justify-center rounded-full border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        style={{
+                          width: 24,
+                          height: 24,
+                          backgroundColor: getRiskColor(segmentRisk),
+                        }}
+                      >
+                        <span className="text-[9px] font-bold text-white">{index + 1}</span>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">{waypoint.country.name}</p>
+                      <p className="text-xs capitalize text-muted-foreground">
+                        {waypoint.type}
+                      </p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </Marker>
+            )
+          })}
+
+          {/* Product country markers */}
+          {productCountryMarkers.map((marker) => {
+            const coords = nodeCoordinates[marker.country]
+            if (!coords) return null
+
+            const productForCountry = products.find(
+              (p) =>
+                p.country === marker.country ||
+                p.components.some((c) => c.country === marker.country)
+            )
+            const markerColor = productForCountry?.color ?? "#2563eb"
+
+            return (
+              <Marker
+                key={`product-marker-${marker.country}`}
+                longitude={coords[0]}
+                latitude={coords[1]}
+                anchor="center"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="group relative cursor-pointer">
+                      {marker.isDangerous && (
+                        <div
+                          className="absolute inset-0 animate-pulse rounded-full opacity-50"
+                          style={{
+                            width: 48,
+                            height: 48,
+                            margin: -8,
+                            border: "2px solid #dc2626",
+                          }}
+                        />
+                      )}
+                      <div
+                        className="flex items-center justify-center rounded-full border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          backgroundColor: markerColor,
+                        }}
+                      >
+                        {marker.items.length > 1 && (
+                          <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-background text-[8px] font-bold text-foreground">
+                            {marker.items.length}
+                          </div>
                         )}
-                        {node.newsHighlights.slice(0, 2).map((item, idx) => (
-                          <p key={idx} className="text-xs">{item}</p>
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-foreground">{marker.country}</p>
+                      {marker.isDangerous && (
+                        <p className="text-xs font-medium text-red-400">High Risk Location</p>
+                      )}
+                      <div className="space-y-1">
+                        {marker.items.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs">
+                            <div
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: markerColor }}
+                            />
+                            <span className="capitalize text-muted-foreground">{item.type}:</span>
+                            <span className="text-foreground">{item.name}</span>
+                          </div>
                         ))}
                       </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </Marker>
-              )
-            })}
-          </ZoomableGroup>
-        </ComposableMap>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </Marker>
+            )
+          })}
 
-        {products.length > 0 && (
-          <div className="absolute bottom-4 left-4 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm">
-            <p className="mb-2 text-xs font-semibold text-foreground">Products</p>
-            <div className="space-y-1.5">
-              {products.map((product) => (
-                <div key={product.id} className="flex items-center gap-2">
-                  <div className="h-2.5 w-6 rounded-full" style={{ backgroundColor: product.color }} />
-                  <span className="max-w-[120px] truncate text-xs text-muted-foreground">
-                    {product.name || "Unnamed Product"}
-                  </span>
-                </div>
-              ))}
+          {/* Chokepoint markers */}
+          {chokepointNodes.map((node) => {
+            const coords = nodeCoordinates[node.id]
+            if (!coords) return null
+
+            const isSelected = selectedCountry === node.id
+            const isActive = activeProductChokepoints.has(node.id)
+            const activeColor = isSelected
+              ? "#7c3aed"
+              : productRoutes.find(r =>
+                  selectedRouteId
+                    ? r.id === selectedRouteId && r.chokepoints.includes(node.id)
+                    : r.chokepoints.includes(node.id)
+                )?.productColor ?? "#7c3aed"
+
+            return (
+              <Marker
+                key={`chokepoint-${node.id}`}
+                longitude={coords[0]}
+                latitude={coords[1]}
+                anchor="center"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="group relative cursor-pointer"
+                      onClick={() => onCountrySelect(selectedCountry === node.id ? null : node.id)}
+                      style={{ opacity: isActive ? 1 : 0.5 }}
+                    >
+                      {isActive && (
+                        <div
+                          className="absolute animate-pulse rounded-lg"
+                          style={{
+                            width: 44,
+                            height: 44,
+                            margin: -6,
+                            border: `2px solid ${activeColor}`,
+                            borderRadius: 10,
+                            opacity: 0.6,
+                          }}
+                        />
+                      )}
+                      <div
+                        className="flex items-center justify-center rounded-md border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          backgroundColor: getRiskColor(node.overallRisk),
+                          borderColor: isSelected ? "#111827" : "#fff",
+                          borderWidth: isSelected ? 2.5 : 2,
+                        }}
+                      >
+                        <div className="h-2 w-2 rounded-full bg-white" />
+                      </div>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-semibold text-foreground">{node.name}</p>
+                      <p className="text-xs text-muted-foreground">Chokepoint</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Risk:</span>
+                        <span
+                          className="text-xs font-medium"
+                          style={{ color: getRiskColor(node.overallRisk) }}
+                        >
+                          {node.overallRisk}%
+                        </span>
+                      </div>
+                      {isActive && (
+                        <p className="text-xs font-medium text-primary">
+                          Active in route
+                        </p>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </Marker>
+            )
+          })}
+
+          {/* Navigation controls */}
+          <NavigationControl
+            position="top-right"
+            showCompass={false}
+            visualizePitch={false}
+          />
+        </MapGL>
+
+        {/* Custom Mapbox Control Styles */}
+        <style jsx global>{`
+          .mapboxgl-ctrl-group {
+            background: oklch(0.14 0.014 260 / 0.95) !important;
+            border: 1px solid oklch(0.35 0.020 260 / 0.5) !important;
+            border-radius: 0.625rem !important;
+            backdrop-filter: blur(12px) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+          }
+          .mapboxgl-ctrl-group button {
+            width: 32px !important;
+            height: 32px !important;
+            background: transparent !important;
+            border: none !important;
+          }
+          .mapboxgl-ctrl-group button + button {
+            border-top: 1px solid oklch(0.25 0.018 260) !important;
+          }
+          .mapboxgl-ctrl-icon {
+            filter: invert(1) brightness(0.9) !important;
+          }
+          .mapboxgl-ctrl-group button:hover {
+            background: oklch(0.22 0.025 260) !important;
+          }
+          .mapboxgl-ctrl-attrib {
+            display: none !important;
+          }
+        `}</style>
+
+        {/* Unified Legend Panel */}
+        <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-border/50 bg-card/95 p-4 shadow-2xl backdrop-blur-xl max-w-xs">
+          <p className="mb-3 text-xs font-semibold text-foreground">
+            {showRiskZones ? "Risk Zones View" : "Map Legend"}
+          </p>
+
+          {showRiskZones ? (
+            /* Risk Zones Legend */
+            <div className="space-y-3">
+              <p className="text-[10px] text-muted-foreground">
+                Countries are colored by their overall risk level. Higher risk areas appear in warmer colors.
+              </p>
+              <div className="space-y-2">
+                {[
+                  { color: "#dc2626", label: "Critical (80-100%)", range: "Extreme risk" },
+                  { color: "#ea580c", label: "High (60-79%)", range: "Significant risk" },
+                  { color: "#eab308", label: "Medium (40-59%)", range: "Moderate risk" },
+                  { color: "#22c55e", label: "Low (20-39%)", range: "Low risk" },
+                  { color: "#0ea5e9", label: "Minimal (0-19%)", range: "Safe" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <div className="h-4 w-6 rounded" style={{ backgroundColor: item.color }} />
+                    <div>
+                      <p className="text-[10px] font-medium text-foreground">{item.label}</p>
+                      <p className="text-[9px] text-muted-foreground">{item.range}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground border-t border-border/30 pt-2">
+                Toggle off to see product routes and nodes
+              </p>
             </div>
-
-            <div className="mt-3 border-t border-border pt-2">
-              <p className="mb-1.5 text-xs font-semibold text-foreground">Route Status</p>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="h-0.5 w-5 rounded bg-red-600" style={{ height: 3 }} />
-                  <span className="text-xs font-medium text-red-500">Dangerous</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-5"
-                    style={{
-                      height: 3,
-                      background:
-                        "repeating-linear-gradient(90deg,#94a3b8,#94a3b8 3px,transparent 3px,transparent 7px)",
-                      borderRadius: 2,
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">Safe</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-sm border border-white bg-violet-500" />
-                  <span className="text-xs text-muted-foreground">Chokepoint</span>
+          ) : (
+            <>
+              {/* Risk Levels */}
+              <div className="mb-3">
+                <p className="mb-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Risk Level</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {[
+                    { color: "#dc2626", label: "Critical" },
+                    { color: "#ea580c", label: "High" },
+                    { color: "#eab308", label: "Medium" },
+                    { color: "#22c55e", label: "Low" },
+                    { color: "#06b6d4", label: "Minimal" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center gap-1.5">
+                      <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        <div className="absolute bottom-4 right-4 rounded-lg border border-border bg-card/95 p-3 shadow-lg backdrop-blur-sm">
-          <p className="mb-2 text-xs font-semibold text-foreground">Risk Level</p>
-          <div className="space-y-1">
-            {[
-              { color: "#7c3aed", label: "Worst" },
-              { color: "#a78bfa", label: "Worse" },
-              { color: "#c4b5fd", label: "Bad" },
-              { color: "#ddd6fe", label: "Good" },
-              { color: "#ede9fe", label: "Best" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2">
-                <div className="h-3 w-4 rounded-sm" style={{ backgroundColor: item.color }} />
-                <span className="text-xs text-muted-foreground">{item.label}</span>
+              {/* Products */}
+              {products.length > 0 && (
+                <div className="mb-3 border-t border-border/30 pt-3">
+                  <p className="mb-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Products</p>
+                  <div className="space-y-1">
+                    {products.map((product) => (
+                      <div key={product.id} className="flex items-center gap-2">
+                        <div className="h-2 w-4 rounded-full" style={{ backgroundColor: product.color }} />
+                        <span className="max-w-[140px] truncate text-[10px] text-muted-foreground">
+                          {product.name || "Unnamed"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Route Status */}
+              <div className="border-t border-border/30 pt-3">
+                <p className="mb-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Route Status</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-1 w-4 rounded-full bg-red-500" />
+                    <span className="text-[10px] text-red-400">Dangerous</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-1 w-4 rounded-full bg-muted-foreground/50" />
+                    <span className="text-[10px] text-muted-foreground">Safe</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="h-2.5 w-2.5 rounded-sm bg-violet-500" />
+                    <span className="text-[10px] text-muted-foreground">Chokepoint</span>
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {tooltipContent && (
-          <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-lg border border-border bg-card/95 px-3 py-2 text-sm shadow-lg backdrop-blur-sm">
-            {tooltipContent}
-          </div>
-        )}
-
-        <div className="absolute right-4 top-4 flex flex-col gap-1">
-          <button
-            onClick={() =>
-              setPosition((prev) => ({
-                ...prev,
-                zoom: Math.min(prev.zoom * 1.5, 8),
-              }))
-            }
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-accent"
-          >
-            +
-          </button>
-          <button
-            onClick={() =>
-              setPosition((prev) => ({
-                ...prev,
-                zoom: Math.max(prev.zoom / 1.5, 1),
-              }))
-            }
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-accent"
-          >
-            -
-          </button>
+            </>
+          )}
         </div>
       </div>
     </TooltipProvider>

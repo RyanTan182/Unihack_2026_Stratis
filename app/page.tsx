@@ -7,11 +7,27 @@ import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-cha
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import { PathDetailsPanel } from "@/components/path-details-panel"
+import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
-import { Route, Package } from "lucide-react"
+import { Route, Package, Layers, Globe, Factory } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+// Type definition for country risks
+type CountryRiskType = "country" | "chokepoint"
+
+interface CountryRiskData {
+  id: string
+  name: string
+  type: CountryRiskType
+  connections: string[]
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
+}
 
 // Mock data for country risks with news-based analysis
-const countryRisks = [
+const countryRisks: CountryRiskData[] = [
   {
     id: "China",
     name: "China",
@@ -668,6 +684,8 @@ export default function SupplyChainCrisisDetector() {
   const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
+  const [showRiskZones, setShowRiskZones] = useState(false)
+  const [isRelocationOpen, setIsRelocationOpen] = useState(false)
 
   const handleReset = () => {
     setSelectedCountry(null)
@@ -683,7 +701,7 @@ export default function SupplyChainCrisisDetector() {
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
       <NavSidebar />
 
@@ -696,7 +714,7 @@ export default function SupplyChainCrisisDetector() {
       />
 
       {/* Main Map Area */}
-      <div className="relative flex-1">
+      <div className="relative h-full w-full overflow-hidden">
         <SupplyChainMap
           countryRisks={countryRisks}
           onCountrySelect={setSelectedCountry}
@@ -705,34 +723,93 @@ export default function SupplyChainCrisisDetector() {
           products={products}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
+          showRiskZones={showRiskZones}
         />
 
-        {/* Route Builder Toggle Button */}
+        {/* Action Buttons */}
         <div className="absolute left-4 top-4 z-10 flex gap-2">
           <Button
-            variant={isRouteBuilderOpen || customRoute ? "default" : "outline"}
+            variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}
             size="sm"
-            className="gap-2"
+            className={cn(
+              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+              isRouteBuilderOpen || customRoute
+                ? "bg-primary text-primary-foreground glow-primary"
+                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
+            )}
             onClick={() => {
               setIsRouteBuilderOpen(!isRouteBuilderOpen)
               setIsProductBuilderOpen(false)
             }}
           >
             <Route className="h-4 w-4" />
-            {customRoute ? `Route (${customRoute.totalRisk}%)` : "Build Route"}
+            {customRoute ? `${customRoute.totalRisk}% Risk` : "Build Route"}
           </Button>
 
           <Button
-            variant={isProductBuilderOpen || products.length > 0 ? "default" : "outline"}
+            variant={isProductBuilderOpen || products.length > 0 ? "default" : "secondary"}
             size="sm"
-            className="gap-2"
+            className={cn(
+              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+              isProductBuilderOpen || products.length > 0
+                ? "bg-primary text-primary-foreground glow-primary"
+                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
+            )}
             onClick={() => {
               setIsProductBuilderOpen(!isProductBuilderOpen)
               setIsRouteBuilderOpen(false)
+              setIsRelocationOpen(false)
             }}
           >
             <Package className="h-4 w-4" />
-            {products.length > 0 ? `Products (${products.length})` : "Products"}
+            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Products"}
+          </Button>
+
+          <Button
+            variant={isRelocationOpen ? "default" : "secondary"}
+            size="sm"
+            className={cn(
+              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+              isRelocationOpen
+                ? "bg-primary text-primary-foreground glow-primary"
+                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
+            )}
+            onClick={() => {
+              setIsRelocationOpen(!isRelocationOpen)
+              setIsRouteBuilderOpen(false)
+              setIsProductBuilderOpen(false)
+            }}
+          >
+            <Factory className="h-4 w-4" />
+            Relocation
+          </Button>
+
+          <Button
+            variant={showRiskZones ? "default" : "secondary"}
+            size="sm"
+            className={cn(
+              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+              showRiskZones
+                ? "bg-primary text-primary-foreground glow-primary"
+                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
+            )}
+            onClick={() => setShowRiskZones(!showRiskZones)}
+          >
+            <Globe className="h-4 w-4" />
+            Risk Zones
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-2 font-medium glass-panel border-primary/20 shadow-lg hover:border-primary/40 hover:bg-muted/50 sleek-button cursor-pointer"
+            onClick={() => {
+              setSelectedCountry(null)
+              setSelectedRoute(null)
+            }}
+          >
+            <Layers className="h-4 w-4" />
+            Clear
           </Button>
         </div>
 
@@ -758,6 +835,14 @@ export default function SupplyChainCrisisDetector() {
         <PathDetailsPanel
           route={selectedRoute}
           onClose={() => setSelectedRoute(null)}
+        />
+
+        {/* Relocation Advisor Panel */}
+        <RelocationPanel
+          isOpen={isRelocationOpen}
+          onClose={() => setIsRelocationOpen(false)}
+          countryRisks={countryRisks}
+          onCountrySelect={setSelectedCountry}
         />
       </div>
     </div>

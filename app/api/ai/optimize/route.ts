@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+// Validation schema
+const ComponentSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  country: z.string(),
+  children: z.array(z.unknown()).optional(),
+})
+
+const ProductSchema = z.object({
+  name: z.string(),
+  country: z.string(),
+  components: z.array(ComponentSchema),
+})
+
+const RequestSchema = z.object({
+  product: ProductSchema,
+})
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENROUTER_API_KEY
@@ -8,18 +27,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "OPENROUTER_API_KEY not configured" }, { status: 500 })
   }
 
-  const body = await request.json()
-  const { product } = body as {
-    product: {
-      name: string
-      country: string
-      components: { name: string; type: string; country: string; children: unknown[] }[]
-    }
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  if (!product) {
-    return NextResponse.json({ error: "product is required" }, { status: 400 })
+  const parseResult = RequestSchema.safeParse(body)
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: "Validation failed", detail: parseResult.error.issues },
+      { status: 400 }
+    )
   }
+
+  const { product } = parseResult.data
 
   const systemPrompt = `You are a supply chain risk analyst. The user will provide a product's supply chain tree with country locations. Analyze the supply chain for geopolitical, logistics, and trade risks. Provide:
 1. A brief overall risk summary (2-3 sentences)

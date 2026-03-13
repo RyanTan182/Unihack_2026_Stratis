@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Filter, BarChart3, AlertTriangle, Settings, ChevronDown, ChevronRight, ExternalLink, Star, Loader2 } from "lucide-react"
+import { Search, Filter, BarChart3, AlertTriangle, Settings, ChevronDown, ChevronRight, ExternalLink, Star, Loader2, TrendingUp, TrendingDown, Radio, Zap } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -115,6 +115,14 @@ const getRiskLabel = (risk: number): string => {
   return "Minimal"
 }
 
+const getRiskColor = (risk: number): string => {
+  if (risk >= 80) return "text-red-400"
+  if (risk >= 60) return "text-orange-400"
+  if (risk >= 40) return "text-yellow-400"
+  if (risk >= 20) return "text-emerald-400"
+  return "text-cyan-400"
+}
+
 export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onReset }: RiskSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"filters" | "metrics" | "risk" | "options">("risk")
@@ -163,12 +171,21 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
   ]
 
   return (
-    <div className="flex h-full w-80 flex-col border-r border-sidebar-border bg-sidebar">
+    <div className="flex h-full w-full flex-col border-r border-sidebar-border bg-sidebar">
       {/* Header */}
-      <div className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg font-semibold text-sidebar-foreground">Supply Chain Crisis</h1>
-          <Star className="h-4 w-4 text-muted-foreground" />
+      <div className="border-b border-sidebar-border px-5 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Zap className="h-5 w-5 text-primary" />
+            <div>
+              <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
+              <p className="text-[10px] text-muted-foreground">Real-time intelligence</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Radio className="h-3 w-3 text-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-medium text-emerald-500">LIVE</span>
+          </div>
         </div>
       </div>
 
@@ -181,10 +198,15 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
               placeholder="Search countries..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="h-9 border-border/50 bg-muted/30 pl-9 text-sm transition-colors focus:border-primary/50 focus:bg-muted/50"
             />
           </div>
-          <Button variant="ghost" size="sm" onClick={onReset} className="text-primary hover:text-primary/80">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onReset}
+            className="h-9 px-3 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+          >
             Reset
           </Button>
         </div>
@@ -197,14 +219,17 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex flex-1 flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
+              "relative flex flex-1 cursor-pointer flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
               activeTab === tab.id
-                ? "border-b-2 border-primary bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/50"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <tab.icon className="h-5 w-5" />
-            <span>{tab.label}</span>
+            {activeTab === tab.id && (
+              <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />
+            )}
+            <tab.icon className="h-4 w-4" />
+            <span className="text-[10px] font-medium">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -215,68 +240,89 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
           {activeTab === "risk" && (
             <div className="space-y-4">
               {/* Risk Beta Notice */}
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-                <p className="text-sm font-medium text-foreground">Risk Analysis (Beta)</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Risk scores are calculated from real-time news analysis and may require verification.
-                </p>
-                <a href="#" className="mt-1 text-xs text-primary hover:underline">
-                  Learn more about methodology
-                </a>
+              <div className="rounded-xl border border-border/50 bg-card/30 p-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">AI-Powered Analysis</p>
+                    <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                      Risk scores calculated from real-time news analysis. Results may require verification.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Selected Country Details */}
               {selectedCountryData && (
-                <div className="rounded-lg border border-border bg-card p-4">
-                  <h3 className="font-semibold text-card-foreground">{selectedCountryData.name}</h3>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Import Risk</p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <div className="h-2 flex-1 rounded-full bg-muted">
+                <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:border-primary/30">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-foreground">{selectedCountryData.name}</h3>
+                    <div className={cn(
+                      "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                      selectedCountryData.overallRisk >= 60 ? "border-red-500/50 text-red-400" :
+                      selectedCountryData.overallRisk >= 40 ? "border-yellow-500/50 text-yellow-400" :
+                      "border-emerald-500/50 text-emerald-400"
+                    )}>
+                      {selectedCountryData.overallRisk >= 60 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                      {selectedCountryData.overallRisk}%
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-muted/30 p-2.5">
+                      <p className="text-[10px] text-muted-foreground">Import Risk</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-2 rounded-full bg-primary"
+                            className="h-full rounded-full bg-primary transition-all duration-500"
                             style={{ width: `${selectedCountryData.importRisk}%` }}
                           />
                         </div>
-                        <span className="text-sm font-medium">{selectedCountryData.importRisk}%</span>
+                        <span className="text-xs font-medium text-foreground">{selectedCountryData.importRisk}%</span>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Export Risk</p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <div className="h-2 flex-1 rounded-full bg-muted">
+                    <div className="rounded-lg bg-muted/30 p-2.5">
+                      <p className="text-[10px] text-muted-foreground">Export Risk</p>
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-2 rounded-full bg-chart-2"
+                            className="h-full rounded-full bg-chart-2 transition-all duration-500"
                             style={{ width: `${selectedCountryData.exportRisk}%` }}
                           />
                         </div>
-                        <span className="text-sm font-medium">{selectedCountryData.exportRisk}%</span>
+                        <span className="text-xs font-medium text-foreground">{selectedCountryData.exportRisk}%</span>
                       </div>
                     </div>
                   </div>
+
                   <div className="mt-4">
-                    <p className="text-xs font-medium text-muted-foreground">Recent News (Live)</p>
+                    <div className="flex items-center gap-2">
+                      <Radio className="h-3 w-3 text-primary" />
+                      <p className="text-[10px] font-medium text-muted-foreground">Live News Feed</p>
+                    </div>
                     {newsLoading ? (
                       <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Loading news...
+                        Fetching latest news...
                       </div>
                     ) : liveNews.length > 0 ? (
-                      <ul className="mt-2 space-y-2">
-                        {liveNews.map((article, i) => (
-                          <li key={i} className="text-xs text-foreground">
+                      <ul className="mt-2 space-y-1.5">
+                        {liveNews.slice(0, 3).map((article, i) => (
+                          <li key={i} className="group">
                             <a
                               href={article.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="hover:text-primary hover:underline"
+                              className="flex items-start gap-2 rounded-lg p-2 text-xs text-foreground transition-colors hover:bg-muted/50"
                             >
-                              • {article.title}
+                              <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                              <div className="flex-1">
+                                <p className="line-clamp-2 leading-relaxed group-hover:text-primary">{article.title}</p>
+                                {article.source && (
+                                  <p className="mt-1 text-[10px] text-muted-foreground">{article.source}</p>
+                                )}
+                              </div>
                             </a>
-                            {article.source && (
-                              <span className="ml-1 text-muted-foreground">({article.source})</span>
-                            )}
                           </li>
                         ))}
                       </ul>
@@ -288,37 +334,42 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
               )}
 
               {/* Risk Metrics List */}
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {riskMetrics.map((metric) => (
                   <Collapsible
                     key={metric.id}
                     open={expandedMetrics.includes(metric.id)}
                     onOpenChange={() => toggleMetric(metric.id)}
                   >
-                    <CollapsibleTrigger className="flex w-full items-center gap-2 rounded-md p-2 text-left hover:bg-sidebar-accent">
-                      {expandedMetrics.includes(metric.id) ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="flex-1 text-sm font-medium text-sidebar-foreground">{metric.name}</span>
+                    <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-2.5 text-left transition-colors hover:bg-muted/50">
+                      <div className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-md border transition-colors",
+                        metric.isActive ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-muted-foreground group-hover:border-primary/50"
+                      )}>
+                        {expandedMetrics.includes(metric.id) ? (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                      <span className="flex-1 text-xs font-medium text-foreground">{metric.name}</span>
                       {metric.isActive && (
-                        <Badge variant="secondary" className="text-xs">
+                        <span className="rounded-full border border-emerald-500/50 px-2 py-0.5 text-[9px] font-medium text-emerald-400">
                           Active
-                        </Badge>
+                        </span>
                       )}
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-6">
-                      <div className="rounded-md border border-border bg-card/50 p-3">
-                        <p className="text-xs text-muted-foreground">{metric.description}</p>
+                    <CollapsibleContent className="pl-8">
+                      <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                        <p className="text-[10px] leading-relaxed text-muted-foreground">{metric.description}</p>
                         <a
                           href={metric.sourceUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline"
+                          className="mt-2 flex items-center gap-1.5 text-[10px] text-primary transition-colors hover:underline"
                         >
                           Source: {metric.source}
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="h-2.5 w-2.5" />
                         </a>
                       </div>
                     </CollapsibleContent>
@@ -327,28 +378,33 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
               </div>
 
               {/* Risk Legend */}
-              <div className="rounded-lg border border-primary bg-primary/5 p-4">
-                <p className="mb-3 text-sm font-medium text-foreground">Overall Risk Score</p>
+              <div className="rounded-xl border border-border/50 bg-muted/30 p-4">
+                <p className="mb-3 text-xs font-medium text-foreground">Risk Score Legend</p>
                 <div className="space-y-2">
                   {[
-                    { color: "#7c3aed", label: "Worst", range: "80-100" },
-                    { color: "#a78bfa", label: "Worse", range: "60-79" },
-                    { color: "#c4b5fd", label: "Bad", range: "40-59" },
-                    { color: "#ddd6fe", label: "Good", range: "20-39" },
-                    { color: "#ede9fe", label: "Best", range: "0-19" },
+                    { color: "bg-red-500", textColor: "text-red-400", label: "Critical", range: "80-100" },
+                    { color: "bg-orange-500", textColor: "text-orange-400", label: "High", range: "60-79" },
+                    { color: "bg-yellow-500", textColor: "text-yellow-400", label: "Medium", range: "40-59" },
+                    { color: "bg-emerald-500", textColor: "text-emerald-400", label: "Low", range: "20-39" },
+                    { color: "bg-cyan-500", textColor: "text-cyan-400", label: "Minimal", range: "0-19" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
                       <div
-                        className="h-4 w-6 rounded-sm border border-border"
-                        style={{ backgroundColor: item.color }}
+                        className="h-2.5 w-6 rounded-sm shadow-sm"
+                        style={{
+                          backgroundColor: item.color.includes('red') ? '#ef4444' :
+                            item.color.includes('orange') ? '#f97316' :
+                            item.color.includes('yellow') ? '#eab308' :
+                            item.color.includes('emerald') ? '#22c55e' : '#06b6d4'
+                        }}
                       />
-                      <span className="flex-1 text-xs text-foreground">{item.label}</span>
-                      <span className="text-xs text-muted-foreground">{item.range}</span>
+                      <span className={cn("flex-1 text-xs font-medium", item.textColor)}>{item.label}</span>
+                      <span className="text-[10px] text-muted-foreground">{item.range}</span>
                     </div>
                   ))}
                 </div>
-                <Button variant="outline" size="sm" className="mt-4 w-full">
-                  Process Risk Analysis
+                <Button variant="outline" size="sm" className="mt-4 w-full border-primary/30 bg-primary/5 text-xs font-medium text-primary hover:bg-primary/10">
+                  Run Full Analysis
                 </Button>
               </div>
             </div>
@@ -357,25 +413,29 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
           {activeTab === "filters" && (
             <div className="space-y-4">
               <div>
-                <p className="mb-2 text-sm font-medium text-foreground">High Risk Countries</p>
+                <p className="mb-3 text-xs font-medium text-foreground">High Risk Countries</p>
                 <div className="space-y-1">
                   {filteredCountries
                     .filter((c) => c.overallRisk >= 60)
+                    .sort((a, b) => b.overallRisk - a.overallRisk)
                     .map((country) => (
                       <button
                         key={country.id}
                         onClick={() => onCountrySelect(country.name)}
                         className={cn(
-                          "flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition-colors",
+                          "group flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-xs transition-all",
                           selectedCountry === country.name
                             ? "bg-primary/10 text-primary"
-                            : "hover:bg-sidebar-accent"
+                            : "text-foreground hover:bg-muted/50 hover:text-primary"
                         )}
                       >
-                        <span>{country.name}</span>
-                        <Badge variant={getRiskBadgeVariant(country.overallRisk)}>
-                          {getRiskLabel(country.overallRisk)}
-                        </Badge>
+                        <span className="font-medium">{country.name}</span>
+                        <span className={cn(
+                          "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                          country.overallRisk >= 80 ? "border-red-500/50 text-red-400" : "border-orange-500/50 text-orange-400"
+                        )}>
+                          {country.overallRisk}%
+                        </span>
                       </button>
                     ))}
                 </div>
@@ -384,44 +444,47 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
           )}
 
           {activeTab === "metrics" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
                 Configure which metrics are used in risk calculations.
               </p>
               {riskMetrics.map((metric) => (
                 <div
                   key={metric.id}
-                  className="flex items-center justify-between rounded-md border border-border bg-card p-3"
+                  className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30"
                 >
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">{metric.name}</p>
-                    <p className="text-xs text-muted-foreground">{metric.source}</p>
+                    <p className="text-xs font-medium text-foreground">{metric.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{metric.source}</p>
                   </div>
-                  <Badge variant={metric.isActive ? "default" : "outline"}>
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[9px] font-medium border",
+                    metric.isActive ? "border-emerald-500/50 text-emerald-400" : "border-border text-muted-foreground"
+                  )}>
                     {metric.isActive ? "Enabled" : "Disabled"}
-                  </Badge>
+                  </span>
                 </div>
               ))}
             </div>
           )}
 
           {activeTab === "options" && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">
                 Configure display and analysis options.
               </p>
-              <div className="space-y-3">
-                <div className="rounded-md border border-border p-3">
-                  <p className="text-sm font-medium text-foreground">Auto-refresh</p>
-                  <p className="text-xs text-muted-foreground">Update risk scores every 15 minutes</p>
+              <div className="space-y-2">
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
+                  <p className="text-xs font-medium text-foreground">Auto-refresh</p>
+                  <p className="text-[10px] text-muted-foreground">Update risk scores every 15 minutes</p>
                 </div>
-                <div className="rounded-md border border-border p-3">
-                  <p className="text-sm font-medium text-foreground">News Sources</p>
-                  <p className="text-xs text-muted-foreground">Reuters, AP, Financial Times, Bloomberg</p>
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
+                  <p className="text-xs font-medium text-foreground">News Sources</p>
+                  <p className="text-[10px] text-muted-foreground">Reuters, AP, Financial Times, Bloomberg</p>
                 </div>
-                <div className="rounded-md border border-border p-3">
-                  <p className="text-sm font-medium text-foreground">Alert Threshold</p>
-                  <p className="text-xs text-muted-foreground">Notify when risk exceeds 70%</p>
+                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
+                  <p className="text-xs font-medium text-foreground">Alert Threshold</p>
+                  <p className="text-[10px] text-muted-foreground">Notify when risk exceeds 70%</p>
                 </div>
               </div>
             </div>
@@ -430,10 +493,15 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
       </ScrollArea>
 
       {/* Footer */}
-      <div className="border-t border-sidebar-border p-3">
-        <p className="text-center text-xs text-muted-foreground">
-          Supply Chain Crisis Detector v1.0
-        </p>
+      <div className="border-t border-sidebar-border px-4 py-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-muted-foreground">
+            Stratis v1.0
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            Last sync: just now
+          </p>
+        </div>
       </div>
     </div>
   )
