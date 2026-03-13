@@ -36,7 +36,10 @@ export type SSEEvent =
   | { type: "refining" }
   | { type: "verified"; tree: DecompositionTree }
   | { type: "done"; duration_ms: number }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "node-added"; node: SupplyChainNode; parentId: string | null }
+  | { type: "search-started"; nodeId: string }
+  | { type: "search-complete"; nodeId: string; hasEvidence: boolean };
 
 export interface DecomposeRequest {
   product: string;
@@ -50,4 +53,12 @@ export interface StoredProduct {
   tree: DecompositionTree;
   durationMs: number;
   createdAt: number;
+}
+
+export interface ExtractedEvidence {
+  countries: { name: string; percentage: number }[];
+  majorProducers: string[];
+  riskFactors: string[];
+  confidenceSignal: "strong" | "moderate" | "weak";
+  rawText: string;
 }
