@@ -1,6 +1,6 @@
 // lib/decompose/prompts.ts
 
-import type { DecompositionTree } from "./types";
+import type { DecompositionTree, ExtractedEvidence } from "./types";
 
 const SKELETON_SYSTEM = `You are a supply chain decomposition expert. You break products down into their full dependency tree — from finished product to raw materials and geographies.
 
@@ -79,10 +79,20 @@ Return ONLY the search query string, nothing else.`;
 
 export function reconciliationPrompt(
   tree: DecompositionTree,
-  evidence: Record<string, string>
+  evidence: Record<string, ExtractedEvidence>
 ): string {
   const evidenceText = Object.entries(evidence)
-    .map(([nodeId, text]) => `### Node: ${nodeId}\n${text}`)
+    .map(([nodeId, ev]) => {
+      const countries = ev.countries
+        .map((c) => `${c.name}: ${c.percentage}%`)
+        .join(", ");
+      return `### Node: ${nodeId}
+Geographic data: ${countries || "none extracted"}
+Major producers: ${ev.majorProducers.join(", ") || "unknown"}
+Risk factors: ${ev.riskFactors.join(", ") || "none identified"}
+Evidence strength: ${ev.confidenceSignal}
+Raw context: ${ev.rawText.slice(0, 500)}`;
+    })
     .join("\n\n");
 
   return `You are a supply chain analyst updating a dependency tree with search evidence.
@@ -90,17 +100,44 @@ export function reconciliationPrompt(
 Here is the original decomposition tree:
 ${JSON.stringify(tree, null, 2)}
 
-Here are search results for specific nodes:
+Here is structured evidence for specific nodes:
 ${evidenceText}
 
 Update the tree JSON:
-- If evidence CONFIRMS a node's claims: set status to "verified", source to "industry", update geographic_concentration with sourced figures, adjust confidence upward
-- If evidence CONTRADICTS a node: set status to "verified", source to "search", correct the data (geographic_concentration, risk_score, risk_factors), adjust confidence based on evidence quality
+- Use the "Geographic data" percentages as the source of truth for geographic_concentration. Copy them directly when available.
+- If evidence CONFIRMS a node's claims: set status to "verified", source to "industry", adjust confidence upward based on evidence strength (strong=0.9+, moderate=0.7-0.8, weak=no change)
+- If evidence CONTRADICTS a node: set status to "verified", source to "search", correct the data
 - If evidence reveals MISSING dependencies: add new nodes with status "inferred"
 - Nodes without search evidence: leave unchanged
 - Set phase to "refining"
 
 Return the complete updated tree as JSON. No markdown, no explanation.`;
+}
+
+const EVIDENCE_EXTRACTION_SYSTEM = `You are a data extraction assistant. Extract structured supply chain data from research results. Return ONLY valid JSON matching the schema. No markdown, no explanation.`;
+
+export function evidenceExtractionPrompt(
+  rawEvidence: string,
+  nodeName: string
+): string {
+  return `Extract structured data from this supply chain research about "${nodeName}":
+
+${rawEvidence}
+
+Return JSON matching this schema:
+{
+  "countries": [{"name": "Country Name", "percentage": 45}],
+  "majorProducers": ["Company A", "Company B"],
+  "riskFactors": ["factor 1", "factor 2"],
+  "confidenceSignal": "strong" | "moderate" | "weak"
+}
+
+Rules:
+- countries: list of countries with their production/supply percentage. Percentages should sum to ~100.
+- majorProducers: key companies or entities mentioned.
+- riskFactors: supply chain risks identified (concentration, geopolitical, etc).
+- confidenceSignal: "strong" if specific figures cited, "moderate" if general claims, "weak" if speculative.
+- If data is not available for a field, use empty array or "weak".`;
 }
 
 const ADVERSARIAL_SYSTEM = `You are a supply chain expert reviewing a dependency tree for errors. Your job is to find mistakes, not confirm the analysis. Be skeptical and precise.`;
@@ -130,4 +167,4 @@ Check for:
 If the tree is largely correct, make minimal changes. Return valid JSON only, no markdown.`;
 }
 
-export { SKELETON_SYSTEM, ADVERSARIAL_SYSTEM };
+export { SKELETON_SYSTEM, ADVERSARIAL_SYSTEM, EVIDENCE_EXTRACTION_SYSTEM };
