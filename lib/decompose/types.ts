@@ -42,3 +42,12 @@ export interface DecomposeRequest {
   product: string;
   suppliers: string[];
 }
+
+export interface StoredProduct {
+  id: string;
+  name: string;
+  suppliers: string[];
+  tree: DecompositionTree;
+  durationMs: number;
+  createdAt: number;
+}
