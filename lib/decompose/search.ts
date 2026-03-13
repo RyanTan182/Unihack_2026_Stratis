@@ -4,15 +4,16 @@ const PERPLEXITY_URL = "https://api.perplexity.ai/chat/completions";
 
 export async function searchNode(
   query: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  model: string = "sonar"
 ): Promise<string> {
   const apiKey = process.env.PERPLEXITY_API_KEY;
   if (!apiKey) {
     return "No Perplexity API key configured. Using LLM inference only.";
   }
 
-  // Timeout after 120s if no abort signal provided (deep-research can be slow)
-  const timeoutSignal = AbortSignal.timeout(120_000);
+  const timeoutMs = model === "sonar-deep-research" ? 120_000 : 15_000;
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const combinedSignal = signal
     ? AbortSignal.any([signal, timeoutSignal])
     : timeoutSignal;
@@ -24,7 +25,7 @@ export async function searchNode(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "sonar-deep-research",
+      model,
       messages: [
         {
           role: "system",
