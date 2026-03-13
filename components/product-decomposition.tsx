@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Loader2,
   Zap,
-  Search,
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
@@ -115,7 +114,9 @@ function TreeNodeRow({
         onClick={() => onSelect(node.id)}
       >
         {hasChildren ? (
-          <button
+          <span
+            role="button"
+            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
@@ -128,7 +129,7 @@ function TreeNodeRow({
                 !isExpanded && "-rotate-90"
               )}
             />
-          </button>
+          </span>
         ) : (
           <span className="w-3.5 shrink-0" />
         )}
