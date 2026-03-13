@@ -2,9 +2,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy-initialize the OpenAI client to avoid build-time errors
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set")
+  }
+  return new OpenAI({ apiKey })
+}
 
 interface Article {
   title: string
@@ -79,6 +84,9 @@ function extractOutputText(response: any): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // Get client lazily to avoid build-time errors
+    const client = getOpenAIClient()
+
     const body = await req.json()
     const countries = (body?.countries ?? []) as CountryRiskBatchInput[]
 

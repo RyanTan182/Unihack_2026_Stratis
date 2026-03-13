@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+// Validation schema
+const RequestSchema = z.object({
+  country: z.string().min(1),
+  itemType: z.string().optional(),
+  itemName: z.string().optional(),
+  currentRisk: z.number().min(0).max(100).optional(),
+})
 
 // Simple risk lookup so we can post-process LLM suggestions and avoid obviously high-risk alternatives.
 // Values are aligned with the mock data in app/page.tsx (overallRisk).
@@ -48,17 +57,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "OPENROUTER_API_KEY not configured" }, { status: 500 })
   }
 
-  const body = await request.json()
-  const { country, itemType, itemName, currentRisk } = body as {
-    country: string
-    itemType: string
-    itemName: string
-    currentRisk: number
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  if (!country) {
-    return NextResponse.json({ error: "country is required" }, { status: 400 })
+  const parseResult = RequestSchema.safeParse(body)
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: "Validation failed", detail: parseResult.error.issues },
+      { status: 400 }
+    )
   }
+
+  const { country, itemType, itemName, currentRisk } = parseResult.data
 
   const systemPrompt = `You are a supply chain sourcing expert. The user has a supply chain item currently sourced from a high-risk country.
 
