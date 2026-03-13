@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
+import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
@@ -10,8 +11,19 @@ import { PathDetailsPanel } from "@/components/path-details-panel"
 import { Button } from "@/components/ui/button"
 import { Route, Package } from "lucide-react"
 
+interface CountryRisk {
+  id: string
+  name: string
+  type: "country" | "chokepoint"
+  connections: string[]
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
+}
+
 // Mock data for country risks with news-based analysis
-const countryRisks = [
+const countryRisks: CountryRisk[] = [
   {
     id: "China",
     name: "China",
@@ -668,6 +680,8 @@ export default function SupplyChainCrisisDetector() {
   const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
+  const [inventoryProducts, setInventoryProducts] = useState<Product[]>([])
+  const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
 
   const handleReset = () => {
     setSelectedCountry(null)
@@ -675,25 +689,70 @@ export default function SupplyChainCrisisDetector() {
     setSelectedRoute(null)
   }
 
-  // Handle clicking on a product route on the map
   const handleRouteClick = (route: ProductSupplyRoute) => {
     setSelectedRoute(route)
     setIsProductBuilderOpen(false)
     setIsRouteBuilderOpen(false)
   }
 
+  const handleAddToInventory = (product: Product) => {
+    if (inventoryProducts.some((p) => p.id === product.id)) return
+    setInventoryProducts((prev) => [...prev, { ...product }])
+    setIsInventorySidebarOpen(true)
+  }
+
+  const handleToggleInventory = () => {
+    setIsInventorySidebarOpen((prev) => !prev)
+  }
+
+  const handleInventoryProductsChange = (updated: Product[]) => {
+    setInventoryProducts(updated)
+
+    // Keep core products list in sync with any changes made in Inventory
+    setProducts((prev) => {
+      if (prev.length === 0) return prev
+      const updatedById = new Map(updated.map((p) => [p.id, p]))
+      let changed = false
+
+      const next = prev.map((p) => {
+        const candidate = updatedById.get(p.id)
+        if (!candidate) return p
+        if (candidate === p) return p
+        changed = true
+        return candidate
+      })
+
+      return changed ? next : prev
+    })
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
-      <NavSidebar />
-
-      {/* Risk Analysis Sidebar */}
-      <RiskSidebar
-        countryRisks={countryRisks}
-        selectedCountry={selectedCountry}
-        onCountrySelect={setSelectedCountry}
-        onReset={handleReset}
+      <NavSidebar
+        onInventoryClick={handleToggleInventory}
+        isInventoryOpen={isInventorySidebarOpen}
+        onLocationClick={() => setIsInventorySidebarOpen(false)}
+        isLocationActive={!isInventorySidebarOpen}
       />
+
+      {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
+      {isInventorySidebarOpen ? (
+        <InventorySidebar
+          isOpen={true}
+          onClose={() => setIsInventorySidebarOpen(false)}
+          countryRisks={countryRisks}
+          inventoryProducts={inventoryProducts}
+          onInventoryProductsChange={handleInventoryProductsChange}
+        />
+      ) : (
+        <RiskSidebar
+          countryRisks={countryRisks}
+          selectedCountry={selectedCountry}
+          onCountrySelect={setSelectedCountry}
+          onReset={handleReset}
+        />
+      )}
 
       {/* Main Map Area */}
       <div className="relative flex-1">
@@ -752,6 +811,8 @@ export default function SupplyChainCrisisDetector() {
           countryRisks={countryRisks}
           products={products}
           onProductsChange={setProducts}
+          onAddToInventory={handleAddToInventory}
+          inventoryProductIds={inventoryProducts.map((p) => p.id)}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}

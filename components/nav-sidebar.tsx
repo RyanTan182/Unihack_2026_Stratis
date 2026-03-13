@@ -21,24 +21,36 @@ interface NavItem {
   icon: React.ElementType
   label: string
   active?: boolean
+  onClick?: () => void
 }
 
-const navItems: NavItem[] = [
-  { icon: Home, label: "Dashboard", active: false },
-  { icon: Mail, label: "Alerts" },
-  { icon: BarChart2, label: "Analytics" },
-  { icon: FileText, label: "Reports" },
-  { icon: Flag, label: "Flags" },
-  { icon: MapPin, label: "Locations", active: true },
-  { icon: List, label: "Inventory" },
-  { icon: Users, label: "Suppliers" },
-  { icon: Globe, label: "Global View" },
-  { icon: Compass, label: "Routes" },
-  { icon: Layers, label: "Layers" },
-  { icon: HelpCircle, label: "Help" },
-]
+interface NavSidebarProps {
+  onInventoryClick?: () => void
+  isInventoryOpen?: boolean
+  onLocationClick?: () => void
+  isLocationActive?: boolean
+}
 
-export function NavSidebar() {
+export function NavSidebar({
+  onInventoryClick,
+  isInventoryOpen,
+  onLocationClick,
+  isLocationActive,
+}: NavSidebarProps) {
+  const navItems: NavItem[] = [
+    { icon: Home, label: "Dashboard", active: false },
+    { icon: Mail, label: "Alerts" },
+    { icon: BarChart2, label: "Analytics" },
+    { icon: FileText, label: "Reports" },
+    { icon: Flag, label: "Flags" },
+    { icon: MapPin, label: "Locations", active: isLocationActive, onClick: onLocationClick },
+    { icon: List, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
+    { icon: Users, label: "Suppliers" },
+    { icon: Globe, label: "Global View" },
+    { icon: Compass, label: "Routes" },
+    { icon: Layers, label: "Layers" },
+    { icon: HelpCircle, label: "Help" },
+  ]
   return (
     <TooltipProvider>
       <div className="flex h-full w-12 flex-col items-center border-r border-sidebar-border bg-sidebar py-4">
@@ -49,10 +61,11 @@ export function NavSidebar() {
 
         {/* Navigation Items */}
         <nav className="flex flex-1 flex-col items-center gap-1">
-          {navItems.map((item, index) => (
+          {navItems.map((item) => (
             <Tooltip key={item.label} delayDuration={0}>
               <TooltipTrigger asChild>
                 <button
+                  onClick={item.onClick}
                   className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
                     item.active

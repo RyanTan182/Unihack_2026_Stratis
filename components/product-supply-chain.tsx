@@ -19,6 +19,7 @@ import {
   MapPin,
   Loader2,
   Globe,
+  List,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -88,6 +89,8 @@ interface ProductSupplyChainProps {
   countryRisks: CountryRisk[]
   products: Product[]
   onProductsChange: (products: Product[]) => void
+  onAddToInventory?: (product: Product) => void
+  inventoryProductIds?: string[]
 }
 
 // Distinct product palette — each new product cycles through these
@@ -549,6 +552,8 @@ export function ProductSupplyChain({
   countryRisks,
   products,
   onProductsChange,
+  onAddToInventory,
+  inventoryProductIds = [],
 }: ProductSupplyChainProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [view, setView] = useState<"list" | "detail">("list")
@@ -845,6 +850,21 @@ export function ProductSupplyChain({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                )}
+
+                {selectedProduct && onAddToInventory && (
+                  <Button
+                    variant={inventoryProductIds.includes(selectedProduct.id) ? "secondary" : "outline"}
+                    size="sm"
+                    className="mt-2 w-full gap-2 text-xs"
+                    onClick={() => onAddToInventory(selectedProduct)}
+                    disabled={inventoryProductIds.includes(selectedProduct.id)}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                    {inventoryProductIds.includes(selectedProduct.id)
+                      ? "Already in Inventory"
+                      : "Add to Inventory"}
+                  </Button>
                 )}
               </div>
 
