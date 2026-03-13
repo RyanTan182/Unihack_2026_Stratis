@@ -1,15 +1,18 @@
 // lib/decompose/pipeline.ts
 
-import type { DecompositionTree, SupplyChainNode } from "./types";
+import type { DecompositionTree, SupplyChainNode, ExtractedEvidence } from "./types";
 import {
   SKELETON_SYSTEM,
   ADVERSARIAL_SYSTEM,
+  EVIDENCE_EXTRACTION_SYSTEM,
   skeletonPrompt,
   searchQueryPrompt,
   reconciliationPrompt,
   adversarialPrompt,
+  evidenceExtractionPrompt,
 } from "./prompts";
 import { searchNode } from "./search";
+import { normalizeCountryName } from "./country-aliases";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -81,23 +84,108 @@ function updateMetadata(tree: DecompositionTree): void {
   };
 }
 
+function sseEvent(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+function normalizeConcentrations(tree: DecompositionTree): void {
+  for (const node of Object.values(tree.nodes)) {
+    const entries = Object.entries(node.geographic_concentration);
+    if (entries.length === 0) continue;
+
+    // Normalize country names first
+    const normalized: Record<string, number> = {};
+    for (const [country, pct] of entries) {
+      const canonicalName = normalizeCountryName(country);
+      normalized[canonicalName] = (normalized[canonicalName] || 0) + pct;
+    }
+
+    // Normalize percentages to sum to 100
+    const sum = Object.values(normalized).reduce((s, v) => s + v, 0);
+    if (sum > 0 && (sum < 95 || sum > 105)) {
+      const factor = 100 / sum;
+      for (const key of Object.keys(normalized)) {
+        normalized[key] = Math.round(normalized[key] * factor * 10) / 10;
+      }
+    }
+
+    node.geographic_concentration = normalized;
+  }
+}
+
 function selectCriticalNodes(
   tree: DecompositionTree,
-  maxNodes: number = 8
+  maxNodes: number = 12
 ): SupplyChainNode[] {
   const candidates: [number, SupplyChainNode][] = [];
   for (const node of Object.values(tree.nodes)) {
-    if (node.tier < 2) continue;
-    const score =
-      node.tier * 10 + (1 - node.confidence) * 30 + node.risk_score * 0.5;
+    if (node.id === tree.root_id) continue;
+    let score = 0;
+    const isLeaf = node.children.length === 0;
+    const hasConcentration = Object.keys(node.geographic_concentration).length > 0;
+    if (isLeaf && !hasConcentration) score += 50;
+    score += node.children.length * 8;
+    score += (1 - node.confidence) * 30;
+    score += node.tier * 5;
+    score += node.risk_score * 0.3;
     candidates.push([score, node]);
   }
   candidates.sort((a, b) => b[0] - a[0]);
   return candidates.slice(0, maxNodes).map(([, node]) => node);
 }
 
-function sseEvent(event: string, data: unknown): string {
-  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+async function extractEvidence(
+  rawText: string,
+  nodeName: string,
+  signal?: AbortSignal
+): Promise<ExtractedEvidence> {
+  try {
+    const raw = await llmCall(
+      EVIDENCE_EXTRACTION_SYSTEM,
+      evidenceExtractionPrompt(rawText, nodeName),
+      0.2,
+      signal
+    );
+    const parsed = parseJson(raw) as unknown as Omit<ExtractedEvidence, "rawText">;
+    return { ...parsed, rawText };
+  } catch {
+    return {
+      countries: [],
+      majorProducers: [],
+      riskFactors: [],
+      confidenceSignal: "weak",
+      rawText,
+    };
+  }
+}
+
+function findParentName(tree: DecompositionTree, nodeId: string, fallback: string): string {
+  for (const candidate of Object.values(tree.nodes)) {
+    if (candidate.children.includes(nodeId)) {
+      return candidate.name;
+    }
+  }
+  return fallback;
+}
+
+async function generateSearchQuery(
+  node: SupplyChainNode,
+  tree: DecompositionTree,
+  product: string,
+  signal?: AbortSignal
+): Promise<string> {
+  const parentName = findParentName(tree, node.id, product);
+  try {
+    let query = await llmCall(
+      "Generate a search query. Return ONLY the query string.",
+      searchQueryPrompt(node.name, node.type, parentName),
+      0.3,
+      signal
+    );
+    return query.trim().replace(/^["']|["']$/g, "");
+  } catch {
+    return `${node.name} global production supply chain ${product}`;
+  }
 }
 
 export async function* runPipeline(
@@ -107,64 +195,62 @@ export async function* runPipeline(
 ): AsyncGenerator<string> {
   const startTime = Date.now();
 
-  // --- Phase 1: Skeleton ---
+  // --- Phase 1: Skeleton (with retry) ---
   let tree: DecompositionTree;
   try {
-    const raw = await llmCall(
-      SKELETON_SYSTEM,
-      skeletonPrompt(product, suppliers),
-      0.7,
-      signal
-    );
-    const treeData = parseJson(raw) as unknown as DecompositionTree;
-    tree = treeData;
-    tree.phase = "skeleton";
-    updateMetadata(tree);
-    yield sseEvent("skeleton", { tree });
-  } catch (e) {
-    yield sseEvent("error", {
-      message: `Skeleton generation failed: ${e instanceof Error ? e.message : e}`,
-    });
-    return;
+    const raw = await llmCall(SKELETON_SYSTEM, skeletonPrompt(product, suppliers), 0.7, signal);
+    tree = parseJson(raw) as unknown as DecompositionTree;
+  } catch {
+    // Retry with higher temperature
+    try {
+      const raw = await llmCall(SKELETON_SYSTEM, skeletonPrompt(product, suppliers), 0.8, signal);
+      tree = parseJson(raw) as unknown as DecompositionTree;
+    } catch (retryError) {
+      yield sseEvent("error", {
+        message: `Skeleton generation failed after retry: ${retryError instanceof Error ? retryError.message : retryError}`,
+      });
+      return;
+    }
   }
+  tree.phase = "skeleton";
+  updateMetadata(tree);
+  yield sseEvent("skeleton", { tree });
 
-  // --- Phase 2: Search Validation ---
+  // --- Phase 2: Batched Parallel Search + Evidence Extraction ---
   yield sseEvent("refining", {});
 
   const criticalNodes = selectCriticalNodes(tree);
-  const evidence: Record<string, string> = {};
+  const evidence: Record<string, ExtractedEvidence> = {};
+  const BATCH_SIZE = 4;
 
-  for (const node of criticalNodes) {
-    // Find parent name for context
-    let parentName = product;
-    for (const candidate of Object.values(tree.nodes)) {
-      if (candidate.children.includes(node.id)) {
-        parentName = candidate.name;
-        break;
+  for (let i = 0; i < criticalNodes.length; i += BATCH_SIZE) {
+    const batch = criticalNodes.slice(i, i + BATCH_SIZE);
+
+    // Yield search-started for this batch
+    for (const node of batch) {
+      yield sseEvent("search-started", { nodeId: node.id });
+    }
+
+    // Run batch in parallel: query → search → extract
+    const results = await Promise.allSettled(
+      batch.map(async (node) => {
+        const query = await generateSearchQuery(node, tree, product, signal);
+        const raw = await searchNode(query, signal);
+        const extracted = await extractEvidence(raw, node.name, signal);
+        return { nodeId: node.id, raw, extracted };
+      })
+    );
+
+    // Yield search-complete for each result
+    for (let j = 0; j < results.length; j++) {
+      const result = results[j];
+      if (result.status === "fulfilled") {
+        evidence[result.value.nodeId] = result.value.extracted;
+        tree.nodes[result.value.nodeId].search_evidence = result.value.raw;
+        yield sseEvent("search-complete", { nodeId: result.value.nodeId, hasEvidence: true });
+      } else {
+        yield sseEvent("search-complete", { nodeId: batch[j].id, hasEvidence: false });
       }
-    }
-
-    // Generate search query
-    let query: string;
-    try {
-      query = await llmCall(
-        "Generate a search query. Return ONLY the query string.",
-        searchQueryPrompt(node.name, node.type, parentName),
-        0.3,
-        signal
-      );
-      query = query.trim().replace(/^["']|["']$/g, "");
-    } catch {
-      query = `${node.name} global production supply chain ${product}`;
-    }
-
-    // Search via Perplexity
-    try {
-      const result = await searchNode(query, signal);
-      evidence[node.id] = result;
-      tree.nodes[node.id].search_evidence = result;
-    } catch {
-      // Skip failed searches, continue pipeline
     }
   }
 
@@ -181,6 +267,7 @@ export async function* runPipeline(
       tree = treeData;
       tree.phase = "refining";
       updateMetadata(tree);
+      normalizeConcentrations(tree);
     } catch {
       tree.phase = "refining";
       updateMetadata(tree);
@@ -199,6 +286,7 @@ export async function* runPipeline(
     tree = treeData;
     tree.phase = "verified";
     updateMetadata(tree);
+    normalizeConcentrations(tree);
   } catch {
     tree.phase = "verified";
     updateMetadata(tree);
