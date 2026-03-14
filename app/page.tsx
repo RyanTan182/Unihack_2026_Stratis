@@ -19,6 +19,8 @@ import { RouteFinderPanel } from "@/components/route-finder-panel"
 import { RouteSummary } from "@/components/route-summary"
 import { PriceRiskTimeline } from "@/components/price-risk-timeline"
 import { AlertBanner, type AlertData } from "@/components/alert-banner"
+import { AlertsSidebar } from "@/components/alerts-sidebar"
+import { generateAlertsFromProducts } from "@/lib/alerts"
 import { Button } from "@/components/ui/button"
 import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3, AlertTriangle, Zap, Radio, FactoryIcon, SparkleIcon, Sparkles } from "lucide-react"
 import { cn, formatRisk } from "@/lib/utils"
@@ -999,6 +1001,8 @@ export default function SupplyChainCrisisDetector() {
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
   const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
   const [altScanLoading, setAltScanLoading] = useState(false)
+  const [isAlertsSidebarOpen, setIsAlertsSidebarOpen] = useState(false)
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set())
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false)
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
@@ -1136,6 +1140,12 @@ export default function SupplyChainCrisisDetector() {
       .map((sp, i) => storedProductToMapProduct(sp, i))
       .filter((mp): mp is MapProduct => mp !== null)
   }, [storedProducts])
+
+  // Alerts from products (shared by banner and sidebar)
+  const alerts = useMemo(() => {
+    const generated = generateAlertsFromProducts(products, resolvedCountryRisks)
+    return generated.filter((a) => !dismissedAlertIds.has(a.id))
+  }, [products, resolvedCountryRisks, dismissedAlertIds])
 
   useEffect(() => {
     const loadSnapshots = async () => {
@@ -1474,6 +1484,7 @@ export default function SupplyChainCrisisDetector() {
   )
 
   const handleToggleInventory = () => {
+    setIsAlertsSidebarOpen(false)
     setIsInventorySidebarOpen((prev) => !prev)
   }
 
@@ -1537,10 +1548,14 @@ export default function SupplyChainCrisisDetector() {
     }
   }
 
-  // Handler for alert click
+  // Handler for alert click - open Alerts sidebar and optionally alternatives panel
   const handleAlertClick = (alert: AlertData) => {
+    setIsAlertsSidebarOpen(true)
+    setIsInventorySidebarOpen(false)
     if (alert.relatedComponentId && insights) {
-      const componentRisk = insights.highRiskComponents.find(c => c.componentId === alert.relatedComponentId)
+      const componentRisk = insights.highRiskComponents.find(
+        (c) => c.componentId === alert.relatedComponentId
+      )
       if (componentRisk) {
         setSelectedComponentRisk(componentRisk)
         setAlternativesPanelOpen(true)
@@ -1556,6 +1571,10 @@ export default function SupplyChainCrisisDetector() {
     // Set the selected country to pre-fill the relocation form
     setSelectedCountry(country)
   }, [])
+
+  const handleDismissAlert = (alertId: string) => {
+    setDismissedAlertIds((prev) => new Set([...prev, alertId]))
+  }
 
   const [currentMethod, setCurrentMethod] = useState<string>("Relocation");
   const methodOptions = ["Safe Routes", "Relocation"];
@@ -1710,8 +1729,9 @@ export default function SupplyChainCrisisDetector() {
         {/* Alert Banner - positioned below action buttons */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
-            insights={insights}
+            alerts={alerts}
             onAlertClick={handleAlertClick}
+            onDismiss={handleDismissAlert}
           />
         </div>
 
