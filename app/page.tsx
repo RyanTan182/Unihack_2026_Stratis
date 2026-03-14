@@ -969,7 +969,7 @@ export default function SupplyChainCrisisDetector() {
   }
 
   return (
-    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
+    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background animate-page-load">
       {/* Left Navigation Sidebar */}
       <NavSidebar
         onInventoryClick={handleToggleInventory}
@@ -979,6 +979,7 @@ export default function SupplyChainCrisisDetector() {
       />
 
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
+      <div className="min-h-0 overflow-hidden animate-in fade-in-0 slide-in-from-left-2 duration-500">
       {isInventorySidebarOpen ? (
         <InventorySidebar
           products={storedProducts}
@@ -994,9 +995,10 @@ export default function SupplyChainCrisisDetector() {
           onReset={handleReset}
         />
       )}
+      </div>
 
       {/* Main Map Area */}
-      <div className="relative h-full w-full overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden animate-map-in">
         {/* Alert Banner - positioned below action buttons */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
@@ -1023,7 +1025,7 @@ export default function SupplyChainCrisisDetector() {
         />
 
         {/* Action Buttons */}
-        <div className="absolute left-4 top-4 z-10 flex gap-2">
+        <div className="absolute left-4 top-4 z-10 flex gap-2 stagger-children-delayed">
           <Button
             variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}
             size="sm"
