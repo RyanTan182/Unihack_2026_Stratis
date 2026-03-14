@@ -103,6 +103,8 @@ export interface ProductSupplyRoute {
   segments: ProductRouteSegment[]
   chokepoints: string[]
   isPredicted?: boolean
+  /** Percentage for this country when multi-source (0-100); used for opacity */
+  countryPercentage?: number
 }
 
 interface SupplyChainMapProps {
@@ -484,6 +486,7 @@ function extractProductRoutes(
     productId: string,
     productName: string,
     isPredicted?: boolean,
+    countryPercentage?: number,
   ) => {
     if (item.country !== parentCountry) {
       const pathNodes =
@@ -525,6 +528,7 @@ function extractProductRoutes(
         segments,
         chokepoints,
         isPredicted: isPredicted ?? item.isPredicted,
+        countryPercentage: countryPercentage ?? item.countryPercentage,
       })
     }
 
@@ -537,6 +541,7 @@ function extractProductRoutes(
         productId,
         productName,
         isPredicted ?? item.isPredicted,
+        countryPercentage ?? item.countryPercentage,
       )
     })
   }
@@ -552,6 +557,7 @@ function extractProductRoutes(
         product.id,
         product.name || "Unnamed Product",
         isPredicted,
+        component.countryPercentage,
       )
     })
   })
@@ -854,9 +860,17 @@ export function SupplyChainMap({
 
     countryMap.forEach(({ items, hasPredictedItems }, country: string) => {
       const countryRisk = countryRisks.find((c) => c.name === country)
+      // Dedupe items (same component can appear from multiple products or expanded variants)
+      const seen = new Set<string>()
+      const dedupedItems = items.filter((item) => {
+        const key = `${item.name}|${item.type}|${item.percentage ?? ""}|${JSON.stringify(item.alternatives ?? [])}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
       markers.push({
         country,
-        items,
+        items: dedupedItems,
         isDangerous: (countryRisk?.overallRisk || 0) >= RISK_HIGH,
         hasPredictedItems,
       })
@@ -902,6 +916,7 @@ export function SupplyChainMap({
       const isSelected = selectedRouteId === route.id
       const isDimmed = !!selectedRouteId && !isSelected
       const isPredicted = route.isPredicted ?? false
+      const pct = route.countryPercentage
 
       route.segments.forEach((segment) => {
         const fromCoords = nodeCoordinates[segment.fromNode]
@@ -912,7 +927,9 @@ export function SupplyChainMap({
 
         const segmentIsDangerous = segment.riskScore >= RISK_HIGH
         const isHighRisk = segmentIsDangerous || route.isDangerous
-        const baseOpacity = isPredicted ? 0.45 : (isHighRisk ? 1 : 0.9)
+        // Multi-source: opacity by percentage (primary ~full, secondary dimmer)
+        const baseOpacity =
+          pct != null ? 0.4 + 0.5 * (pct / 100) : isPredicted ? 0.45 : (isHighRisk ? 1 : 0.9)
         const opacity = isDimmed ? 0.22 : baseOpacity
 
         features.push({
@@ -1235,6 +1252,12 @@ export function SupplyChainMap({
                 p.components.some((c) => c.country === marker.country)
             )
             const markerColor = productForCountry?.color ?? "#2563eb"
+            // Multi-source: opacity by highest % at this country (primary fuller, secondary dimmer)
+            const maxPct = marker.items.some((i) => i.percentage != null)
+              ? Math.max(...marker.items.map((i) => i.percentage ?? 0), 0)
+              : null
+            const markerOpacity =
+              maxPct != null ? 0.5 + 0.5 * (maxPct / 100) : marker.hasPredictedItems ? 0.65 : 1
 
             return (
               <Marker
@@ -1263,7 +1286,7 @@ export function SupplyChainMap({
                           width: 28,
                           height: 28,
                           backgroundColor: markerColor,
-                          opacity: marker.hasPredictedItems ? 0.65 : 1,
+                          opacity: markerOpacity,
                         }}
                       >
                         {marker.items.length > 1 && (
