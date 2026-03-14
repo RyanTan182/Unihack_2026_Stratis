@@ -1,765 +1,632 @@
-// components/inventory-sidebar.tsx
+"use client"
 
-"use client";
-
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
-  ArrowLeft,
-  Plus,
   ChevronDown,
-  Loader2,
-  Zap,
-  CheckCircle,
-  AlertTriangle,
+  ChevronRight,
   Package,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { useDecompose } from "@/hooks/use-decompose";
-import type {
-  DecompositionTree,
-  SupplyChainNode,
-  StoredProduct,
-} from "@/lib/decompose/types";
+  Boxes,
+  Box,
+  Fuel,
+  X,
+  AlertTriangle,
+  Loader2,
+  Sparkles,
+  Check,
+  XCircle,
+  Trash2,
+  List,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { cn } from "@/lib/utils"
+import type { Product, SupplyChainItem } from "@/components/product-supply-chain"
 
-// --- Props ---
+interface CountryRisk {
+  id: string
+  name: string
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
+}
+
+type ItemType = "product" | "component" | "material" | "resource"
+
+interface Recommendation {
+  country: string
+  risk: string
+  reason: string
+}
+
+type RecommendationStatus = "idle" | "loading" | "recommended" | "accepted" | "declined"
+
+interface RecommendationState {
+  status: RecommendationStatus
+  data: Recommendation | null
+  error: string | null
+}
+
+const itemTypeConfig: Record<ItemType, { icon: typeof Package; label: string }> = {
+  product: { icon: Package, label: "Product" },
+  component: { icon: Boxes, label: "Component" },
+  material: { icon: Box, label: "Material" },
+  resource: { icon: Fuel, label: "Resource" },
+}
+
+function adjustColorAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const br = Math.round(r * alpha + 255 * (1 - alpha))
+  const bg = Math.round(g * alpha + 255 * (1 - alpha))
+  const bb = Math.round(b * alpha + 255 * (1 - alpha))
+  return `rgb(${br},${bg},${bb})`
+}
 
 interface InventorySidebarProps {
-  products: StoredProduct[];
-  onProductAdd: (product: StoredProduct) => void;
-  onTreeChange: (tree: DecompositionTree | null) => void;
-  onNodeSelect: (nodeId: string | null) => void;
-  onSearchingChange?: (ids: Set<string>) => void;
-  onStreamingNodesChange?: (nodes: SupplyChainNode[]) => void;
+  isOpen: boolean
+  onClose: () => void
+  countryRisks: CountryRisk[]
+  inventoryProducts: Product[]
+  onInventoryProductsChange: (products: Product[]) => void
+  onProductUpdate?: (product: Product) => void
 }
 
-type View = "list" | "form" | "tree" | "detail";
-
-// --- Supplier Tag Input (reused from product-decomposition) ---
-
-function SupplierTagInput({
-  suppliers,
-  onChange,
-}: {
-  suppliers: string[];
-  onChange: (suppliers: string[]) => void;
-}) {
-  const [inputValue, setInputValue] = useState("");
-
-  const addSupplier = () => {
-    const trimmed = inputValue.trim();
-    if (trimmed && !suppliers.includes(trimmed)) {
-      onChange([...suppliers, trimmed]);
-      setInputValue("");
-    }
-  };
-
-  const removeSupplier = (supplier: string) => {
-    onChange(suppliers.filter((s) => s !== supplier));
-  };
-
-  return (
-    <div>
-      <div className="mb-2 flex flex-wrap gap-1.5">
-        {suppliers.map((supplier) => (
-          <Badge
-            key={supplier}
-            variant="secondary"
-            className="gap-1 bg-primary/10 text-primary"
-          >
-            {supplier}
-            <button
-              onClick={() => removeSupplier(supplier)}
-              className="ml-0.5 opacity-60 hover:opacity-100"
-            >
-              ×
-            </button>
-          </Badge>
-        ))}
-      </div>
-      <Input
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            addSupplier();
-          }
-        }}
-        placeholder="Add supplier…"
-        className="h-9"
-      />
-    </div>
-  );
-}
-
-// --- Tree Node Row (reused from product-decomposition) ---
-
-function TreeNodeRow({
-  node,
-  tree,
+function InventoryItemRow({
+  item,
   depth,
-  selectedNodeId,
-  onSelect,
+  countryRisks,
+  productColor,
+  recommendations,
+  onRecommendationFetched,
+  onAccept,
+  onDecline,
 }: {
-  node: SupplyChainNode;
-  tree: DecompositionTree;
-  depth: number;
-  selectedNodeId: string | null;
-  onSelect: (nodeId: string) => void;
+  item: SupplyChainItem
+  depth: number
+  countryRisks: CountryRisk[]
+  productColor: string
+  recommendations: Record<string, RecommendationState>
+  onRecommendationFetched: (itemId: string, rec: RecommendationState) => void
+  onAccept: (itemId: string) => void
+  onDecline: (itemId: string) => void
 }) {
-  const [isExpanded, setIsExpanded] = useState(depth < 2);
-  const hasChildren = node.children.length > 0;
-  const isSelected = selectedNodeId === node.id;
+  const [isExpanded, setIsExpanded] = useState(true)
+  const fetchedRef = useRef(false)
+  const config = itemTypeConfig[item.type]
+  const Icon = config.icon
+  const hasChildren = item.children.length > 0
+
+  const countryData = countryRisks.find((c) => c.name === item.country)
+  const isHighRisk = (countryData?.overallRisk ?? 0) >= 60
+  const recState = recommendations[item.id]
+
+  const iconBg = adjustColorAlpha(productColor, 0.7 - depth * 0.1)
+
+  useEffect(() => {
+    if (!isHighRisk || fetchedRef.current || recState) return
+    fetchedRef.current = true
+
+    onRecommendationFetched(item.id, { status: "loading", data: null, error: null })
+
+    fetch("/api/ai/alternatives", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        country: item.country,
+        itemType: item.type,
+        itemName: item.name,
+        currentRisk: countryData?.overallRisk ?? 50,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          onRecommendationFetched(item.id, { status: "idle", data: null, error: data.error })
+        } else {
+          const alt = data.alternatives?.[0]
+          if (alt) {
+            onRecommendationFetched(item.id, {
+              status: "recommended",
+              data: { country: alt.country, risk: alt.risk, reason: alt.reason },
+              error: null,
+            })
+          } else {
+            onRecommendationFetched(item.id, { status: "idle", data: null, error: "No alternatives found" })
+          }
+        }
+      })
+      .catch(() => {
+        onRecommendationFetched(item.id, { status: "idle", data: null, error: "Failed to fetch recommendation" })
+      })
+  }, [isHighRisk, item.id, item.country, item.type, item.name, countryData?.overallRisk, recState, onRecommendationFetched])
 
   return (
     <div>
-      <button
-        className={cn(
-          "flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/50",
-          isSelected && "border-l-2 border-primary bg-primary/5"
-        )}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
-        onClick={() => onSelect(node.id)}
-      >
-        {hasChildren ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(!isExpanded);
-            }}
-            className="shrink-0 text-muted-foreground"
-          >
-            <ChevronDown
-              className={cn(
-                "h-3.5 w-3.5 transition-transform",
-                !isExpanded && "-rotate-90"
-              )}
-            />
-          </span>
-        ) : (
-          <span className="w-3.5 shrink-0" />
-        )}
-        <span
-          className={cn(
-            "truncate",
-            isSelected ? "font-semibold text-primary" : "text-foreground"
-          )}
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <div
+          className="rounded-lg border border-border bg-card p-2.5 transition-all"
+          style={{ marginLeft: `${depth * 16}px` }}
         >
-          {node.name}
-        </span>
-        {node.risk_score >= 70 && (
-          <span className="ml-auto shrink-0 text-xs text-red-500">
-            {node.risk_score}
-          </span>
+          <div className="flex items-center gap-2">
+            {hasChildren ? (
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0">
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+            ) : (
+              <div className="w-5" />
+            )}
+
+            <div
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+              style={{ backgroundColor: iconBg }}
+            >
+              <Icon className="h-3.5 w-3.5 text-white" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
+                {item.name || `Unnamed ${config.label}`}
+              </p>
+              <p className="text-[10px] text-muted-foreground">{item.country}</p>
+            </div>
+
+            {isHighRisk && (
+              <Badge variant="destructive" className="shrink-0 gap-0.5 text-[10px]">
+                <AlertTriangle className="h-2.5 w-2.5" />
+                {countryData?.overallRisk}%
+              </Badge>
+            )}
+          </div>
+
+          {/* Recommendation card for high-risk items */}
+          {isHighRisk && recState && (
+            <div className="mt-2">
+              {recState.status === "loading" && (
+                <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground">Getting AI recommendation...</span>
+                </div>
+              )}
+
+              {recState.status === "recommended" && recState.data && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI Recommendation
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{recState.data.country}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">{recState.data.reason}</p>
+                    </div>
+                    <Badge
+                      variant={recState.data.risk === "low" ? "secondary" : recState.data.risk === "high" ? "destructive" : "default"}
+                      className="shrink-0 text-[10px]"
+                    >
+                      {recState.data.risk} risk
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      className="h-7 flex-1 gap-1 bg-green-600 text-xs text-white hover:bg-green-700"
+                      onClick={() => onAccept(item.id)}
+                    >
+                      <Check className="h-3 w-3" />
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 flex-1 gap-1 text-xs"
+                      onClick={() => onDecline(item.id)}
+                    >
+                      <XCircle className="h-3 w-3" />
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {recState.status === "accepted" && recState.data && (
+                <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2">
+                  <Check className="h-3.5 w-3.5 text-green-600" />
+                  <span className="text-xs text-green-700">
+                    Relocated to <span className="font-semibold">{recState.data.country}</span>
+                  </span>
+                </div>
+              )}
+
+              {recState.status === "declined" && (
+                <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                  <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    Recommendation declined — keeping {item.country}
+                  </span>
+                </div>
+              )}
+
+              {recState.error && recState.status === "idle" && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-xs text-destructive">{recState.error}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {hasChildren && (
+          <CollapsibleContent>
+            <div className="mt-1.5 space-y-1.5">
+              {item.children.map((child) => (
+                <InventoryItemRow
+                  key={child.id}
+                  item={child}
+                  depth={depth + 1}
+                  countryRisks={countryRisks}
+                  productColor={productColor}
+                  recommendations={recommendations}
+                  onRecommendationFetched={onRecommendationFetched}
+                  onAccept={onAccept}
+                  onDecline={onDecline}
+                />
+              ))}
+            </div>
+          </CollapsibleContent>
         )}
-      </button>
-
-      {isExpanded &&
-        hasChildren &&
-        node.children.map((childId) => {
-          const child = tree.nodes[childId];
-          if (!child) return null;
-          return (
-            <TreeNodeRow
-              key={childId}
-              node={child}
-              tree={tree}
-              depth={depth + 1}
-              selectedNodeId={selectedNodeId}
-              onSelect={onSelect}
-            />
-          );
-        })}
+      </Collapsible>
     </div>
-  );
+  )
 }
 
-// --- Node Detail (reused from product-decomposition) ---
+function InventoryProductCard({
+  product,
+  countryRisks,
+  onProductUpdate,
+  onRemove,
+}: {
+  product: Product
+  countryRisks: CountryRisk[]
+  onProductUpdate: (product: Product) => void
+  onRemove: () => void
+}) {
+  const [isExpanded, setIsExpanded] = useState(true)
+  const [recommendations, setRecommendations] = useState<Record<string, RecommendationState>>({})
+  const productFetchedRef = useRef(false)
 
-const CONCENTRATION_COLORS = [
-  "#3b82f6",
-  "#f59e0b",
-  "#10b981",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-];
+  const countryData = countryRisks.find((c) => c.name === product.country)
+  const isProductHighRisk = (countryData?.overallRisk ?? 0) >= 60
 
-function getAncestryPath(
-  tree: DecompositionTree,
-  nodeId: string
-): SupplyChainNode[] {
-  const path: SupplyChainNode[] = [];
-  let currentId: string | null = nodeId;
-  while (currentId) {
-    const node = tree.nodes[currentId];
-    if (!node) break;
-    path.unshift(node);
-    // Find parent
-    let parentId: string | null = null;
-    for (const candidate of Object.values(tree.nodes)) {
-      if (candidate.children.includes(currentId)) {
-        parentId = candidate.id;
-        break;
-      }
-    }
-    currentId = parentId;
+  const productRecState = recommendations[product.id]
+
+  useEffect(() => {
+    if (!isProductHighRisk || productFetchedRef.current || productRecState) return
+    productFetchedRef.current = true
+
+    setRecommendations((prev) => ({
+      ...prev,
+      [product.id]: { status: "loading", data: null, error: null },
+    }))
+
+    fetch("/api/ai/alternatives", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        country: product.country,
+        itemType: "product",
+        itemName: product.name,
+        currentRisk: countryData?.overallRisk ?? 50,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setRecommendations((prev) => ({
+            ...prev,
+            [product.id]: { status: "idle", data: null, error: data.error },
+          }))
+        } else {
+          const alt = data.alternatives?.[0]
+          if (alt) {
+            setRecommendations((prev) => ({
+              ...prev,
+              [product.id]: {
+                status: "recommended",
+                data: { country: alt.country, risk: alt.risk, reason: alt.reason },
+                error: null,
+              },
+            }))
+          } else {
+            setRecommendations((prev) => ({
+              ...prev,
+              [product.id]: { status: "idle", data: null, error: "No alternatives found" },
+            }))
+          }
+        }
+      })
+      .catch(() => {
+        setRecommendations((prev) => ({
+          ...prev,
+          [product.id]: { status: "idle", data: null, error: "Failed to fetch recommendation" },
+        }))
+      })
+  }, [isProductHighRisk, product.id, product.country, product.name, countryData?.overallRisk, productRecState])
+
+  const handleRecommendationFetched = useCallback((itemId: string, rec: RecommendationState) => {
+    setRecommendations((prev) => ({ ...prev, [itemId]: rec }))
+  }, [])
+
+  const updateItemCountry = (itemId: string, newCountry: string): SupplyChainItem[] => {
+    const update = (items: SupplyChainItem[]): SupplyChainItem[] =>
+      items.map((item) => {
+        if (item.id === itemId) return { ...item, country: newCountry }
+        return { ...item, children: update(item.children) }
+      })
+    return update(product.components)
   }
-  return path;
-}
 
-function NodeDetail({ node, tree }: { node: SupplyChainNode; tree: DecompositionTree }) {
-  const concentrationEntries = Object.entries(
-    node.geographic_concentration
-  ).sort(([, a], [, b]) => b - a);
+  const handleAccept = useCallback((itemId: string) => {
+    const rec = recommendations[itemId]
+    if (!rec?.data) return
+
+    setRecommendations((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], status: "accepted" },
+    }))
+
+    if (itemId === product.id) {
+      onProductUpdate({ ...product, country: rec.data.country })
+    } else {
+      onProductUpdate({ ...product, components: updateItemCountry(itemId, rec.data.country) })
+    }
+  }, [recommendations, product, onProductUpdate])
+
+  const handleDecline = useCallback((itemId: string) => {
+    setRecommendations((prev) => ({
+      ...prev,
+      [itemId]: { ...prev[itemId], status: "declined" },
+    }))
+  }, [])
+
+  const totalComponents = product.components.length
+  const countAllItems = (items: SupplyChainItem[]): number =>
+    items.reduce((sum, item) => sum + 1 + countAllItems(item.children), 0)
+  const totalItems = countAllItems(product.components)
 
   return (
-    <div className="space-y-4">
-      {/* Ancestry breadcrumb */}
-      <div className="flex flex-wrap gap-1 text-xs text-muted-foreground mb-2">
-        {getAncestryPath(tree, node.id).map((ancestor, i, arr) => (
-          <span key={ancestor.id}>
-            {i > 0 && <span className="mx-0.5">&rarr;</span>}
-            <span className={cn(i === arr.length - 1 && "text-primary font-medium")}>
-              {ancestor.name}
-            </span>
-          </span>
-        ))}
-      </div>
+    <div className="rounded-xl border border-border bg-card/80">
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <div className="flex items-center gap-3 p-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
 
-      <div>
-        <h3 className="text-base font-semibold text-primary">{node.name}</h3>
-        <p className="text-xs text-muted-foreground">
-          {node.type} · Tier {node.tier} ·{" "}
-          <span
-            className={cn(
-              node.status === "verified" && "text-blue-500",
-              node.status === "corrected" && "text-emerald-500",
-              node.status === "inferred" && "text-orange-500"
-            )}
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+            style={{ backgroundColor: product.color }}
           >
-            {node.status}
-          </span>
-        </p>
-      </div>
-
-      {/* Geographic Concentration */}
-      {concentrationEntries.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium uppercase text-muted-foreground">
-            Geographic Concentration
-          </p>
-          <div className="mb-1.5 flex h-5 overflow-hidden rounded">
-            {concentrationEntries.map(([country, pct], i) => (
-              <div
-                key={country}
-                style={{
-                  width: `${pct}%`,
-                  backgroundColor:
-                    CONCENTRATION_COLORS[i % CONCENTRATION_COLORS.length],
-                }}
-                title={`${country} ${pct}%`}
-              />
-            ))}
+            <Package className="h-5 w-5 text-white" />
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-            {concentrationEntries.map(([country, pct], i) => (
-              <span key={country}>
-                <span
-                  style={{
-                    color:
-                      CONCENTRATION_COLORS[i % CONCENTRATION_COLORS.length],
-                  }}
-                >
-                  ●
-                </span>{" "}
-                <span className="text-muted-foreground">
-                  {country} {pct}%
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* Risk + Confidence */}
-      <div className="space-y-3">
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] uppercase text-muted-foreground">Risk</p>
-            <p className={cn(
-              "text-sm font-bold",
-              node.risk_score >= 70 ? "text-red-500" : node.risk_score >= 40 ? "text-amber-500" : "text-green-500"
-            )}>
-              {node.risk_score}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {product.name || "Unnamed Product"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">
+              {product.country} &middot; {totalComponents} component{totalComponents !== 1 ? "s" : ""} &middot; {totalItems} item{totalItems !== 1 ? "s" : ""}
             </p>
           </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div
-              className={cn(
-                "h-2 rounded-full transition-all",
-                node.risk_score >= 70 ? "bg-red-500" : node.risk_score >= 40 ? "bg-amber-500" : "bg-green-500"
-              )}
-              style={{ width: `${node.risk_score}%` }}
-            />
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] uppercase text-muted-foreground">Confidence</p>
-            <p className="text-sm font-bold text-blue-500">{node.confidence}</p>
-          </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div
-              className="h-2 rounded-full bg-blue-500 transition-all"
-              style={{ width: `${node.confidence * 100}%` }}
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* Risk Factors */}
-      {node.risk_factors.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-            Risk Factors
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {node.risk_factors.map((factor) => (
-              <Badge
-                key={factor}
-                variant="destructive"
-                className="text-[10px]"
-              >
-                {factor}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
+          {isProductHighRisk && (
+            <Badge variant="destructive" className="shrink-0 gap-0.5 text-[10px]">
+              <AlertTriangle className="h-2.5 w-2.5" />
+              {countryData?.overallRisk}%
+            </Badge>
+          )}
 
-      {/* Search Evidence */}
-      {node.search_evidence && (
-        <details className="text-xs">
-          <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-            Show search evidence
-          </summary>
-          <p className="mt-1 whitespace-pre-wrap rounded bg-muted/50 p-2 text-muted-foreground">
-            {node.search_evidence}
-          </p>
-        </details>
-      )}
-
-      {/* Correction */}
-      {node.correction && (
-        <div>
-          <p className="mb-1 text-xs font-medium uppercase text-emerald-500">
-            Adversarial Correction
-          </p>
-          <p className="rounded border border-emerald-500/20 bg-emerald-500/5 p-2 text-xs text-emerald-400">
-            {node.correction}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- Product Card ---
-
-function ProductCard({
-  product,
-  onClick,
-}: {
-  product: StoredProduct;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex w-full flex-col gap-1 rounded-lg border border-border p-3 text-left transition-colors hover:bg-muted/50"
-    >
-      <div className="flex items-center justify-between">
-        <span className="font-medium text-foreground">{product.name}</span>
-        {product.tree.phase === "verified" && (
-          <Badge
-            variant="secondary"
-            className="gap-1 bg-emerald-500/10 text-emerald-500 text-[10px]"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={onRemove}
           >
-            <CheckCircle className="h-2.5 w-2.5" />
-            Verified
-          </Badge>
-        )}
-      </div>
-      <div className="text-xs text-muted-foreground">
-        {product.tree.metadata.total_nodes} nodes · confidence{" "}
-        {product.tree.metadata.avg_confidence} ·{" "}
-        {(product.durationMs / 1000).toFixed(1)}s
-      </div>
-    </button>
-  );
-}
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
 
-// --- Main Component ---
-
-export function InventorySidebar({
-  products,
-  onProductAdd,
-  onTreeChange,
-  onNodeSelect,
-  onSearchingChange,
-  onStreamingNodesChange,
-}: InventorySidebarProps) {
-  const [view, setView] = useState<View>("list");
-  const [activeProductId, setActiveProductId] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
-  // Form state
-  const [productName, setProductName] = useState("");
-  const [suppliers, setSuppliers] = useState<string[]>([]);
-
-  // useDecompose is ONLY for new decompositions (View 2 / form).
-  // Note: the hook also returns selectNode/selectedNodeId which we ignore —
-  // node selection is managed as local state in this component instead.
-  const { tree: hookTree, isLoading, error, durationMs, searchingNodeIds, streamingNodes, decompose, abort } =
-    useDecompose();
-
-  useEffect(() => {
-    onSearchingChange?.(searchingNodeIds);
-  }, [searchingNodeIds, onSearchingChange]);
-
-  useEffect(() => {
-    onStreamingNodesChange?.(streamingNodes);
-  }, [streamingNodes, onStreamingNodesChange]);
-
-  // Capture form values at decompose-time so the completion effect has stable refs
-  const pendingFormRef = useRef<{ name: string; suppliers: string[] } | null>(null);
-
-  // Abort any in-flight decomposition on unmount (e.g. sidebar view switch)
-  useEffect(() => {
-    return () => abort();
-  }, [abort]);
-
-  // When hook completes a decomposition, save it and navigate to tree view
-  useEffect(() => {
-    if (hookTree && !isLoading && !error && hookTree.phase === "verified" && durationMs !== null && pendingFormRef.current) {
-      const { name, suppliers: savedSuppliers } = pendingFormRef.current;
-      const newProduct: StoredProduct = {
-        id: crypto.randomUUID(),
-        name,
-        suppliers: savedSuppliers,
-        tree: hookTree,
-        durationMs,
-        createdAt: Date.now(),
-      };
-      pendingFormRef.current = null;
-      onProductAdd(newProduct);
-      setActiveProductId(newProduct.id);
-      onTreeChange(hookTree);
-      onNodeSelect(null);
-      setView("tree");
-      // Reset form
-      setProductName("");
-      setSuppliers([]);
-    }
-  }, [hookTree, isLoading, error, durationMs, onProductAdd, onTreeChange, onNodeSelect]);
-
-  // Get the active product from the products array
-  const activeProduct = activeProductId
-    ? products.find((p) => p.id === activeProductId) ?? null
-    : null;
-
-  // Navigate to product list
-  const goToList = () => {
-    abort();
-    setView("list");
-    setActiveProductId(null);
-    setSelectedNodeId(null);
-    onTreeChange(null);
-    onNodeSelect(null);
-  };
-
-  // Navigate to tree view for a product
-  const goToTree = (product: StoredProduct) => {
-    setActiveProductId(product.id);
-    setSelectedNodeId(null);
-    onTreeChange(product.tree);
-    onNodeSelect(null);
-    setView("tree");
-  };
-
-  // Navigate to node detail
-  const goToDetail = (nodeId: string) => {
-    setSelectedNodeId(nodeId);
-    onNodeSelect(nodeId);
-    setView("detail");
-  };
-
-  // Navigate back from detail to tree
-  const goBackToTree = () => {
-    setSelectedNodeId(null);
-    onNodeSelect(null);
-    setView("tree");
-  };
-
-  const handleDecompose = () => {
-    if (productName.trim()) {
-      pendingFormRef.current = { name: productName.trim(), suppliers: [...suppliers] };
-      decompose(productName.trim(), suppliers);
-    }
-  };
-
-  // --- Header ---
-  const renderHeader = () => {
-    switch (view) {
-      case "list":
-        return (
-          <div className="flex items-center justify-between border-b border-border p-4">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-foreground">Inventory</h2>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setView("form")}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      case "form":
-        return (
-          <div className="flex items-center gap-2 border-b border-border p-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={goToList}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-lg font-semibold text-foreground">New Product</h2>
-          </div>
-        );
-      case "tree":
-        return (
-          <div className="flex items-center gap-2 border-b border-border p-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={goToList}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="flex-1 truncate text-lg font-semibold text-foreground">
-              {activeProduct?.name}
-            </h2>
-            {activeProduct?.tree.phase === "verified" && (
-              <Badge
-                variant="secondary"
-                className="gap-1 bg-emerald-500/10 text-emerald-500"
-              >
-                <CheckCircle className="h-3 w-3" />
-                Verified
-              </Badge>
+        {/* Product-level recommendation */}
+        {isProductHighRisk && productRecState && (
+          <div className="px-3 pb-2">
+            {productRecState.status === "loading" && (
+              <div className="flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-muted-foreground">Getting AI recommendation...</span>
+              </div>
             )}
-          </div>
-        );
-      case "detail": {
-        const node = activeProduct
-          ? activeProduct.tree.nodes[selectedNodeId!]
-          : null;
-        return (
-          <div className="flex items-center gap-2 border-b border-border p-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={goBackToTree}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="flex-1 truncate text-lg font-semibold text-foreground">
-              {node?.name}
-            </h2>
-          </div>
-        );
-      }
-    }
-  };
 
-  // --- Content ---
-  const renderContent = () => {
-    switch (view) {
-      case "list":
-        return (
-          <ScrollArea className="flex-1">
-            <div className="space-y-2 p-4">
-              {products.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-12 text-center">
-                  <Package className="h-10 w-10 text-muted-foreground/50" />
+            {productRecState.status === "recommended" && productRecState.data && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI Recommendation for product location
+                </div>
+                <div className="mt-1.5 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      No products yet
-                    </p>
-                    <p className="text-xs text-muted-foreground/70">
-                      Add a product to decompose its supply chain
-                    </p>
+                    <p className="text-sm font-semibold text-foreground">{productRecState.data.country}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{productRecState.data.reason}</p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setView("form")}
+                  <Badge
+                    variant={productRecState.data.risk === "low" ? "secondary" : productRecState.data.risk === "high" ? "destructive" : "default"}
+                    className="shrink-0 text-[10px]"
                   >
-                    <Plus className="h-4 w-4" />
-                    Add Product
+                    {productRecState.data.risk} risk
+                  </Badge>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    className="h-7 flex-1 gap-1 bg-green-600 text-xs text-white hover:bg-green-700"
+                    onClick={() => handleAccept(product.id)}
+                  >
+                    <Check className="h-3 w-3" />
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 flex-1 gap-1 text-xs"
+                    onClick={() => handleDecline(product.id)}
+                  >
+                    <XCircle className="h-3 w-3" />
+                    Decline
                   </Button>
                 </div>
-              ) : (
-                products.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onClick={() => goToTree(product)}
-                  />
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        );
-
-      case "form":
-        if (isLoading) {
-          return (
-            <div className="flex flex-col items-center gap-3 p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="text-sm text-primary">
-                {hookTree?.phase === "skeleton"
-                  ? "Building skeleton…"
-                  : "Refining with deep research…"}
-              </span>
-            </div>
-          );
-        }
-
-        if (error) {
-          return (
-            <div className="p-4">
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-500">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {error}
               </div>
-              <Button
-                variant="outline"
-                className="mt-3 w-full"
-                onClick={handleDecompose}
-              >
-                Retry
-              </Button>
-            </div>
-          );
-        }
+            )}
 
-        return (
-          <div className="space-y-4 p-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-muted-foreground">
-                Product Name
-              </label>
-              <Input
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleDecompose();
-                }}
-                placeholder="e.g. Tesla Model 3"
-                className="h-10"
-              />
-            </div>
+            {productRecState.status === "accepted" && productRecState.data && (
+              <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/5 px-3 py-2">
+                <Check className="h-3.5 w-3.5 text-green-600" />
+                <span className="text-xs text-green-700">
+                  Relocated to <span className="font-semibold">{productRecState.data.country}</span>
+                </span>
+              </div>
+            )}
 
-            <div>
-              <label className="mb-1 block text-xs font-medium uppercase text-muted-foreground">
-                First-Tier Suppliers
-              </label>
-              <SupplierTagInput
-                suppliers={suppliers}
-                onChange={setSuppliers}
-              />
-            </div>
+            {productRecState.status === "declined" && (
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2">
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  Recommendation declined — keeping {product.country}
+                </span>
+              </div>
+            )}
 
-            <Button
-              className="w-full gap-2"
-              onClick={handleDecompose}
-              disabled={!productName.trim()}
-            >
-              <Zap className="h-4 w-4" />
-              Decompose Supply Chain
-            </Button>
+            {productRecState.error && productRecState.status === "idle" && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                <span className="text-xs text-destructive">{productRecState.error}</span>
+              </div>
+            )}
           </div>
-        );
+        )}
 
-      case "tree": {
-        if (!activeProduct) return null;
-        const rootNode = activeProduct.tree.nodes[activeProduct.tree.root_id];
-        if (!rootNode) return null;
-
-        return (
-          <div className="flex flex-1 flex-col">
-            {/* Metadata bar */}
-            <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
-              {activeProduct.tree.metadata.total_nodes} nodes · avg confidence{" "}
-              {activeProduct.tree.metadata.avg_confidence} ·{" "}
-              {(activeProduct.durationMs / 1000).toFixed(1)}s
-            </div>
-
-            {/* Tree */}
-            <ScrollArea className="flex-1">
-              <div className="py-2">
-                <TreeNodeRow
-                  node={rootNode}
-                  tree={activeProduct.tree}
+        <CollapsibleContent>
+          <div className="space-y-1.5 border-t border-border px-3 py-2.5">
+            {product.components.length === 0 ? (
+              <p className="py-2 text-center text-xs text-muted-foreground">No components</p>
+            ) : (
+              product.components.map((component) => (
+                <InventoryItemRow
+                  key={component.id}
+                  item={component}
                   depth={0}
-                  selectedNodeId={selectedNodeId}
-                  onSelect={goToDetail}
+                  countryRisks={countryRisks}
+                  productColor={product.color}
+                  recommendations={recommendations}
+                  onRecommendationFetched={handleRecommendationFetched}
+                  onAccept={handleAccept}
+                  onDecline={handleDecline}
                 />
-              </div>
-            </ScrollArea>
+              ))
+            )}
           </div>
-        );
-      }
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
 
-      case "detail": {
-        if (!activeProduct || !selectedNodeId) return null;
-        const node = activeProduct.tree.nodes[selectedNodeId];
-        if (!node) return null;
+export function InventorySidebar({
+  isOpen,
+  onClose,
+  countryRisks,
+  inventoryProducts,
+  onInventoryProductsChange,
+  onProductUpdate,
+}: InventorySidebarProps) {
+  if (!isOpen) return null
 
-        return (
-          <ScrollArea className="flex-1">
-            <div className="p-4">
-              <NodeDetail node={node} tree={activeProduct.tree} />
-            </div>
-          </ScrollArea>
-        );
-      }
+  const handleProductUpdate = (updated: Product) => {
+    onInventoryProductsChange(
+      inventoryProducts.map((p) => (p.id === updated.id ? updated : p))
+    )
+
+    if (onProductUpdate) {
+      onProductUpdate(updated)
     }
-  };
+  }
+
+  const handleRemoveProduct = (productId: string) => {
+    onInventoryProductsChange(inventoryProducts.filter((p) => p.id !== productId))
+  }
 
   return (
-    <div className="flex h-full w-80 flex-col border-r border-border bg-card">
-      {renderHeader()}
-      {renderContent()}
-      <p className="border-t border-border p-3 text-center text-[10px] text-muted-foreground">
-        Supply Chain Crisis Detector v1.0
-      </p>
+    <div className="flex h-full w-80 flex-col border-r border-sidebar-border bg-sidebar animate-in slide-in-from-left-4">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-sidebar-border p-4">
+        <div className="flex items-center gap-2">
+          <List className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-sidebar-foreground">Inventory</h2>
+          {inventoryProducts.length > 0 && (
+            <Badge variant="secondary" className="text-[10px]">
+              {inventoryProducts.length}
+            </Badge>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Content */}
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-3 p-4">
+          {inventoryProducts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Package className="h-12 w-12 text-muted-foreground/20" />
+              <p className="mt-3 text-sm font-medium text-muted-foreground">No products in inventory</p>
+              <p className="mt-1 text-xs text-muted-foreground/70">
+                Add products from the Products panel to track them here
+              </p>
+            </div>
+          ) : (
+            inventoryProducts.map((product) => (
+              <InventoryProductCard
+                key={product.id}
+                product={product}
+                countryRisks={countryRisks}
+                onProductUpdate={handleProductUpdate}
+                onRemove={() => handleRemoveProduct(product.id)}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Footer */}
+      <div className="border-t border-sidebar-border p-3">
+        <p className="text-center text-[10px] text-muted-foreground">
+          High-risk items automatically receive AI relocation recommendations
+        </p>
+      </div>
     </div>
-  );
+  )
 }

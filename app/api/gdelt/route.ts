@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 
 const GDELT_BASE = "https://api.gdeltproject.org/api/v2/doc/doc"
 
@@ -9,10 +10,20 @@ const THEMES = [
   "NATURAL_DISASTER",
 ]
 
+// Validation schema
+const QuerySchema = z.object({
+  country: z.string().min(1),
+})
+
 export async function GET(request: NextRequest) {
   const country = request.nextUrl.searchParams.get("country")
-  if (!country) {
-    return NextResponse.json({ error: "country parameter required" }, { status: 400 })
+
+  const parseResult = QuerySchema.safeParse({ country: country ?? "" })
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: "Validation failed", detail: parseResult.error.issues },
+      { status: 400 }
+    )
   }
 
   const themeClause = THEMES.map((t) => `theme:${t}`).join(" OR ")
