@@ -14,7 +14,7 @@ import { normalizeCountryName } from "./country-aliases";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 function getModel(): string {
-  return process.env.OPENROUTER_MODEL || "moonshotai/kimi-k2.5";
+  return process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
 }
 
 function getApiKey(): string {
@@ -158,6 +158,8 @@ export async function* runPipeline(
   const startTime = Date.now();
 
   // --- Phase 1: Skeleton (with retry) ---
+  console.log(`[pipeline] Phase 1: Skeleton started`);
+  const skeletonStart = Date.now();
   let tree: DecompositionTree;
   try {
     const raw = await llmCall(SKELETON_SYSTEM, skeletonPrompt(product, suppliers), 0.7, signal);
@@ -176,9 +178,12 @@ export async function* runPipeline(
   }
   tree.phase = "skeleton";
   updateMetadata(tree);
+  console.log(`[pipeline] Phase 1: Skeleton done in ${Date.now() - skeletonStart}ms (${Object.keys(tree.nodes).length} nodes)`);
   yield sseEvent("skeleton", { tree });
 
   // --- Phase 2: Batched Parallel Search + Evidence Extraction ---
+  console.log(`[pipeline] Phase 2: Search started`);
+  const searchStart = Date.now();
   yield sseEvent("refining", {});
 
   const criticalNodes = selectCriticalNodes(tree);
@@ -194,13 +199,17 @@ export async function* runPipeline(
     }
 
     // Run batch in parallel: build query → search (no LLM calls, just Perplexity)
+    const batchStart = Date.now();
     const results = await Promise.allSettled(
       batch.map(async (node) => {
         const query = buildSearchQuery(node, tree, product);
+        const nodeStart = Date.now();
         const raw = await searchNode(query, signal);
+        console.log(`[pipeline]   Search node ${node.id} (${node.name}) took ${Date.now() - nodeStart}ms`);
         return { nodeId: node.id, raw };
       })
     );
+    console.log(`[pipeline]   Batch ${Math.floor(i / BATCH_SIZE) + 1} took ${Date.now() - batchStart}ms`);
 
     // Yield search-complete for each result
     for (let j = 0; j < results.length; j++) {
@@ -222,7 +231,11 @@ export async function* runPipeline(
     }
   }
 
+  console.log(`[pipeline] Phase 2: Search done in ${Date.now() - searchStart}ms (${Object.keys(evidence).length} nodes with evidence)`);
+
   // --- Phase 3: Reconciliation ---
+  console.log(`[pipeline] Phase 3: Reconciliation started`);
+  const reconStart = Date.now();
   if (Object.keys(evidence).length > 0) {
     try {
       const raw = await llmCall(
@@ -242,7 +255,11 @@ export async function* runPipeline(
     }
   }
 
+  console.log(`[pipeline] Phase 3: Reconciliation done in ${Date.now() - reconStart}ms`);
+
   // --- Phase 4: Adversarial Verification ---
+  console.log(`[pipeline] Phase 4: Adversarial started`);
+  const advStart = Date.now();
   try {
     const raw = await llmCall(
       ADVERSARIAL_SYSTEM,
@@ -260,9 +277,12 @@ export async function* runPipeline(
     updateMetadata(tree);
   }
 
+  console.log(`[pipeline] Phase 4: Adversarial done in ${Date.now() - advStart}ms`);
+
   yield sseEvent("verified", { tree });
 
   // --- Done ---
   const durationMs = Date.now() - startTime;
+  console.log(`[pipeline] Total pipeline: ${durationMs}ms`);
   yield sseEvent("done", { duration_ms: durationMs });
 }
