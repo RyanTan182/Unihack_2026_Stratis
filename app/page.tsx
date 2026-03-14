@@ -1142,6 +1142,7 @@ export default function SupplyChainCrisisDetector() {
           selectedFoundRouteId={selectedFoundRouteId}
           onClearFoundRoutes={handleClearFoundRoutes}
           onViewAlternatives={handleViewAlternatives}
+          inventoryProductIds={inventoryProducts.map((p) => p.id)}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}

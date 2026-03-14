@@ -19,7 +19,11 @@ decomposition-demo/
 
 docs/
 decomposition-demo/
-.claude/
-.ttadk/
+
 specs/
+
+.Planning/
+.playwright-mcp/
+.superpowers/
+decomposition-demo/
 

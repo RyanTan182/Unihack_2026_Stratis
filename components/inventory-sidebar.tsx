@@ -137,15 +137,7 @@ function TreeNodeRow({
         onClick={() => onNodeClick(node.id)}
       >
         {hasChildren ? (
-          <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                setIsExpanded(!isExpanded)
-              }
-            }}
+          <button
             onClick={(e) => {
               e.stopPropagation()
               setIsExpanded(!isExpanded)
@@ -157,7 +149,7 @@ function TreeNodeRow({
             ) : (
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             )}
-          </div>
+          </button>
         ) : (
           <div className="w-3.5" />
         )}
