@@ -70,6 +70,7 @@ interface SupplyChainItem {
   riskDirection: "up" | "down"
   children: SupplyChainItem[]
   isExpanded?: boolean
+  isPredicted?: boolean
 }
 
 interface Product {
@@ -81,6 +82,7 @@ interface Product {
   riskPrediction: number
   riskDirection: "up" | "down"
   components: SupplyChainItem[]
+  isPredicted?: boolean
 }
 
 export interface ProductRouteSegment {
@@ -105,6 +107,7 @@ export interface ProductSupplyRoute {
   pathNodes: string[]
   segments: ProductRouteSegment[]
   chokepoints: string[]
+  isPredicted?: boolean
 }
 
 interface SupplyChainMapProps {
@@ -327,6 +330,7 @@ function extractProductRoutes(
     productColor: string,
     productId: string,
     productName: string,
+    isPredicted?: boolean,
   ) => {
     if (item.country !== parentCountry) {
       const pathNodes = findShortestPath(graph, item.country, parentCountry)
@@ -357,6 +361,7 @@ function extractProductRoutes(
         pathNodes,
         segments,
         chokepoints,
+        isPredicted,
       })
     }
 
@@ -367,12 +372,14 @@ function extractProductRoutes(
         item.name || item.type,
         productColor,
         productId,
-        productName
+        productName,
+        isPredicted ?? item.isPredicted,
       )
     })
   }
 
   products.forEach((product) => {
+    const isPredicted = product.isPredicted ?? false
     product.components.forEach((component) => {
       extractFromItem(
         component,
@@ -380,7 +387,8 @@ function extractProductRoutes(
         product.name || "Product",
         product.color,
         product.id,
-        product.name || "Unnamed Product"
+        product.name || "Unnamed Product",
+        isPredicted,
       )
     })
   })
@@ -629,29 +637,33 @@ export function SupplyChainMap({
   }, [productRoutes, selectedRouteId])
 
   const productCountryMarkers = useMemo(() => {
-    const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean }[] = []
-    const countryMap: globalThis.Map<string, { name: string; type: ItemType }[]> = new globalThis.Map()
+    const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean; hasPredictedItems: boolean }[] = []
+    const countryMap = new globalThis.Map<string, { items: { name: string; type: ItemType }[]; hasPredictedItems: boolean }>()
 
-    const collectFromItem = (item: SupplyChainItem) => {
-      const existing = countryMap.get(item.country) || []
-      existing.push({ name: item.name || item.type, type: item.type })
+    const collectFromItem = (item: SupplyChainItem, isPredicted: boolean) => {
+      const existing = countryMap.get(item.country) || { items: [], hasPredictedItems: false }
+      existing.items.push({ name: item.name || item.type, type: item.type })
+      existing.hasPredictedItems = existing.hasPredictedItems || isPredicted || !!item.isPredicted
       countryMap.set(item.country, existing)
-      item.children.forEach(collectFromItem)
+      item.children.forEach((child) => collectFromItem(child, isPredicted || !!item.isPredicted))
     }
 
     products.forEach((product) => {
-      const existing = countryMap.get(product.country) || []
-      existing.push({ name: product.name || "Product", type: "product" })
+      const isPredicted = product.isPredicted ?? false
+      const existing = countryMap.get(product.country) || { items: [], hasPredictedItems: false }
+      existing.items.push({ name: product.name || "Product", type: "product" })
+      existing.hasPredictedItems = existing.hasPredictedItems || isPredicted
       countryMap.set(product.country, existing)
-      product.components.forEach(collectFromItem)
+      product.components.forEach((component) => collectFromItem(component, isPredicted))
     })
 
-    countryMap.forEach((items: { name: string; type: ItemType }[], country: string) => {
+    countryMap.forEach(({ items, hasPredictedItems }, country: string) => {
       const countryRisk = countryRisks.find((c) => c.name === country)
       markers.push({
         country,
         items,
         isDangerous: (countryRisk?.overallRisk || 0) >= 60,
+        hasPredictedItems,
       })
     })
 
@@ -693,6 +705,7 @@ export function SupplyChainMap({
     productRoutes.forEach((route) => {
       const isSelected = selectedRouteId === route.id
       const isDimmed = !!selectedRouteId && !isSelected
+      const isPredicted = route.isPredicted ?? false
 
       route.segments.forEach((segment) => {
         const fromCoords = nodeCoordinates[segment.fromNode]
@@ -700,6 +713,9 @@ export function SupplyChainMap({
         if (!fromCoords || !toCoords) return
 
         const segmentIsDangerous = segment.riskScore >= 60
+        // Predicted routes: lower opacity (0.4) vs verified (0.9)
+        const baseOpacity = isPredicted ? 0.4 : (segmentIsDangerous ? 1 : 0.9)
+        const opacity = isDimmed ? 0.22 : baseOpacity
 
         features.push({
           type: "Feature" as const,
@@ -709,9 +725,10 @@ export function SupplyChainMap({
             isDangerous: segmentIsDangerous,
             isSelected,
             isDimmed,
+            isPredicted,
             color: segmentIsDangerous ? "#dc2626" : route.productColor,
             width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
-            opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
+            opacity,
           },
           geometry: {
             type: "LineString" as const,
@@ -1021,6 +1038,7 @@ export function SupplyChainMap({
                           width: 28,
                           height: 28,
                           backgroundColor: markerColor,
+                          opacity: marker.hasPredictedItems ? 0.6 : 1,
                         }}
                       >
                         {marker.items.length > 1 && (
@@ -1034,6 +1052,9 @@ export function SupplyChainMap({
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-foreground">{marker.country}</p>
+                      {marker.hasPredictedItems && (
+                        <p className="text-xs font-medium text-amber-500">AI-predicted supply chain</p>
+                      )}
                       {marker.isDangerous && (
                         <p className="text-xs font-medium text-red-400">High Risk Location</p>
                       )}

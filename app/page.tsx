@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
+import { storedProductToMapProduct } from "@/lib/decompose/to-map-product"
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
@@ -836,6 +837,12 @@ export default function SupplyChainCrisisDetector() {
     setSelectedDecompNodeId(nodeId)
   }, [])
 
+  const mapProducts = useMemo(() => {
+    return inventoryProducts
+      .map((stored, i) => storedProductToMapProduct(stored, i))
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+  }, [inventoryProducts])
+
   return (
     <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
@@ -847,21 +854,23 @@ export default function SupplyChainCrisisDetector() {
       />
 
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
-      {isInventorySidebarOpen ? (
-        <InventorySidebar
-          products={inventoryProducts}
-          onProductAdd={handleProductAdd}
-          onTreeChange={handleTreeChange}
-          onNodeSelect={handleNodeSelect}
-        />
-      ) : (
-        <RiskSidebar
-          countryRisks={resolvedCountryRisks}
-          selectedCountry={selectedCountry}
-          onCountrySelect={setSelectedCountry}
-          onReset={handleReset}
-        />
-      )}
+      <div className="min-h-0 overflow-hidden">
+        {isInventorySidebarOpen ? (
+          <InventorySidebar
+            products={inventoryProducts}
+            onProductAdd={handleProductAdd}
+            onTreeChange={handleTreeChange}
+            onNodeSelect={handleNodeSelect}
+          />
+        ) : (
+          <RiskSidebar
+            countryRisks={resolvedCountryRisks}
+            selectedCountry={selectedCountry}
+            onCountrySelect={setSelectedCountry}
+            onReset={handleReset}
+          />
+        )}
+      </div>
 
       {/* Main Map Area */}
       <div className="relative h-full w-full overflow-hidden">
@@ -870,7 +879,7 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={customRoute}
-          products={[]}
+          products={mapProducts}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
