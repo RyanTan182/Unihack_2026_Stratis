@@ -2,7 +2,7 @@
 
 ## Summary
 
-Replace the floating `ProductDecomposition` card with an Inventory view inside the existing left sidebar. The nav strip becomes context-aware: "Locations" shows the Risk sidebar, "Inventory" shows a product list with decomposition capabilities. The decomposition pipeline, hook, and map marker logic are unchanged.
+Add an Inventory view inside the existing left sidebar, triggered by the Inventory nav icon. The nav strip becomes context-aware: "Locations" shows the Risk sidebar, "Inventory" shows a product list with AI decomposition capabilities. The existing `ProductSupplyChain` floating panel (manual product/route management) is a separate feature and remains unchanged. The decomposition pipeline, hook, and map marker logic are unchanged.
 
 ## User Flow
 
@@ -31,7 +31,7 @@ Only "Locations" and "Inventory" are interactive. All other nav items (Dashboard
 
 `page.tsx` manages an `activeView` state (`"risk" | "inventory"`) and conditionally renders either `RiskSidebar` or `InventorySidebar` in the same position.
 
-The "Products" floating button on the map is removed. The "Build Route" button remains.
+The "Products" floating button and `ProductSupplyChain` panel remain unchanged — they are a separate feature for manual product/route management. The "Build Route" button also remains.
 
 ### Inventory Sidebar Views
 
@@ -86,21 +86,34 @@ interface InventorySidebarProps {
   onProductAdd: (product: StoredProduct) => void
   onTreeChange: (tree: DecompositionTree | null) => void
   onNodeSelect: (nodeId: string | null) => void
+  onSearchingChange?: (ids: Set<string>) => void
+  onStreamingNodesChange?: (nodes: SupplyChainNode[]) => void
 }
 ```
 
 **Callback contract — when each callback fires:**
-- `onProductAdd(product)` — when a new decomposition completes successfully (View 2 → View 3 transition). `page.tsx` appends to the `products` array.
+- `onProductAdd(product)` — when a new decomposition completes successfully (View 2 → View 3 transition). `page.tsx` appends to the `inventoryProducts` array.
 - `onTreeChange(tree)` — when navigating to View 3 (set to product's tree), or when navigating back to View 1 / switching away (set to null). `page.tsx` sets `decompositionTree` for the map.
 - `onNodeSelect(nodeId)` — when clicking a node in View 3 (set to node ID, transitions to View 4), or when navigating back to View 3 (set to null). `page.tsx` sets `selectedDecompNodeId` for the map.
+- `onSearchingChange(ids)` — optional, fires when search-phase node IDs change. `page.tsx` passes to map for pulsing animation.
+- `onStreamingNodesChange(nodes)` — optional, fires during skeleton phase as nodes stream in. `page.tsx` passes to map for streaming markers.
 
 ### State Management
 
-**In `page.tsx`:**
+**In `page.tsx` (new state for inventory feature — coexists with existing state):**
 - `activeView: "risk" | "inventory"` — which sidebar is shown
-- `products: StoredProduct[]` — session-only storage of decomposed products
+- `inventoryProducts: StoredProduct[]` — session-only storage of decomposed products. Named `inventoryProducts` to avoid collision with existing `products: Product[]` used by `ProductSupplyChain`.
 - `decompositionTree: DecompositionTree | null` — derived from active product (passed to map). Set by `onTreeChange` callback. Cleared when switching to risk view.
 - `selectedDecompNodeId: string | null` — set by `onNodeSelect` callback (passed to map)
+- `searchingNodeIds: Set<string>` — optional, for map pulsing animation during search phase
+- `streamingNodes: SupplyChainNode[]` — optional, for map streaming markers during skeleton phase
+
+**Existing `page.tsx` state (unchanged):**
+- `products: Product[]` — used by `ProductSupplyChain` for manual product/route management
+- `isProductBuilderOpen: boolean` — toggles the `ProductSupplyChain` floating panel
+- `selectedRoute: ProductSupplyRoute | null` — selected route for `PathDetailsPanel`
+- `riskSnapshots`, `riskLoadingIds`, `isBulkEvaluating`, `bulkProgress` — risk evaluation system
+- `resolvedCountryRisks` — useMemo that merges risk evaluations into base country data
 
 **In `InventorySidebar`:**
 - `view: "list" | "form" | "tree" | "detail"` — current internal view
@@ -118,30 +131,42 @@ No changes to map marker logic. Behavior:
 
 ### Component Extraction
 
-Sub-components currently in `product-decomposition.tsx` are reused in `inventory-sidebar.tsx`:
+Sub-components are defined directly in `inventory-sidebar.tsx`:
 - `SupplierTagInput` — tag input for suppliers
 - `TreeNodeRow` — recursive collapsible tree row
 - `NodeDetail` — geographic concentration bar, risk/confidence scores, risk factors, evidence, corrections
+- `ProductCard` — product list item
 - `CONCENTRATION_COLORS` — color palette for concentration bars
 
-These can be moved into `inventory-sidebar.tsx` directly or extracted to a shared location if needed.
+### Coexistence with ProductSupplyChain
+
+`ProductSupplyChain` (`components/product-supply-chain.tsx`) is a separate feature for manually defining products with supply chain routes, components, and locations. It uses the `Product` type (not `StoredProduct`) and renders as a floating panel toggled by the "Products" button on the map.
+
+`InventorySidebar` is for AI-powered decomposition — it uses the `StoredProduct` type and renders in the left sidebar position. The two features are independent and coexist without conflict:
+- `ProductSupplyChain` uses `products: Product[]` + `isProductBuilderOpen` + `selectedRoute`
+- `InventorySidebar` uses `inventoryProducts: StoredProduct[]` + `decompositionTree` + `selectedDecompNodeId`
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `components/nav-sidebar.tsx` | Add `activeItem` prop + `onNavigate` callback. Remove hardcoded `active: true` on Locations. |
-| `components/inventory-sidebar.tsx` | **New.** Inventory sidebar with 4 views. Reuses sub-components from product-decomposition.tsx. |
-| `app/page.tsx` | Add `activeView` state, `products` array. Conditionally render `RiskSidebar` or `InventorySidebar`. Remove `isProductBuilderOpen` state, Products button, and `ProductDecomposition` usage. Wire `NavSidebar` with props. |
-| `components/product-decomposition.tsx` | **Delete.** Replaced by inventory-sidebar.tsx. |
+| `app/page.tsx` | Add `activeView` state, `inventoryProducts` array, decomposition state. Conditionally render `RiskSidebar` or `InventorySidebar`. Wire `NavSidebar` with props. Pass decomposition props to `SupplyChainMap`. Keep `ProductSupplyChain`, Products button, `PathDetailsPanel` as-is. |
+
+### Already Done (from previous implementation session)
+- `lib/decompose/types.ts` — `StoredProduct` interface already added
+- `components/nav-sidebar.tsx` — Already has `activeItem`/`onNavigate` props
+- `components/inventory-sidebar.tsx` — Already created with 4 views and all sub-components
+- `components/product-decomposition.tsx` — Already deleted
 
 ### Unchanged
 - `hooks/use-decompose.ts` — hook stays the same
 - `lib/decompose/*` — pipeline, prompts, search, types unchanged
 - `app/api/decompose/route.ts` — API unchanged
-- `components/supply-chain-map.tsx` — already accepts decompositionTree/selectedDecompNodeId props
+- `components/supply-chain-map.tsx` — already accepts decompositionTree/selectedDecompNodeId/searchingNodeIds/streamingNodes props
 - `components/risk-sidebar.tsx` — no changes
 - `components/route-builder.tsx` — no changes
+- `components/product-supply-chain.tsx` — no changes (separate feature)
+- `components/path-details-panel.tsx` — no changes
 
 ## Edge Cases
 

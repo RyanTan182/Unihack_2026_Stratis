@@ -1,30 +1,44 @@
 // lib/decompose/pipeline.ts
 
-import type { DecompositionTree, SupplyChainNode, ExtractedEvidence } from "./types";
-import {
-  SKELETON_SYSTEM,
-  ADVERSARIAL_SYSTEM,
-  skeletonPrompt,
-  reconciliationPrompt,
-  adversarialPrompt,
-} from "./prompts";
-import { searchNode } from "./search";
+import type { DecompositionTree } from "./types";
 import { normalizeCountryName } from "./country-aliases";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+const SYSTEM_PROMPT = `You are a supply chain decomposition expert with deep knowledge of global manufacturing, raw materials sourcing, and geopolitical supply chain risks. You decompose products into their full dependency tree. Output ONLY valid JSON. No markdown, no explanation.`;
+
 function getModel(): string {
-  return process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
+  return process.env.OPENROUTER_MODEL || "anthropic/claude-opus-4-6";
 }
 
 function getApiKey(): string {
   return process.env.OPENROUTER_API_KEY || "";
 }
 
+function buildUserPrompt(product: string, suppliers: string[]): string {
+  const supplierContext =
+    suppliers.length > 0
+      ? `\n\nKnown first-tier suppliers: ${suppliers.join(", ")}. Incorporate these as known entities at tier 1 with higher confidence (0.8+).`
+      : "";
+
+  return `Decompose ${product} into a full supply chain dependency tree.${supplierContext}
+
+Requirements:
+- 4-5 tiers deep: product → subsystems → components → materials → geographies
+- 25-40 nodes total, each with unique kebab-case id
+- geographic_concentration: use your real-world knowledge of actual production percentages, summing to ~100
+- Name actual companies in risk_factors
+- confidence: 0.0-1.0, risk_score: 0-100
+- status: "verified" for well-known facts, "inferred" for guesses
+- Self-check: verify each node's geographic_concentration reflects reality
+
+Return JSON: { product, phase: "verified", nodes: { "node-id": { id, name, tier, type, status, confidence, geographic_concentration: {country: pct}, risk_score, risk_factors: [], source: "knowledge", search_evidence: null, correction: null, children: [] } }, root_id, metadata: { total_nodes, verified_count, corrected_count: 0, avg_confidence } }`;
+}
+
 async function llmCall(
   system: string,
   user: string,
-  temperature: number = 0.7,
+  temperature: number = 0.3,
   signal?: AbortSignal
 ): Promise<string> {
   const resp = await fetch(OPENROUTER_BASE_URL, {
@@ -90,14 +104,12 @@ function normalizeConcentrations(tree: DecompositionTree): void {
     const entries = Object.entries(node.geographic_concentration);
     if (entries.length === 0) continue;
 
-    // Normalize country names first
     const normalized: Record<string, number> = {};
     for (const [country, pct] of entries) {
       const canonicalName = normalizeCountryName(country);
       normalized[canonicalName] = (normalized[canonicalName] || 0) + pct;
     }
 
-    // Normalize percentages to sum to 100
     const sum = Object.values(normalized).reduce((s, v) => s + v, 0);
     if (sum > 0 && (sum < 95 || sum > 105)) {
       const factor = 100 / sum;
@@ -110,46 +122,6 @@ function normalizeConcentrations(tree: DecompositionTree): void {
   }
 }
 
-function selectCriticalNodes(
-  tree: DecompositionTree,
-  maxNodes: number = 12
-): SupplyChainNode[] {
-  const candidates: [number, SupplyChainNode][] = [];
-  for (const node of Object.values(tree.nodes)) {
-    if (node.id === tree.root_id) continue;
-    let score = 0;
-    const isLeaf = node.children.length === 0;
-    const hasConcentration = Object.keys(node.geographic_concentration).length > 0;
-    if (isLeaf && !hasConcentration) score += 50;
-    score += node.children.length * 8;
-    score += (1 - node.confidence) * 30;
-    score += node.tier * 5;
-    score += node.risk_score * 0.3;
-    candidates.push([score, node]);
-  }
-  candidates.sort((a, b) => b[0] - a[0]);
-  return candidates.slice(0, maxNodes).map(([, node]) => node);
-}
-
-
-function findParentName(tree: DecompositionTree, nodeId: string, fallback: string): string {
-  for (const candidate of Object.values(tree.nodes)) {
-    if (candidate.children.includes(nodeId)) {
-      return candidate.name;
-    }
-  }
-  return fallback;
-}
-
-function buildSearchQuery(
-  node: SupplyChainNode,
-  tree: DecompositionTree,
-  product: string,
-): string {
-  const parentName = findParentName(tree, node.id, product);
-  return `${node.name} ${parentName} supply chain geographic production breakdown major producers ${product}`;
-}
-
 export async function* runPipeline(
   product: string,
   suppliers: string[],
@@ -157,132 +129,47 @@ export async function* runPipeline(
 ): AsyncGenerator<string> {
   const startTime = Date.now();
 
-  // --- Phase 1: Skeleton (with retry) ---
-  console.log(`[pipeline] Phase 1: Skeleton started`);
-  const skeletonStart = Date.now();
+  console.log(`[pipeline] Single-call decomposition started for "${product}"`);
+
+  // Emit skeleton placeholder so the frontend shows loading state
+  yield sseEvent("refining", {});
+
   let tree: DecompositionTree;
   try {
-    const raw = await llmCall(SKELETON_SYSTEM, skeletonPrompt(product, suppliers), 0.7, signal);
+    const raw = await llmCall(
+      SYSTEM_PROMPT,
+      buildUserPrompt(product, suppliers),
+      0.3,
+      signal
+    );
     tree = parseJson(raw) as unknown as DecompositionTree;
-  } catch {
-    // Retry with higher temperature
+  } catch (e) {
+    // Retry once with slightly higher temperature
     try {
-      const raw = await llmCall(SKELETON_SYSTEM, skeletonPrompt(product, suppliers), 0.8, signal);
+      const raw = await llmCall(
+        SYSTEM_PROMPT,
+        buildUserPrompt(product, suppliers),
+        0.5,
+        signal
+      );
       tree = parseJson(raw) as unknown as DecompositionTree;
     } catch (retryError) {
       yield sseEvent("error", {
-        message: `Skeleton generation failed after retry: ${retryError instanceof Error ? retryError.message : retryError}`,
+        message: `Decomposition failed after retry: ${retryError instanceof Error ? retryError.message : retryError}`,
       });
       return;
     }
   }
-  tree.phase = "skeleton";
+
+  tree.phase = "verified";
   updateMetadata(tree);
-  console.log(`[pipeline] Phase 1: Skeleton done in ${Date.now() - skeletonStart}ms (${Object.keys(tree.nodes).length} nodes)`);
-  yield sseEvent("skeleton", { tree });
+  normalizeConcentrations(tree);
 
-  // --- Phase 2: Batched Parallel Search + Evidence Extraction ---
-  console.log(`[pipeline] Phase 2: Search started`);
-  const searchStart = Date.now();
-  yield sseEvent("refining", {});
-
-  const criticalNodes = selectCriticalNodes(tree);
-  const evidence: Record<string, ExtractedEvidence> = {};
-  const BATCH_SIZE = 6;
-
-  for (let i = 0; i < criticalNodes.length; i += BATCH_SIZE) {
-    const batch = criticalNodes.slice(i, i + BATCH_SIZE);
-
-    // Yield search-started for this batch
-    for (const node of batch) {
-      yield sseEvent("search-started", { nodeId: node.id });
-    }
-
-    // Run batch in parallel: build query → search (no LLM calls, just Perplexity)
-    const batchStart = Date.now();
-    const results = await Promise.allSettled(
-      batch.map(async (node) => {
-        const query = buildSearchQuery(node, tree, product);
-        const nodeStart = Date.now();
-        const raw = await searchNode(query, signal);
-        console.log(`[pipeline]   Search node ${node.id} (${node.name}) took ${Date.now() - nodeStart}ms`);
-        return { nodeId: node.id, raw };
-      })
-    );
-    console.log(`[pipeline]   Batch ${Math.floor(i / BATCH_SIZE) + 1} took ${Date.now() - batchStart}ms`);
-
-    // Yield search-complete for each result
-    for (let j = 0; j < results.length; j++) {
-      const result = results[j];
-      if (result.status === "fulfilled") {
-        const rawText = result.value.raw;
-        evidence[result.value.nodeId] = {
-          countries: [],
-          majorProducers: [],
-          riskFactors: [],
-          confidenceSignal: "moderate",
-          rawText,
-        };
-        tree.nodes[result.value.nodeId].search_evidence = rawText;
-        yield sseEvent("search-complete", { nodeId: result.value.nodeId, hasEvidence: true });
-      } else {
-        yield sseEvent("search-complete", { nodeId: batch[j].id, hasEvidence: false });
-      }
-    }
-  }
-
-  console.log(`[pipeline] Phase 2: Search done in ${Date.now() - searchStart}ms (${Object.keys(evidence).length} nodes with evidence)`);
-
-  // --- Phase 3: Reconciliation ---
-  console.log(`[pipeline] Phase 3: Reconciliation started`);
-  const reconStart = Date.now();
-  if (Object.keys(evidence).length > 0) {
-    try {
-      const raw = await llmCall(
-        "You are a supply chain analyst. Return valid JSON only.",
-        reconciliationPrompt(tree, evidence),
-        0.3,
-        signal
-      );
-      const treeData = parseJson(raw) as unknown as DecompositionTree;
-      tree = treeData;
-      tree.phase = "refining";
-      updateMetadata(tree);
-      normalizeConcentrations(tree);
-    } catch {
-      tree.phase = "refining";
-      updateMetadata(tree);
-    }
-  }
-
-  console.log(`[pipeline] Phase 3: Reconciliation done in ${Date.now() - reconStart}ms`);
-
-  // --- Phase 4: Adversarial Verification ---
-  console.log(`[pipeline] Phase 4: Adversarial started`);
-  const advStart = Date.now();
-  try {
-    const raw = await llmCall(
-      ADVERSARIAL_SYSTEM,
-      adversarialPrompt(tree),
-      0.4,
-      signal
-    );
-    const treeData = parseJson(raw) as unknown as DecompositionTree;
-    tree = treeData;
-    tree.phase = "verified";
-    updateMetadata(tree);
-    normalizeConcentrations(tree);
-  } catch {
-    tree.phase = "verified";
-    updateMetadata(tree);
-  }
-
-  console.log(`[pipeline] Phase 4: Adversarial done in ${Date.now() - advStart}ms`);
+  const durationMs = Date.now() - startTime;
+  console.log(
+    `[pipeline] Decomposition done in ${durationMs}ms (${Object.keys(tree.nodes).length} nodes)`
+  );
 
   yield sseEvent("verified", { tree });
-
-  // --- Done ---
-  const durationMs = Date.now() - startTime;
-  console.log(`[pipeline] Total pipeline: ${durationMs}ms`);
   yield sseEvent("done", { duration_ms: durationMs });
 }

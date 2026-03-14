@@ -1,20 +1,19 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
 import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
-import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
-import { Route, Package, Layers, Globe, Factory } from "lucide-react"
+import { Route, Layers, Globe, Factory } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
-import { collectCountriesFromProducts } from "./lib/risk-country-utils";
+import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
@@ -696,14 +695,14 @@ function getAllCountryNodes(countryRisks: CountryRiskData[]) {
 export default function SupplyChainCrisisDetector() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
   const [isRouteBuilderOpen, setIsRouteBuilderOpen] = useState(false)
-  const [isProductBuilderOpen, setIsProductBuilderOpen] = useState(false)
   const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
   const [showRiskZones, setShowRiskZones] = useState(false)
   const [isRelocationOpen, setIsRelocationOpen] = useState(false)
-  const [inventoryProducts, setInventoryProducts] = useState<Product[]>([])
+  const [inventoryProducts, setInventoryProducts] = useState<StoredProduct[]>([])
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
+  const [decompositionTree, setDecompositionTree] = useState<DecompositionTree | null>(null)
+  const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
   const [isBulkEvaluating, setIsBulkEvaluating] = useState(false)
@@ -814,36 +813,28 @@ export default function SupplyChainCrisisDetector() {
     setIsRouteBuilderOpen(false)
   }
 
-  const handleAddToInventory = (product: Product) => {
-    if (inventoryProducts.some((p) => p.id === product.id)) return
-    setInventoryProducts((prev) => [...prev, { ...product }])
-    setIsInventorySidebarOpen(true)
-  }
-
   const handleToggleInventory = () => {
-    setIsInventorySidebarOpen((prev) => !prev)
-  }
-
-  const handleInventoryProductsChange = (updated: Product[]) => {
-    setInventoryProducts(updated)
-
-    // Keep core products list in sync with any changes made in Inventory
-    setProducts((prev) => {
-      if (prev.length === 0) return prev
-      const updatedById = new Map(updated.map((p) => [p.id, p]))
-      let changed = false
-
-      const next = prev.map((p) => {
-        const candidate = updatedById.get(p.id)
-        if (!candidate) return p
-        if (candidate === p) return p
-        changed = true
-        return candidate
-      })
-
-      return changed ? next : prev
+    setIsInventorySidebarOpen((prev) => {
+      const next = !prev
+      if (!next) {
+        setDecompositionTree(null)
+        setSelectedDecompNodeId(null)
+      }
+      return next
     })
   }
+
+  const handleProductAdd = useCallback((product: StoredProduct) => {
+    setInventoryProducts((prev) => [...prev, product])
+  }, [])
+
+  const handleTreeChange = useCallback((tree: DecompositionTree | null) => {
+    setDecompositionTree(tree)
+  }, [])
+
+  const handleNodeSelect = useCallback((nodeId: string | null) => {
+    setSelectedDecompNodeId(nodeId)
+  }, [])
 
   return (
     <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
@@ -858,11 +849,10 @@ export default function SupplyChainCrisisDetector() {
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
       {isInventorySidebarOpen ? (
         <InventorySidebar
-          isOpen={true}
-          onClose={() => setIsInventorySidebarOpen(false)}
-          countryRisks={resolvedCountryRisks}
-          inventoryProducts={inventoryProducts}
-          onInventoryProductsChange={handleInventoryProductsChange}
+          products={inventoryProducts}
+          onProductAdd={handleProductAdd}
+          onTreeChange={handleTreeChange}
+          onNodeSelect={handleNodeSelect}
         />
       ) : (
         <RiskSidebar
@@ -880,7 +870,7 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={customRoute}
-          products={products}
+          products={[]}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
@@ -904,25 +894,6 @@ export default function SupplyChainCrisisDetector() {
           >
             <Route className="h-4 w-4" />
             {customRoute ? `${customRoute.totalRisk}% Risk` : "Build Route"}
-          </Button>
-
-          <Button
-            variant={isProductBuilderOpen || products.length > 0 ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              isProductBuilderOpen || products.length > 0
-                ? "bg-primary text-primary-foreground glow-primary"
-                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-            )}
-            onClick={() => {
-              setIsProductBuilderOpen(!isProductBuilderOpen)
-              setIsRouteBuilderOpen(false)
-              setIsRelocationOpen(false)
-            }}
-          >
-            <Package className="h-4 w-4" />
-            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Products"}
           </Button>
 
           <Button
@@ -980,17 +951,6 @@ export default function SupplyChainCrisisDetector() {
           countryRisks={countryRisks}
           customRoute={customRoute}
           onRouteChange={setCustomRoute}
-        />
-
-        {/* Product Supply Chain Panel */}
-        <ProductSupplyChain
-          isOpen={isProductBuilderOpen}
-          onClose={() => setIsProductBuilderOpen(false)}
-          countryRisks={countryRisks}
-          products={products}
-          onProductsChange={setProducts}
-          onAddToInventory={handleAddToInventory}
-          inventoryProductIds={inventoryProducts.map((p) => p.id)}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}

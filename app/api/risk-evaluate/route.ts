@@ -84,9 +84,6 @@ function extractOutputText(response: any): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // Get client lazily to avoid build-time errors
-    const client = getOpenAIClient()
-
     const body = await req.json()
     const countries = (body?.countries ?? []) as CountryRiskBatchInput[]
 
@@ -158,8 +155,8 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    const response = await client.responses.create({
-      model: "gpt-4.1-nano",
+    const response = await getOpenAIClient().responses.create({
+      model: "gpt-5-nano",
       input: [
         {
           role: "system",
