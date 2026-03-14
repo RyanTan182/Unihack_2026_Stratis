@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Package, Zap } from "lucide-react"
+import { Home, Package, Zap, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { IconButton } from "@/components/ui/icon-button"
@@ -17,6 +17,8 @@ interface NavSidebarProps {
   isInventoryOpen?: boolean
   onLocationClick?: () => void
   isLocationActive?: boolean
+  onAlertsClick?: () => void
+  isAlertsActive?: boolean
 }
 
 export function NavSidebar({
@@ -24,10 +26,13 @@ export function NavSidebar({
   isInventoryOpen,
   onLocationClick,
   isLocationActive,
+  onAlertsClick,
+  isAlertsActive,
 }: NavSidebarProps) {
   const navItems: NavItem[] = [
     { icon: Home, label: "Risk & Locations", active: isLocationActive, onClick: onLocationClick },
     { icon: Package, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
+    { icon: AlertTriangle, label: "Alerts", active: isAlertsActive, onClick: onAlertsClick },
   ]
   return (
     <TooltipProvider delayDuration={0}>

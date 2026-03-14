@@ -18,6 +18,8 @@ import { RouteFinderPanel } from "@/components/route-finder-panel"
 import { RouteSummary } from "@/components/route-summary"
 import { PriceRiskTimeline } from "@/components/price-risk-timeline"
 import { AlertBanner, type AlertData } from "@/components/alert-banner"
+import { AlertsSidebar } from "@/components/alerts-sidebar"
+import { generateAlertsFromProducts } from "@/lib/alerts"
 import { Button } from "@/components/ui/button"
 import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -966,6 +968,8 @@ export default function SupplyChainCrisisDetector() {
   const [activeTree, setActiveTree] = useState<DecompositionTree | null>(null)
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
+  const [isAlertsSidebarOpen, setIsAlertsSidebarOpen] = useState(false)
+  const [dismissedAlertIds, setDismissedAlertIds] = useState<Set<string>>(new Set())
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false)
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
@@ -1066,6 +1070,12 @@ export default function SupplyChainCrisisDetector() {
     if (products.length === 0) return undefined
     return analyzeSupplyChain(products, resolvedCountryRisks)
   }, [products, resolvedCountryRisks])
+
+  // Alerts from products (shared by banner and sidebar)
+  const alerts = useMemo(() => {
+    const generated = generateAlertsFromProducts(products, resolvedCountryRisks)
+    return generated.filter((a) => !dismissedAlertIds.has(a.id))
+  }, [products, resolvedCountryRisks, dismissedAlertIds])
 
   useEffect(() => {
     const loadSnapshots = async () => {
@@ -1226,6 +1236,7 @@ export default function SupplyChainCrisisDetector() {
   }
 
   const handleToggleInventory = () => {
+    setIsAlertsSidebarOpen(false)
     setIsInventorySidebarOpen((prev) => !prev)
   }
 
@@ -1253,15 +1264,23 @@ export default function SupplyChainCrisisDetector() {
     }
   }
 
-  // Handler for alert click
+  // Handler for alert click - open Alerts sidebar and optionally alternatives panel
   const handleAlertClick = (alert: AlertData) => {
+    setIsAlertsSidebarOpen(true)
+    setIsInventorySidebarOpen(false)
     if (alert.relatedComponentId && insights) {
-      const componentRisk = insights.highRiskComponents.find(c => c.componentId === alert.relatedComponentId)
+      const componentRisk = insights.highRiskComponents.find(
+        (c) => c.componentId === alert.relatedComponentId
+      )
       if (componentRisk) {
         setSelectedComponentRisk(componentRisk)
         setAlternativesPanelOpen(true)
       }
     }
+  }
+
+  const handleDismissAlert = (alertId: string) => {
+    setDismissedAlertIds((prev) => new Set([...prev, alertId]))
   }
 
   return (
@@ -1270,13 +1289,27 @@ export default function SupplyChainCrisisDetector() {
       <NavSidebar
         onInventoryClick={handleToggleInventory}
         isInventoryOpen={isInventorySidebarOpen}
-        onLocationClick={() => setIsInventorySidebarOpen(false)}
-        isLocationActive={!isInventorySidebarOpen}
+        onLocationClick={() => {
+          setIsInventorySidebarOpen(false)
+          setIsAlertsSidebarOpen(false)
+        }}
+        isLocationActive={!isInventorySidebarOpen && !isAlertsSidebarOpen}
+        onAlertsClick={() => {
+          setIsAlertsSidebarOpen(true)
+          setIsInventorySidebarOpen(false)
+        }}
+        isAlertsActive={isAlertsSidebarOpen}
       />
 
-      {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
+      {/* Left-side panel: Risk, Inventory, or Alerts */}
       <div className="min-h-0 overflow-hidden animate-in fade-in-0 slide-in-from-left-2 duration-500">
-      {isInventorySidebarOpen ? (
+      {isAlertsSidebarOpen ? (
+        <AlertsSidebar
+          alerts={alerts}
+          onAlertClick={handleAlertClick}
+          onDismiss={handleDismissAlert}
+        />
+      ) : isInventorySidebarOpen ? (
         <InventorySidebar
           products={storedProducts}
           onProductAdd={handleProductAdd}
@@ -1298,8 +1331,9 @@ export default function SupplyChainCrisisDetector() {
         {/* Alert Banner - positioned below action buttons */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
-            insights={insights}
+            alerts={alerts}
             onAlertClick={handleAlertClick}
+            onDismiss={handleDismissAlert}
           />
         </div>
 

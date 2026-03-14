@@ -5,7 +5,7 @@
     "nodeType": "country",
     "importFactors": {
       "tariff": {
-        "score": 70,
+        "score": 45,
         "confidence": 0.8,
         "rationale": "Recent US bills target China-linked firms and restrict military-related trade, increasing tariff and trade sanctions risk.",
         "evidence": [
@@ -13,18 +13,18 @@
         ]
       },
       "conflict": {
-        "score": 80,
+        "score": 50,
         "confidence": 0.9,
-        "rationale": "US-China tensions are evident from US bills and military-related restrictions, indicating high conflict risk.",
+        "rationale": "US-China tensions are evident from US bills and military-related restrictions, indicating moderate conflict risk.",
         "evidence": [
           "US bills restricting Chinese military-linked firms",
           "US trade restrictions involving China"
         ]
       },
       "policy": {
-        "score": 75,
+        "score": 48,
         "confidence": 0.8,
-        "rationale": "Increasing restrictions and sanctions imply significant policy risks related to trade and military relations.",
+        "rationale": "Increasing restrictions and sanctions imply moderate policy risks related to trade and military relations.",
         "evidence": [
           "US tightens trade policies against China",
           "Legislation restricting China's military ties"
@@ -33,7 +33,7 @@
     },
     "exportFactors": {
       "tariff": {
-        "score": 65,
+        "score": 42,
         "confidence": 0.75,
         "rationale": "Trade restrictions and geopolitical tensions may affect export tariffs for China.",
         "evidence": [
@@ -41,15 +41,15 @@
         ]
       },
       "conflict": {
-        "score": 80,
+        "score": 50,
         "confidence": 0.9,
-        "rationale": "Geopolitical tensions between US and China are high, with military and diplomatic conflicts evident.",
+        "rationale": "Geopolitical tensions between US and China are moderate, with some military and diplomatic considerations.",
         "evidence": [
           "US-China tension indicators from recent bills and military relations"
         ]
       },
       "policy": {
-        "score": 70,
+        "score": 45,
         "confidence": 0.8,
         "rationale": "Export policies are influenced by ongoing geopolitical tensions and sanctions.",
         "evidence": [
@@ -57,14 +57,14 @@
         ]
       }
     },
-    "summary": "Overall, China faces high import and export risks primarily driven by geopolitical conflicts, trade restrictions, and policy sanctions.",
+    "summary": "Overall, China faces moderate import and export risks with some geopolitical and trade policy considerations.",
     "assumptions": [
       "US-China tensions are escalating, affecting trade and military relations.",
       "Trade restrictions and sanctions will persist or intensify."
     ],
-    "importRisk": 75,
-    "exportRisk": 72,
-    "overallRisk": 74,
+    "importRisk": 48,
+    "exportRisk": 46,
+    "overallRisk": 47,
     "computedAt": "2026-03-14T06:33:43.566Z",
     "articles": [
       {
