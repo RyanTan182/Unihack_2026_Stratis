@@ -20,6 +20,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Spinner } from "@/components/ui/spinner"
 import { extractChokepointsFromPath } from "@/lib/utils"
 import { Package, Boxes, Box, Fuel } from "lucide-react"
+import { FoundRoutesLayer } from "@/components/found-routes-layer"
+import type { FoundRoute } from "@/lib/route-types"
 
 export interface CountryRisk {
   id: string
@@ -121,6 +123,8 @@ interface SupplyChainMapProps {
   onRouteClick?: (route: ProductSupplyRoute) => void
   showRiskZones?: boolean
   onAddItemAtCountry?: (country: string, itemType: ItemType) => void
+  foundRoutes?: FoundRoute[]
+  selectedFoundRouteId?: string | null
 }
 
 const getRiskColor = (risk: number): string => {
@@ -533,6 +537,8 @@ export function SupplyChainMap({
   onRouteClick,
   showRiskZones = false,
   onAddItemAtCountry,
+  foundRoutes = [],
+  selectedFoundRouteId,
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
   const [mapContextMenu, setMapContextMenu] = useState<{
@@ -1062,6 +1068,12 @@ export function SupplyChainMap({
               />
             </Source>
           )}
+
+          {/* Found routes layer from Safe Route Finder */}
+          <FoundRoutesLayer
+            routes={foundRoutes}
+            selectedRouteId={selectedFoundRouteId}
+          />
 
           {/* Custom route markers */}
           {customRoute && customRoute.waypoints.map((waypoint, index) => {

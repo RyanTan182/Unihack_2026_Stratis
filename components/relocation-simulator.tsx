@@ -126,8 +126,8 @@ ${simulation.impact.recommendations.join("\n")}
   }
 
   return (
-    <div className="absolute right-4 top-16 z-20 w-[440px] animate-in slide-in-from-right-4 duration-300">
-      <Card className={cn("max-h-[calc(100vh-8rem)] overflow-hidden border-primary/20 glass-panel shadow-2xl floating-panel", className)}>
+    <div className="absolute right-4 top-20 z-25 w-[380px] animate-in slide-in-from-right-4 duration-300">
+      <Card className={cn("max-h-[calc(100vh-6rem)] overflow-hidden border-primary/20 glass-panel shadow-2xl floating-panel", className)}>
         <CardHeader className="pb-3 border-b border-border/50">
           <div className="flex items-start justify-between">
             <div className="space-y-1">
@@ -150,7 +150,7 @@ ${simulation.impact.recommendations.join("\n")}
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 max-h-[calc(100vh-16rem)] overflow-y-auto">
+        <CardContent className="p-4 max-h-[calc(100vh-14rem)] overflow-y-auto">
           {/* Error State */}
           {error && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 mb-4">
