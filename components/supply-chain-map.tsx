@@ -95,6 +95,7 @@ export interface ProductSupplyRoute {
   itemType: ItemType
   riskScore: number
   isDangerous: boolean
+  componentRiskPrediction: number
   productColor: string
   productId: string
   productName: string
@@ -352,7 +353,8 @@ function extractProductRoutes(
         toItem: parentName,
         itemType: item.type,
         riskScore: avgRisk,
-        isDangerous: avgRisk >= DANGER_THRESHOLD,
+        isDangerous: avgRisk >= DANGER_THRESHOLD || item.riskPrediction > 60,
+        componentRiskPrediction: item.riskPrediction,
         productColor,
         productId,
         productName,
