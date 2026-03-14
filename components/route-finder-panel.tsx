@@ -126,21 +126,18 @@ export function RouteFinderPanel({
   if (!isOpen) return null
 
   return (
-    <div className="absolute right-4 top-20 z-20 w-[380px] animate-in slide-in-from-right-4 duration-300">
-      <Card className="border-primary/20 glass-panel shadow-2xl max-h-[calc(100vh-6rem)] overflow-y-auto">
-        <CardHeader className="pb-2">
+    <div className="p-4">
+      <div className="border-primary/20 glass-panel shadow-2xl overflow-y-auto p-6 rounded-lg">
+        <div className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
+            <div className="flex items-center gap-2 text-base">
               <Route className="h-5 w-5 text-primary" />
               Route Finder
-            </CardTitle>
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
-              <X className="h-4 w-4" />
-            </Button>
+            </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="space-y-3">
+        <div className="space-y-3">
           {/* Simple Input Section */}
           <div className="space-y-2">
             <Select value={origin} onValueChange={setOrigin}>
@@ -281,8 +278,8 @@ export function RouteFinderPanel({
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

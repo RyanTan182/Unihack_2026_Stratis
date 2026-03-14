@@ -499,6 +499,7 @@ export function SupplyChainMap({
   onAddItemAtCountry,
   foundRoutes = [],
   selectedFoundRouteId,
+
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
   const [viewState, setViewState] = useState({

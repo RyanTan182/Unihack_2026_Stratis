@@ -21,13 +21,20 @@ import { RouteSummary } from "@/components/route-summary"
 import { PriceRiskTimeline } from "@/components/price-risk-timeline"
 import { AlertBanner, type AlertData } from "@/components/alert-banner"
 import { Button } from "@/components/ui/button"
-import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3 } from "lucide-react"
+import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3, AlertTriangle, Zap, Radio, FactoryIcon, SparkleIcon, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { FoundRoute } from "@/lib/route-types"
 import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import { collectCountriesFromProducts } from "./lib/risk-country-utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -65,7 +72,7 @@ const countryRisks: CountryRiskData[] = [
     id: "United States",
     name: "United States",
     type: "country",
-    connections: ["Canada", "Mexico", "Panama Canal"],
+    connections: ["Canada", "Mexico", "Panama Canal", "United Kingdom", "Germany", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -78,7 +85,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Germany",
     name: "Germany",
     type: "country",
-    connections: ["Netherlands", "France", "Poland", "Suez Canal"],
+    connections: ["Netherlands", "France", "Poland", "Suez Canal", "United States"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -286,7 +293,7 @@ const countryRisks: CountryRiskData[] = [
     id: "United Kingdom",
     name: "United Kingdom",
     type: "country",
-    connections: ["Netherlands", "France"],
+    connections: ["Netherlands", "France", "United States"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -296,7 +303,7 @@ const countryRisks: CountryRiskData[] = [
     id: "France",
     name: "France",
     type: "country",
-    connections: ["Germany", "Netherlands", "United Kingdom", "Spain", "Italy", "Suez Canal"],
+    connections: ["Germany", "Netherlands", "United Kingdom", "Spain", "Italy", "Suez Canal", "United States"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -1220,6 +1227,17 @@ export default function SupplyChainCrisisDetector() {
     }
   }
 
+  const [currentMethod, setCurrentMethod] = useState<string>("safe route");
+  const methodOptions = ["Safe Routes", "Relocation"];
+
+  const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization">("risk")
+
+  const tabs = [
+    { id: "inventory" as const, icon: Package, label: "Inventory" },
+    { id: "optimization" as const, icon: Sparkles, label: "Optimization" },
+    { id: "risk" as const, icon: AlertTriangle, label: "Risk" },
+  ]
+
   return (
     <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
@@ -1231,7 +1249,43 @@ export default function SupplyChainCrisisDetector() {
       />
 
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
-      {isInventorySidebarOpen ? (
+      <div>
+        <div className="border-b border-sidebar-border px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Zap className="h-5 w-5 text-primary" />
+              <div>
+                <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
+                <p className="text-[10px] text-muted-foreground">Real-time intelligence</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Radio className="h-3 w-3 text-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-medium text-emerald-500">LIVE</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex border-b border-sidebar-border">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "relative flex flex-1 cursor-pointer flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
+                activeTab === tab.id
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />
+              )}
+              <tab.icon className="h-4 w-4" />
+              <span className="text-[10px] font-medium">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      {activeTab == "inventory" && (
         <InventorySidebar
           products={storedProducts}
           onProductAdd={handleProductAdd}
@@ -1257,14 +1311,67 @@ export default function SupplyChainCrisisDetector() {
             })),
           }))}
         />
-      ) : (
+      )}
+
+      {activeTab == "optimization" && (
+        <div>
+        <div className="rounded-xs p-4">
+        <Select value={currentMethod} onValueChange={setCurrentMethod}>
+          <SelectTrigger className="w-full border-border/50 bg-muted/30">
+            <SelectValue placeholder="Select current country..." />
+          </SelectTrigger>
+
+          <SelectContent className="glass-panel border-primary/20">
+            {methodOptions.map((m) => (
+              <SelectItem key={m} value={m}>
+                <div className="flex items-center justify-between gap-4">
+                  <span>{m}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        </div>
+        {currentMethod == "Safe Routes" && (
+          <RouteFinderPanel
+            isOpen={true}
+            onClose={() => {
+              setIsRouteFinderOpen(false)
+              setSafeRouteContext(null)
+            }}
+            countryRisks={resolvedCountryRisks}
+            onRouteFound={(routes) => {
+              setFoundRoutes(routes)
+              if (routes.length > 0) {
+                setSelectedFoundRouteId(routes[0].id)
+              }
+            }}
+            preselectedOrigin={safeRouteContext?.origin}
+            preselectedDestination={safeRouteContext?.destination}
+          />
+        )}
+        {currentMethod == "Relocation" && (
+          <RelocationPanel
+            isOpen={true}
+            onClose={() => setIsRelocationOpen(false)}
+            countryRisks={countryRisks}
+            onCountrySelect={setSelectedCountry}
+          />
+        )}
+        </div>
+      )}
+
+      {activeTab == "risk" && (
         <RiskSidebar
           countryRisks={resolvedCountryRisks}
           selectedCountry={selectedCountry}
           onCountrySelect={setSelectedCountry}
+          onInventoryClick={handleToggleInventory}
+          isInventoryOpen={isInventorySidebarOpen}
           onReset={handleReset}
         />
       )}
+      </div>
 
       {/* Main Map Area */}
       <div className="relative h-full w-full overflow-hidden">
@@ -1295,6 +1402,7 @@ export default function SupplyChainCrisisDetector() {
 
         {/* Action Buttons */}
         <div className="absolute left-4 top-4 z-10 flex gap-2">
+          {/*
           <Button
             variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}
             size="sm"
@@ -1312,6 +1420,7 @@ export default function SupplyChainCrisisDetector() {
             <Route className="h-4 w-4" />
             {customRoute ? `${customRoute.totalRisk}% Risk` : "Build Route"}
           </Button>
+          */}
 
           <Button
             variant={isProductBuilderOpen || products.length > 0 ? "default" : "secondary"}
@@ -1329,9 +1438,10 @@ export default function SupplyChainCrisisDetector() {
             }}
           >
             <Package className="h-4 w-4" />
-            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Products"}
+            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Tracking"}
           </Button>
 
+          {/*
           <Button
             variant={isRelocationOpen ? "default" : "secondary"}
             size="sm"
@@ -1350,7 +1460,9 @@ export default function SupplyChainCrisisDetector() {
             <Factory className="h-4 w-4" />
             Relocation
           </Button>
+          */}
 
+          {/*
           <Button
             variant={isRouteFinderOpen ? "default" : "secondary"}
             size="sm"
@@ -1370,6 +1482,7 @@ export default function SupplyChainCrisisDetector() {
             <Navigation className="h-4 w-4" />
             Safe Routes
           </Button>
+          */}
 
           <Button
             variant={showRiskZones ? "default" : "secondary"}
@@ -1471,14 +1584,6 @@ export default function SupplyChainCrisisDetector() {
           route={selectedRoute}
           countryRisks={resolvedCountryRisks}
           onClose={() => setSelectedRoute(null)}
-        />
-
-        {/* Relocation Advisor Panel */}
-        <RelocationPanel
-          isOpen={isRelocationOpen}
-          onClose={() => setIsRelocationOpen(false)}
-          countryRisks={countryRisks}
-          onCountrySelect={setSelectedCountry}
         />
 
         {/* Route Summary Panel */}
