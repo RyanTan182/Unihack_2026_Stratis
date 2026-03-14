@@ -96,6 +96,14 @@ const riskMetrics: RiskMetric[] = [
     isActive: false,
   },
   {
+    id: "worker-rights",
+    name: "Worker Rights & Forced Labor",
+    description: "Labor rights violations, modern slavery, child labor, hazardous conditions",
+    source: "Walk Free, ILO, US DOL",
+    sourceUrl: "https://walkfree.org",
+    isActive: true,
+  },
+  {
     id: "port-congestion",
     name: "Port Congestion Index",
     description: "Current delays at major shipping ports",

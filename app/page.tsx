@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { RouteMode } from "@/lib/route-types"
 import { getChokepointRisk } from "@/lib/chokepoints"
+import { storedProductToMapProduct } from "@/lib/decompose/to-map-product"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -229,12 +230,13 @@ const countryRisks: CountryRiskData[] = [
     name: "South Africa",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 42,
+    exportRisk: 48,
+    overallRisk: 45,
     newsHighlights: [
       "Port operations experiencing delays",
       "Mining sector exports fluctuating",
+      "Load shedding, labor unrest, inequality",
     ],
   },
   {
@@ -355,12 +357,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Egypt",
     type: "country",
     connections: ["Suez Canal", "Bab-el-Mandeb", "Saudi Arabia", "Greece"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 42,
+    exportRisk: 48,
+    overallRisk: 45,
     newsHighlights: [
       "Suez Canal operations normal",
       "Regional tensions monitoring",
+      "Debt burden, labor rights concerns",
     ],
   },
   {
@@ -368,12 +371,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Nigeria",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 52,
+    exportRisk: 58,
+    overallRisk: 55,
     newsHighlights: [
       "Oil exports facing logistics challenges",
       "Currency volatility high",
+      "Corruption, security in north, weak labor enforcement",
     ],
   },
   {
@@ -530,12 +534,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Djibouti",
     type: "country",
     connections: ["Bab-el-Mandeb", "Ethiopia"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 38,
+    exportRisk: 42,
+    overallRisk: 40,
     newsHighlights: [
       "Important Red Sea logistics location",
       "Strategic shipping and port relevance remains elevated",
+      "Heavy China debt dependency",
     ],
   },
   {
@@ -608,13 +613,255 @@ const countryRisks: CountryRiskData[] = [
     name: "Ethiopia",
     type: "country",
     connections: ["Djibouti", "Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 48,
+    exportRisk: 52,
+    overallRisk: 50,
     newsHighlights: [
       "Trade access highly dependent on external port routes",
       "Logistics resilience tied to Red Sea corridor stability",
+      "Conflict, debt, landlocked, labor rights concerns",
     ],
+  },
+  {
+    id: "Congo",
+    name: "Congo",
+    type: "country",
+    connections: ["South Africa", "Nigeria", "Bab-el-Mandeb", "Zambia", "Angola"],
+    importRisk: 55,
+    exportRisk: 70,
+    overallRisk: 65,
+    newsHighlights: [
+      "Major cobalt and mineral producer",
+      "Conflict, governance and child labor concerns in mining",
+      "Supply chain opacity for battery materials",
+    ],
+  },
+  {
+    id: "Czechia",
+    name: "Czechia",
+    type: "country",
+    connections: ["Germany", "Poland", "Austria", "Hungary"],
+    importRisk: 15,
+    exportRisk: 15,
+    overallRisk: 15,
+    newsHighlights: [
+      "EU member, stable manufacturing hub",
+      "Auto and electronics supply chain",
+    ],
+  },
+  {
+    id: "Congo",
+    name: "Congo",
+    type: "country",
+    connections: ["South Africa", "Nigeria", "Bab-el-Mandeb", "Zambia", "Angola"],
+    importRisk: 65,
+    exportRisk: 78,
+    overallRisk: 72,
+    newsHighlights: [
+      "Major cobalt and mineral producer",
+      "Child labor, forced labor in artisanal mining",
+      "Conflict, governance failure, supply chain opacity",
+    ],
+  },
+  {
+    id: "Zambia",
+    name: "Zambia",
+    type: "country",
+    connections: ["Congo", "South Africa", "Zimbabwe", "Tanzania"],
+    importRisk: 50,
+    exportRisk: 58,
+    overallRisk: 55,
+    newsHighlights: ["Major copper and cobalt producer", "Child labor in mining, debt, China dependency"],
+  },
+  {
+    id: "Zimbabwe",
+    name: "Zimbabwe",
+    type: "country",
+    connections: ["South Africa", "Zambia"],
+    importRisk: 70,
+    exportRisk: 80,
+    overallRisk: 75,
+    newsHighlights: ["Lithium reserves growing", "Sanctions, currency collapse, weak labor rights"],
+  },
+  {
+    id: "Morocco",
+    name: "Morocco",
+    type: "country",
+    connections: ["Spain", "Suez Canal"],
+    importRisk: 38,
+    exportRisk: 45,
+    overallRisk: 42,
+    newsHighlights: ["World's largest phosphate exporter", "Western Sahara tensions, informal labor"],
+  },
+  {
+    id: "Kazakhstan",
+    name: "Kazakhstan",
+    type: "country",
+    connections: ["Russia", "China", "Iran"],
+    importRisk: 45,
+    exportRisk: 50,
+    overallRisk: 48,
+    newsHighlights: ["Uranium and critical minerals", "Russia dependency, political transition risk"],
+  },
+  {
+    id: "Mongolia",
+    name: "Mongolia",
+    type: "country",
+    connections: ["China", "Russia"],
+    importRisk: 50,
+    exportRisk: 55,
+    overallRisk: 52,
+    newsHighlights: ["Copper and coal exports", "Heavy China dependency, mining-dependent economy"],
+  },
+  {
+    id: "Tanzania",
+    name: "Tanzania",
+    type: "country",
+    connections: ["Kenya", "South Africa", "Bab-el-Mandeb", "Zambia"],
+    importRisk: 48,
+    exportRisk: 55,
+    overallRisk: 52,
+    newsHighlights: ["Critical minerals producer", "Resource nationalism, child labor in mining"],
+  },
+  {
+    id: "Kenya",
+    name: "Kenya",
+    type: "country",
+    connections: ["Tanzania", "Djibouti", "Bab-el-Mandeb"],
+    importRisk: 48,
+    exportRisk: 52,
+    overallRisk: 50,
+    newsHighlights: ["East African logistics hub", "Debt, corruption, informal labor"],
+  },
+  {
+    id: "Angola",
+    name: "Angola",
+    type: "country",
+    connections: ["Congo", "South Africa", "Nigeria", "Namibia"],
+    importRisk: 60,
+    exportRisk: 65,
+    overallRisk: 63,
+    newsHighlights: ["Oil and diamond exports", "Corruption, weak labor rights, oil dependency"],
+  },
+  {
+    id: "Ghana",
+    name: "Ghana",
+    type: "country",
+    connections: ["Nigeria", "Bab-el-Mandeb"],
+    importRisk: 52,
+    exportRisk: 58,
+    overallRisk: 55,
+    newsHighlights: ["Gold and cocoa exports", "Child labor in cocoa, debt restructuring"],
+  },
+  {
+    id: "Bolivia",
+    name: "Bolivia",
+    type: "country",
+    connections: ["Chile", "Peru", "Brazil", "Argentina"],
+    importRisk: 45,
+    exportRisk: 55,
+    overallRisk: 50,
+    newsHighlights: ["Major lithium reserves", "Resource nationalism, political volatility"],
+  },
+  {
+    id: "Colombia",
+    name: "Colombia",
+    type: "country",
+    connections: ["Panama", "Brazil", "Peru", "Panama Canal"],
+    importRisk: 35,
+    exportRisk: 40,
+    overallRisk: 38,
+    newsHighlights: ["Coffee and mineral exports", "Pacific and Atlantic access", "Security improving"],
+  },
+  {
+    id: "Namibia",
+    name: "Namibia",
+    type: "country",
+    connections: ["South Africa", "Angola", "Bab-el-Mandeb"],
+    importRisk: 35,
+    exportRisk: 42,
+    overallRisk: 38,
+    newsHighlights: ["Uranium and diamond producer", "Mining labor concerns, inequality"],
+  },
+  {
+    id: "New Zealand",
+    name: "New Zealand",
+    type: "country",
+    connections: ["Australia", "Indonesia", "Strait of Malacca"],
+    importRisk: 10,
+    exportRisk: 12,
+    overallRisk: 10,
+    newsHighlights: ["Dairy and agriculture exports", "Pacific trade routes", "Low risk jurisdiction"],
+  },
+  {
+    id: "Belgium",
+    name: "Belgium",
+    type: "country",
+    connections: ["Netherlands", "France", "Germany"],
+    importRisk: 12,
+    exportRisk: 15,
+    overallRisk: 12,
+    newsHighlights: ["EU logistics hub", "Antwerp port critical"],
+  },
+  {
+    id: "Sweden",
+    name: "Sweden",
+    type: "country",
+    connections: ["Germany", "Poland", "Netherlands"],
+    importRisk: 8,
+    exportRisk: 10,
+    overallRisk: 8,
+    newsHighlights: ["Battery and EV manufacturing", "Nordic supply chain hub", "Low risk"],
+  },
+  {
+    id: "Austria",
+    name: "Austria",
+    type: "country",
+    connections: ["Germany", "Italy", "Czechia", "Hungary"],
+    importRisk: 10,
+    exportRisk: 12,
+    overallRisk: 10,
+    newsHighlights: ["Central European logistics", "Alpine trade routes", "EU stable"],
+  },
+  {
+    id: "Portugal",
+    name: "Portugal",
+    type: "country",
+    connections: ["Spain", "Suez Canal"],
+    importRisk: 18,
+    exportRisk: 22,
+    overallRisk: 20,
+    newsHighlights: ["Atlantic port access", "EU trade gateway"],
+  },
+  {
+    id: "Hungary",
+    name: "Hungary",
+    type: "country",
+    connections: ["Austria", "Romania", "Ukraine", "Czechia"],
+    importRisk: 40,
+    exportRisk: 45,
+    overallRisk: 42,
+    newsHighlights: ["Central European manufacturing", "EV battery production", "EU rule-of-law concerns"],
+  },
+  {
+    id: "Myanmar",
+    name: "Myanmar",
+    type: "country",
+    connections: ["Thailand", "India", "Bangladesh", "Strait of Malacca"],
+    importRisk: 70,
+    exportRisk: 80,
+    overallRisk: 75,
+    newsHighlights: ["Rare earth elements", "Civil conflict, junta rule, sanctions risk"],
+  },
+  {
+    id: "Sri Lanka",
+    name: "Sri Lanka",
+    type: "country",
+    connections: ["India", "Strait of Malacca"],
+    importRisk: 55,
+    exportRisk: 60,
+    overallRisk: 58,
+    newsHighlights: ["Indian Ocean shipping hub", "2022 default, debt restructuring ongoing"],
   },
 
   // chokepoints
@@ -829,10 +1076,21 @@ export default function SupplyChainCrisisDetector() {
         newsHighlights: [
           ...node.newsHighlights,
           `Derived from ${availableSnapshots.length} neighboring countries`,
+          snapshot.summary,
+          `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}${snapshot.importFactors.labor != null ? `, labor ${snapshot.importFactors.labor.score}` : ""}`,
+          `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}${snapshot.exportFactors.labor != null ? `, labor ${snapshot.exportFactors.labor.score}` : ""}`,
         ],
       }
     })
   }, [riskSnapshots])
+
+  // Merge decomposed products (from inventory) with manually added products for the map
+  const mapProducts = useMemo(() => {
+    const fromDecomposition = storedProducts
+      .map((stored, i) => storedProductToMapProduct(stored, i))
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+    return [...fromDecomposition, ...products]
+  }, [storedProducts, products])
 
   // Calculate insights from products
   const insights = useMemo(() => {
@@ -1421,7 +1679,7 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={customRoute}
-          products={products}
+          products={mapProducts}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}

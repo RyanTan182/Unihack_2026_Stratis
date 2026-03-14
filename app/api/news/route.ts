@@ -166,6 +166,7 @@ const RELEVANCE_TERMS = [
   "gas", "commodity", "manufacturing", "factory", "mining", "agriculture",
   "investment", "regulation", "policy", "election", "government", "tax",
   "budget", "market", "stock", "bond", "rate", "bank", "finance",
+  "labor", "worker", "child labor", "forced labor", "slavery", "exploitation",
 ]
 
 function hasEconomicRelevance(title: string): boolean {
@@ -187,7 +188,7 @@ async function fetchPerplexity(country: string, countryCode?: string): Promise<A
   const apiKey = process.env.PERPLEXITY_API_KEY
   if (!apiKey) return []
 
-  const query = `${country} supply chain trade economic risk tariff sanctions disruption news 2026`
+  const query = `${country} supply chain trade economic risk tariff sanctions labor rights forced labor disruption news 2026`
 
   const body: { query: string; country?: string; max_results: number; max_tokens_per_page: number } = {
     query,
