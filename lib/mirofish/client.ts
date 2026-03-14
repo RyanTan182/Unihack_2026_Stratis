@@ -8,7 +8,7 @@ import type {
   MiroFishReportResponse,
 } from "./types"
 
-const MIROFISH_URL = process.env.MIROFISH_URL || "http://localhost:5001"
+const MIROFISH_URL = process.env.MIROFISH_URL || "http://localhost:5001/api"
 const GLOBAL_TIMEOUT_MS = 20 * 60 * 1000 // 20 minutes
 const POLL_INTERVAL_MS = 3000
 
@@ -23,8 +23,10 @@ export class MiroFishClient {
 
   async healthCheck(): Promise<boolean> {
     try {
-      const res = await fetch(this.baseUrl, { signal: AbortSignal.timeout(5000) })
-      return res.ok
+      // Hit base URL without /api path — a 404 still means the server is up
+      const rootUrl = this.baseUrl.replace(/\/api\/?$/, "")
+      await fetch(rootUrl, { signal: AbortSignal.timeout(5000) })
+      return true
     } catch {
       return false
     }
@@ -84,7 +86,7 @@ export class MiroFishClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         simulation_id: simulationId,
-        platform: "twitter",
+        platform: "parallel",
         max_rounds: 10,
         enable_graph_memory_update: true,
       }),
@@ -129,6 +131,7 @@ export class MiroFishClient {
       if (status.data?.status === "failed") {
         throw new Error(`${stepName} failed: ${status.data?.error || "Unknown error"}`)
       }
+      // Backend uses "processing" not "running" — keep polling
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
     }
     throw new Error(`${stepName} timed out after 20 minutes`)
@@ -138,16 +141,15 @@ export class MiroFishClient {
     seedMarkdown: string,
     simulationRequirement: string
   ): Promise<{ simulationId: string; projectId: string }> {
-    // Step 1: Generate ontology
+    // Step 1: Generate ontology (SYNCHRONOUS — returns project_id directly, no task_id)
     const ontologyRes = await this.generateOntology(seedMarkdown, simulationRequirement)
-    if (!ontologyRes.success || !ontologyRes.data?.task_id) {
-      throw new Error(`Ontology generation failed: ${ontologyRes.error || "No task_id returned"}`)
+    if (!ontologyRes.success) {
+      throw new Error(`Ontology generation failed: ${ontologyRes.error || "Unknown error"}`)
     }
-    const ontologyResult = await this.waitForTask(ontologyRes.data.task_id, "Ontology generation")
-    const projectId = ontologyResult.data?.result?.project_id as string || ontologyRes.data.project_id
+    const projectId = ontologyRes.data?.project_id
     if (!projectId) throw new Error("No project_id from ontology generation")
 
-    // Step 2: Build graph
+    // Step 2: Build graph (ASYNC — returns task_id to poll)
     const graphRes = await this.buildGraph(projectId)
     if (!graphRes.success || !graphRes.data?.task_id) {
       throw new Error(`Graph build failed: ${graphRes.error || "No task_id returned"}`)
@@ -161,12 +163,15 @@ export class MiroFishClient {
     }
     const simulationId = createRes.data.simulation_id
 
-    // Step 4: Prepare simulation
+    // Step 4: Prepare simulation (ASYNC — returns task_id to poll)
     const prepareRes = await this.prepareSimulation(simulationId)
-    if (!prepareRes.success || !prepareRes.data?.task_id) {
-      throw new Error(`Simulation prepare failed: ${prepareRes.error || "No task_id returned"}`)
+    if (!prepareRes.success) {
+      throw new Error(`Simulation prepare failed: ${prepareRes.error || "Unknown error"}`)
     }
-    await this.waitForTask(prepareRes.data.task_id, "Simulation preparation")
+    // Prepare may return a task_id for async polling, or complete synchronously
+    if (prepareRes.data?.task_id) {
+      await this.waitForTask(prepareRes.data.task_id, "Simulation preparation")
+    }
 
     // Step 5: Start simulation
     const startRes = await this.startSimulation(simulationId)

@@ -24,8 +24,21 @@ interface PredictionsState {
 }
 
 const POLL_INTERVAL_MS = 5000
+const MOCK_POLL_INTERVAL_MS = 1000
+
+function getApiPrefix() {
+  if (typeof window !== "undefined") {
+    // Check for env var or URL param
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("mock") === "true") return "/api/predict-mock"
+  }
+  if (process.env.NEXT_PUBLIC_MOCK_PREDICTIONS === "true") return "/api/predict-mock"
+  return "/api/predict"
+}
 
 export function usePredictions() {
+  const apiPrefix = getApiPrefix()
+  const isMock = apiPrefix.includes("mock")
   const [state, setState] = useState<PredictionsState>({
     activePredictions: [],
     completedPredictions: [],
@@ -38,7 +51,7 @@ export function usePredictions() {
   const pollStatus = useCallback((simulationId: string) => {
     const poll = async () => {
       try {
-        const res = await fetch(`/api/predict/status?simulationId=${simulationId}`)
+        const res = await fetch(`${apiPrefix}/status?simulationId=${simulationId}`)
         if (!res.ok) return
 
         const status: SimulationStatus = await res.json()
@@ -62,7 +75,7 @@ export function usePredictions() {
           // Fetch results
           try {
             const resultsRes = await fetch(
-              `/api/predict/results?simulationId=${simulationId}`
+              `${apiPrefix}/results?simulationId=${simulationId}`
             )
             if (resultsRes.ok) {
               const result: PredictionResult = await resultsRes.json()
@@ -94,7 +107,7 @@ export function usePredictions() {
 
     // Immediate first poll, then interval
     poll()
-    const timer = setInterval(poll, POLL_INTERVAL_MS)
+    const timer = setInterval(poll, isMock ? MOCK_POLL_INTERVAL_MS : POLL_INTERVAL_MS)
     pollTimers.current.set(simulationId, timer)
   }, [])
 
@@ -104,7 +117,7 @@ export function usePredictions() {
       setState((prev) => ({ ...prev, isTriggering: true, error: null }))
 
       try {
-        const res = await fetch("/api/predict/trigger", {
+        const res = await fetch(`${apiPrefix}/trigger`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ scenario, countries, source: "manual" }),

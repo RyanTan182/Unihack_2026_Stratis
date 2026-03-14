@@ -29,6 +29,8 @@ import { collectCountriesFromProducts } from "./lib/risk-country-utils";
 import { PredictionsPanel } from "@/components/predictions-panel"
 import { usePredictions } from "@/hooks/use-predictions"
 import { toast } from "sonner"
+import { computeProductImpacts } from "@/lib/mirofish/supply-chain-impact"
+import type { ProductImpact } from "@/lib/mirofish/types"
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
@@ -746,8 +748,42 @@ export default function SupplyChainCrisisDetector() {
   const [isPredictionsOpen, setIsPredictionsOpen] = useState(false)
   const predictions = usePredictions()
 
+  // Compute product impacts for all completed predictions
+  const productImpactsBySimulation = useMemo(() => {
+    const map: Record<string, ProductImpact[]> = {}
+    for (const result of predictions.completedPredictions) {
+      map[result.simulationId] = computeProductImpacts(result, storedProducts, riskSnapshots)
+    }
+    return map
+  }, [predictions.completedPredictions, storedProducts, riskSnapshots])
+
   useEffect(() => {
     for (const result of predictions.completedPredictions) {
+      // Check for product-specific critical impacts
+      const impacts = productImpactsBySimulation[result.simulationId] || []
+      const criticalImpacts = impacts.filter(
+        (i) => i.overallSeverity === "critical" || i.overallSeverity === "high"
+      )
+
+      if (criticalImpacts.length > 0) {
+        const productList = criticalImpacts
+          .slice(0, 3)
+          .map((i) => `${i.productName} (${i.estimatedPriceImpact})`)
+          .join(", ")
+        toast.error(
+          `Supply Chain Alert: ${criticalImpacts.length} product${criticalImpacts.length > 1 ? "s" : ""} at risk`,
+          {
+            description: productList,
+            action: {
+              label: "View Details",
+              onClick: () => setIsPredictionsOpen(true),
+            },
+            id: `supply-chain-${result.simulationId}`,
+          }
+        )
+      }
+
+      // Country-level alerts (existing behavior)
       for (const country of result.prediction.affectedCountries) {
         if (country.predictedRisk - country.currentRisk > 20) {
           toast.warning(
@@ -764,7 +800,7 @@ export default function SupplyChainCrisisDetector() {
         }
       }
     }
-  }, [predictions.completedPredictions])
+  }, [predictions.completedPredictions, productImpactsBySimulation])
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -1279,6 +1315,7 @@ export default function SupplyChainCrisisDetector() {
           isTriggering={predictions.isTriggering}
           error={predictions.error}
           onTrigger={predictions.triggerPrediction}
+          productImpactsBySimulation={productImpactsBySimulation}
         />
       </div>
     </div>

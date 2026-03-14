@@ -15,7 +15,7 @@ import {
   Target,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { PredictionResult, RiskDirection } from "@/lib/mirofish/types"
+import type { PredictionResult, RiskDirection, ProductImpact } from "@/lib/mirofish/types"
 import {
   LineChart,
   Line,
@@ -29,6 +29,7 @@ import {
 
 interface PredictionCardProps {
   result: PredictionResult
+  productImpacts?: ProductImpact[]
 }
 
 function DirectionIcon({ direction }: { direction: RiskDirection }) {
@@ -53,7 +54,91 @@ function directionColor(direction: RiskDirection) {
   }
 }
 
-export function PredictionCard({ result }: PredictionCardProps) {
+function severityColor(severity: ProductImpact["overallSeverity"]) {
+  switch (severity) {
+    case "critical":
+      return "text-red-400 border-red-400/50 bg-red-400/10"
+    case "high":
+      return "text-orange-400 border-orange-400/50 bg-orange-400/10"
+    case "medium":
+      return "text-yellow-400 border-yellow-400/50 bg-yellow-400/10"
+    default:
+      return "text-muted-foreground border-border/50 bg-muted/30"
+  }
+}
+
+function SupplyChainImpactSection({ impacts }: { impacts: ProductImpact[] }) {
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null)
+
+  if (impacts.length === 0) {
+    return (
+      <div>
+        <h4 className="text-xs font-medium mb-2 text-muted-foreground">Supply Chain Impact</h4>
+        <p className="text-xs text-muted-foreground/70 italic">
+          Add products to inventory to see supply chain impact
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <h4 className="text-xs font-medium mb-2 text-muted-foreground">Supply Chain Impact</h4>
+      <div className="space-y-1.5">
+        {impacts.map((impact) => (
+          <div key={impact.productId} className="rounded-md border border-border/50 bg-background/50">
+            <button
+              className="flex items-center justify-between w-full px-2.5 py-1.5 text-left"
+              onClick={() =>
+                setExpandedProduct(expandedProduct === impact.productId ? null : impact.productId)
+              }
+            >
+              <span className="text-xs font-medium truncate">{impact.productName}</span>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <Badge
+                  variant="outline"
+                  className={cn("text-[10px] px-1.5 py-0", severityColor(impact.overallSeverity))}
+                >
+                  {impact.overallSeverity}
+                </Badge>
+                <span className="text-xs font-mono text-red-400">{impact.estimatedPriceImpact}</span>
+                {expandedProduct === impact.productId ? (
+                  <ChevronUp className="h-3 w-3 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                )}
+              </div>
+            </button>
+
+            {expandedProduct === impact.productId && (
+              <div className="px-2.5 pb-2 space-y-1 border-t border-border/30">
+                {impact.affectedNodes.map((node) => (
+                  <div
+                    key={`${node.nodeId}-${node.country}`}
+                    className="flex items-center justify-between text-[11px] py-0.5"
+                  >
+                    <div className="flex items-center gap-1 min-w-0">
+                      <span className="text-muted-foreground">{node.nodeType}</span>
+                      <span className="truncate">{node.nodeName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2 text-muted-foreground">
+                      <span>{node.country} ({node.concentrationPct}%)</span>
+                      <span className={node.predictedRisk > node.currentRisk ? "text-red-400" : "text-green-400"}>
+                        {node.currentRisk}→{node.predictedRisk}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function PredictionCard({ result, productImpacts }: PredictionCardProps) {
   const [expanded, setExpanded] = useState(false)
   const { prediction, sentimentByRound } = result
 
@@ -157,6 +242,9 @@ export function PredictionCard({ result }: PredictionCardProps) {
               </div>
             </div>
           )}
+
+          {/* Supply Chain Impact */}
+          <SupplyChainImpactSection impacts={productImpacts || []} />
 
           {/* Key Findings */}
           <div>

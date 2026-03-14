@@ -5,9 +5,13 @@
 export interface MiroFishTaskResponse {
   success: boolean
   data?: {
-    task_id: string
+    task_id?: string
     project_id?: string
     simulation_id?: string
+    report_id?: string
+    status?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any
   }
   error?: string
 }
@@ -15,7 +19,7 @@ export interface MiroFishTaskResponse {
 export interface MiroFishTaskStatus {
   success: boolean
   data?: {
-    status: "pending" | "running" | "completed" | "failed"
+    status: "pending" | "processing" | "completed" | "failed"
     progress?: number
     result?: Record<string, unknown>
     error?: string
@@ -25,17 +29,20 @@ export interface MiroFishTaskStatus {
 export interface MiroFishRunStatus {
   success: boolean
   data?: {
-    status: "pending" | "running" | "completed" | "failed"
+    runner_status: "idle" | "starting" | "running" | "completed" | "stopped" | "failed"
     current_round?: number
     total_rounds?: number
-    active_agents?: number
+    total_actions_count?: number
+    twitter_actions_count?: number
+    reddit_actions_count?: number
   }
 }
 
 export interface MiroFishAction {
-  round: number
+  round_num: number
   timestamp: string
-  agent_id: string
+  platform: string
+  agent_id: number
   agent_name: string
   action_type: string
   action_args: Record<string, unknown>
@@ -46,6 +53,7 @@ export interface MiroFishAction {
 export interface MiroFishActionsResponse {
   success: boolean
   data?: {
+    count: number
     actions: MiroFishAction[]
   }
 }
@@ -54,8 +62,12 @@ export interface MiroFishReportResponse {
   success: boolean
   data?: {
     report_id: string
-    full_report?: string
+    simulation_id?: string
     status?: string
+    markdown_content?: string
+    outline?: Record<string, unknown>
+    created_at?: string
+    completed_at?: string
   }
 }
 
@@ -107,6 +119,26 @@ export interface SimulationStatus {
   activeAgents: number
   recentActions: AgentAction[]
   error?: string
+}
+
+// --- Supply Chain Impact Types (client-side cross-referencing) ---
+
+export interface ProductImpact {
+  productId: string
+  productName: string
+  affectedNodes: AffectedNode[]
+  estimatedPriceImpact: string
+  overallSeverity: "critical" | "high" | "medium" | "low"
+}
+
+export interface AffectedNode {
+  nodeId: string
+  nodeName: string
+  nodeType: "subsystem" | "component" | "material"
+  country: string
+  concentrationPct: number
+  currentRisk: number
+  predictedRisk: number
 }
 
 export interface TriggerRequest {

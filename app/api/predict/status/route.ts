@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
           agentName: a.agent_name,
           role: inferRole(a.agent_name),
           action: a.result || `${a.action_type}`,
-          round: a.round,
+          round: a.round_num,
           timestamp: a.timestamp,
         }))
       }
@@ -66,21 +66,21 @@ export async function GET(request: NextRequest) {
       // Actions may not be available yet
     }
 
-    const mfStatus = runStatus.data?.status || "pending"
+    const mfStatus = runStatus.data?.runner_status || "idle"
 
     const status: SimulationStatus = {
       simulationId,
       status:
-        mfStatus === "pending"
+        mfStatus === "idle" || mfStatus === "starting"
           ? "starting"
           : mfStatus === "running"
             ? "running"
-            : mfStatus === "completed"
+            : mfStatus === "completed" || mfStatus === "stopped"
               ? "completed"
               : "failed",
       currentRound: runStatus.data?.current_round || 0,
       totalRounds: runStatus.data?.total_rounds || 10,
-      activeAgents: runStatus.data?.active_agents || 0,
+      activeAgents: runStatus.data?.total_actions_count || 0,
       recentActions,
       error: mfStatus === "failed" ? (runStatus.data as Record<string, unknown>)?.error as string : undefined,
     }

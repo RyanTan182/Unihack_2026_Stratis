@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PredictionCard } from "./prediction-card"
-import type { PredictionResult, SimulationStatus, AgentAction } from "@/lib/mirofish/types"
+import type { PredictionResult, SimulationStatus, AgentAction, ProductImpact } from "@/lib/mirofish/types"
 
 interface ActivePrediction {
   simulationId: string
@@ -34,6 +34,7 @@ interface PredictionsPanelProps {
   isTriggering: boolean
   error: string | null
   onTrigger: (scenario: string, countries: string[]) => void
+  productImpactsBySimulation?: Record<string, ProductImpact[]>
 }
 
 import {
@@ -90,6 +91,7 @@ export function PredictionsPanel({
   isTriggering,
   error,
   onTrigger,
+  productImpactsBySimulation,
 }: PredictionsPanelProps) {
   const [scenario, setScenario] = useState("")
   const [countriesInput, setCountriesInput] = useState("")
@@ -263,7 +265,11 @@ export function PredictionsPanel({
             ) : (
               <div className="space-y-3">
                 {completedPredictions.map((result) => (
-                  <PredictionCard key={result.simulationId} result={result} />
+                  <PredictionCard
+                    key={result.simulationId}
+                    result={result}
+                    productImpacts={productImpactsBySimulation?.[result.simulationId]}
+                  />
                 ))}
               </div>
             )}
