@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
 import { InventorySidebar } from "@/components/inventory-sidebar"
@@ -8,6 +8,7 @@ import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-cha
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
+import { syncStoredToProducts } from "@/lib/sync-products"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,8 @@ import { cn } from "@/lib/utils"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import { collectCountriesFromProducts } from "./lib/risk-country-utils";
+
+export type AlternativeEntry = { country: string; risk: string; reason: string }
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
@@ -704,6 +707,8 @@ export default function SupplyChainCrisisDetector() {
   const [activeTree, setActiveTree] = useState<DecompositionTree | null>(null)
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
+  const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
+  const [altScanLoading, setAltScanLoading] = useState(false)
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
   const [isBulkEvaluating, setIsBulkEvaluating] = useState(false)
@@ -828,6 +833,11 @@ export default function SupplyChainCrisisDetector() {
     })
   }, [riskSnapshots])
 
+  // Sync storedProducts → right-panel products (additive; keeps local edits)
+  useEffect(() => {
+    setProducts((prev) => syncStoredToProducts(storedProducts, prev))
+  }, [storedProducts])
+
   const handleReset = () => {
     setSelectedCountry(null)
     setCustomRoute(null)
@@ -852,13 +862,149 @@ export default function SupplyChainCrisisDetector() {
     setSelectedDecompNodeId(nodeId)
   }
 
-  const handleAddToInventory = (product: Product) => {
-    setIsInventorySidebarOpen(true)
-  }
+  const handleInventoryProductSelect = useCallback(
+    async (storedProduct: StoredProduct) => {
+      setIsProductBuilderOpen(true)
+      setIsRouteBuilderOpen(false)
+      setIsRelocationOpen(false)
+      setAlternativesMap({})
+      setAltScanLoading(true)
+
+      // Check server-side JSON cache first
+      try {
+        const cacheRes = await fetch(
+          `/api/alternatives-cache?productId=${encodeURIComponent(storedProduct.id)}`,
+        )
+        const cacheData = await cacheRes.json()
+        if (cacheData.alternatives && Object.keys(cacheData.alternatives).length > 0) {
+          setAlternativesMap(cacheData.alternatives)
+          setAltScanLoading(false)
+          return
+        }
+      } catch {
+        /* cache miss — continue to fetch */
+      }
+
+      const tree = storedProduct.tree
+      const THRESHOLD = 60
+      const highRiskItems: {
+        id: string
+        name: string
+        type: string
+        country: string
+        risk: number
+      }[] = []
+
+      const walkTree = (nodeId: string) => {
+        const node = tree.nodes[nodeId]
+        if (!node) return
+        const entries = Object.entries(node.geographic_concentration)
+        if (entries.length > 0) {
+          entries.sort((a, b) => b[1] - a[1])
+          const country = entries[0][0]
+          const cr = resolvedCountryRisks.find((c) => c.name === country)
+          if (cr && cr.overallRisk >= THRESHOLD) {
+            highRiskItems.push({
+              id: node.id,
+              name: node.name,
+              type: node.type,
+              country,
+              risk: cr.overallRisk,
+            })
+          }
+        }
+        node.children.forEach(walkTree)
+      }
+      walkTree(tree.root_id)
+
+      if (highRiskItems.length === 0) {
+        setAltScanLoading(false)
+        return
+      }
+
+      highRiskItems.sort((a, b) => b.risk - a.risk)
+
+      const results: Record<string, AlternativeEntry[]> = {}
+      await Promise.allSettled(
+        highRiskItems.map(async (item) => {
+          try {
+            const res = await fetch("/api/ai/alternatives", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                country: item.country,
+                itemType: item.type,
+                itemName: item.name,
+                currentRisk: item.risk,
+              }),
+            })
+            const data = await res.json()
+            if (data.alternatives) {
+              results[item.id] = data.alternatives
+            }
+          } catch {
+            /* skip failed */
+          }
+        }),
+      )
+      setAlternativesMap(results)
+      setAltScanLoading(false)
+
+      // Persist to server-side JSON cache
+      if (Object.keys(results).length > 0) {
+        fetch("/api/alternatives-cache", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: storedProduct.id,
+            alternatives: results,
+          }),
+        }).catch(() => {})
+      }
+    },
+    [resolvedCountryRisks],
+  )
 
   const handleToggleInventory = () => {
     setIsInventorySidebarOpen((prev) => !prev)
   }
+
+  const countryOptions = useMemo(
+    () =>
+      resolvedCountryRisks
+        .filter((c) => c.type === "country")
+        .map((c) => ({ id: c.id, name: c.name })),
+    [resolvedCountryRisks],
+  )
+
+  const handleApplyAlternative = useCallback(
+    (nodeId: string, newCountry: string) => {
+      const cr = resolvedCountryRisks.find((c) => c.name === newCountry)
+      const newRisk = cr?.overallRisk ?? 0
+
+      setStoredProducts((prev) =>
+        prev.map((sp) => {
+          const node = sp.tree.nodes[nodeId]
+          if (!node) return sp
+          return {
+            ...sp,
+            tree: {
+              ...sp.tree,
+              nodes: {
+                ...sp.tree.nodes,
+                [nodeId]: {
+                  ...node,
+                  geographic_concentration: { [newCountry]: 100 },
+                  risk_score: newRisk,
+                },
+              },
+            },
+          }
+        }),
+      )
+    },
+    [resolvedCountryRisks],
+  )
 
   return (
     <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
@@ -877,6 +1023,11 @@ export default function SupplyChainCrisisDetector() {
           onProductAdd={handleProductAdd}
           onTreeChange={handleTreeChange}
           onNodeSelect={handleNodeSelect}
+          onProductSelect={handleInventoryProductSelect}
+          countryOptions={countryOptions}
+          alternativesMap={alternativesMap}
+          altScanLoading={altScanLoading}
+          onApplyAlternative={handleApplyAlternative}
         />
       ) : (
         <RiskSidebar
@@ -1003,8 +1154,8 @@ export default function SupplyChainCrisisDetector() {
           countryRisks={countryRisks}
           products={products}
           onProductsChange={setProducts}
-          onAddToInventory={handleAddToInventory}
-          inventoryProductIds={storedProducts.map((p) => p.id)}
+          preloadedAlternatives={alternativesMap}
+          altScanLoading={altScanLoading}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}
