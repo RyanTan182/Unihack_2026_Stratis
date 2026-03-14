@@ -1,6 +1,6 @@
 "use client"
 
-import { X, TrendingUp, TrendingDown, Ship, Package, AlertCircle, Clock, ArrowRight, Zap } from "lucide-react"
+import { X, TrendingUp, TrendingDown, Ship, AlertCircle, ArrowRight, Zap, MapPin, Newspaper, AlertTriangle, Anchor } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -9,8 +9,19 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import type { ProductSupplyRoute } from "@/components/supply-chain-map"
 
+interface CountryRisk {
+  id: string
+  name: string
+  type: "country" | "chokepoint"
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
+}
+
 interface PathDetailsPanelProps {
   route: ProductSupplyRoute | null
+  countryRisks: CountryRisk[]
   onClose: () => void
 }
 
@@ -22,21 +33,41 @@ const getRiskLevel = (score: number) => {
   return { label: "Minimal", color: "bg-cyan-500 text-white", textColor: "text-cyan-400" }
 }
 
-const mockPathDetails = {
-  transitTime: "14-21 days",
-  lastIncident: "Port congestion in Singapore",
-  alternativeRoutes: 3,
-  volumeChange: 12,
-  carrierReliability: 87,
-  customsRisk: 35,
-  weatherRisk: 22,
-  securityRisk: 45,
-}
-
-export function PathDetailsPanel({ route, onClose }: PathDetailsPanelProps) {
+export function PathDetailsPanel({ route, countryRisks, onClose }: PathDetailsPanelProps) {
   if (!route) return null
 
   const riskLevel = getRiskLevel(route.riskScore)
+  const fromCountryData = countryRisks.find(c => c.name === route.fromCountry || c.id === route.fromCountry)
+  const toCountryData = countryRisks.find(c => c.name === route.toCountry || c.id === route.toCountry)
+
+  const componentRisk = route.componentRiskPrediction
+  const componentRiskLevel = getRiskLevel(componentRisk)
+  const isComponentHighRisk = componentRisk > 60
+  const isPathHighRisk = route.riskScore >= 60
+
+  const allNews = [
+    ...(fromCountryData?.newsHighlights ?? []).map(n => ({ country: route.fromCountry, text: n })),
+    ...(toCountryData?.newsHighlights ?? []).map(n => ({ country: route.toCountry, text: n })),
+  ]
+
+  const dangerReasons: string[] = []
+  if (isComponentHighRisk) {
+    dangerReasons.push(`Component "${route.fromItem}" has a predicted risk of ${componentRisk}%, exceeding the 60% threshold`)
+  }
+  if (isPathHighRisk) {
+    dangerReasons.push(`The shipping path between ${route.fromCountry} and ${route.toCountry} averages ${route.riskScore}% risk`)
+  }
+  if (fromCountryData && fromCountryData.overallRisk >= 60) {
+    dangerReasons.push(`Origin country ${route.fromCountry} is rated high risk (${fromCountryData.overallRisk}%)`)
+  }
+  if (toCountryData && toCountryData.overallRisk >= 60) {
+    dangerReasons.push(`Destination country ${route.toCountry} is rated high risk (${toCountryData.overallRisk}%)`)
+  }
+  if (route.chokepoints.length > 0) {
+    dangerReasons.push(`Route passes through ${route.chokepoints.length} chokepoint${route.chokepoints.length > 1 ? "s" : ""}: ${route.chokepoints.join(", ")}`)
+  }
+
+  const highRiskSegments = route.segments.filter(s => s.riskScore >= 60)
 
   return (
     <div className="absolute bottom-56 left-4 z-10 w-80 animate-in slide-in-from-bottom-4">
@@ -87,88 +118,152 @@ export function PathDetailsPanel({ route, onClose }: PathDetailsPanelProps) {
             </div>
           </div>
 
-          {/* Risk Breakdown */}
+          {/* Danger Explanation - only shown for dangerous routes */}
+          {route.isDangerous && dangerReasons.length > 0 && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+                <p className="text-xs font-semibold text-red-400">Why This Route Is Flagged</p>
+              </div>
+              <ul className="space-y-1.5 pl-6">
+                {dangerReasons.map((reason, i) => (
+                  <li key={i} className="text-[11px] text-muted-foreground list-disc">{reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Component Risk */}
+          <div className="rounded-lg border border-border/50 bg-card/50 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-medium text-foreground">Component Risk</span>
+              </div>
+              <span className={cn("text-xs font-semibold", componentRiskLevel.textColor)}>
+                {componentRisk}%
+              </span>
+            </div>
+            <Progress value={componentRisk} className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground">
+              {route.fromItem} — predicted supply chain disruption risk
+            </p>
+          </div>
+
+          {/* Country Risk Breakdown */}
           <div className="space-y-3">
-            <p className="text-xs font-medium text-foreground">Risk Breakdown</p>
+            <p className="text-xs font-medium text-foreground">Country Risk Breakdown</p>
             <div className="space-y-2.5">
-              <div className="rounded-lg bg-muted/20 p-2.5">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Customs & Tariffs</span>
-                  <span className="font-medium text-foreground">{mockPathDetails.customsRisk}%</span>
+              {fromCountryData && (
+                <div className="rounded-lg bg-muted/20 p-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MapPin className="h-3 w-3 text-primary" />
+                    <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Origin — {route.fromCountry}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Overall Risk</span>
+                    <span className="font-medium text-foreground">{fromCountryData.overallRisk}%</span>
+                  </div>
+                  <Progress value={fromCountryData.overallRisk} className="h-1.5" />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Import: {fromCountryData.importRisk}%</span>
+                    <span>Export: {fromCountryData.exportRisk}%</span>
+                  </div>
                 </div>
-                <Progress value={mockPathDetails.customsRisk} className="h-1.5" />
-              </div>
-              <div className="rounded-lg bg-muted/20 p-2.5">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Weather Disruption</span>
-                  <span className="font-medium text-foreground">{mockPathDetails.weatherRisk}%</span>
+              )}
+              {toCountryData && (
+                <div className="rounded-lg bg-muted/20 p-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MapPin className="h-3 w-3 text-emerald-400" />
+                    <span className="text-[10px] font-semibold text-foreground uppercase tracking-wider">Destination — {route.toCountry}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Overall Risk</span>
+                    <span className="font-medium text-foreground">{toCountryData.overallRisk}%</span>
+                  </div>
+                  <Progress value={toCountryData.overallRisk} className="h-1.5" />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>Import: {toCountryData.importRisk}%</span>
+                    <span>Export: {toCountryData.exportRisk}%</span>
+                  </div>
                 </div>
-                <Progress value={mockPathDetails.weatherRisk} className="h-1.5" />
-              </div>
-              <div className="rounded-lg bg-muted/20 p-2.5">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Security & Geopolitical</span>
-                  <span className="font-medium text-foreground">{mockPathDetails.securityRisk}%</span>
-                </div>
-                <Progress value={mockPathDetails.securityRisk} className="h-1.5" />
-              </div>
-            </div>
-          </div>
-
-          <Separator className="bg-border/50" />
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-border/50 bg-card/50 p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] text-muted-foreground">Transit Time</span>
-              </div>
-              <p className="text-sm font-semibold text-foreground">{mockPathDetails.transitTime}</p>
-            </div>
-            <div className="rounded-lg border border-border/50 bg-card/50 p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Ship className="h-3.5 w-3.5 text-primary" />
-                <span className="text-[10px] text-muted-foreground">Reliability</span>
-              </div>
-              <p className="text-sm font-semibold text-foreground">{mockPathDetails.carrierReliability}%</p>
-            </div>
-          </div>
-
-          {/* Volume Trend */}
-          <div className="flex items-center justify-between rounded-lg border border-border/50 bg-card/50 p-3">
-            <div className="flex items-center gap-3">
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-[10px] text-muted-foreground">Volume Change (30d)</p>
-                <p className="text-sm font-semibold text-foreground">
-                  {mockPathDetails.volumeChange > 0 ? "+" : ""}
-                  {mockPathDetails.volumeChange}%
-                </p>
-              </div>
-            </div>
-            <div className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-lg border",
-              mockPathDetails.volumeChange > 0 ? "border-emerald-500/50 text-emerald-400" : "border-red-500/50 text-red-400"
-            )}>
-              {mockPathDetails.volumeChange > 0 ? (
-                <TrendingUp className="h-4 w-4" />
-              ) : (
-                <TrendingDown className="h-4 w-4" />
               )}
             </div>
           </div>
 
-          {/* Recent Alert */}
-          <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
-            <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
-            <div>
-              <p className="text-xs font-medium text-red-400">Recent Incident</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{mockPathDetails.lastIncident}</p>
-            </div>
-          </div>
+          {/* High Risk Segments */}
+          {highRiskSegments.length > 0 && (
+            <>
+              <Separator className="bg-border/50" />
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">High Risk Segments ({highRiskSegments.length})</p>
+                {highRiskSegments.map((seg, i) => {
+                  return (
+                    <div key={i} className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 py-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {seg.isChokepointSegment ? (
+                          <Anchor className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                        ) : (
+                          <ArrowRight className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                        )}
+                        <span className="text-[11px] text-foreground truncate">
+                          {seg.fromNode} → {seg.toNode}
+                        </span>
+                      </div>
+                      <Badge variant="destructive" className="border-0 text-[10px] shrink-0 ml-2">
+                        {seg.riskScore}%
+                      </Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
 
-          {/* Route Info */}
+          {/* Chokepoints */}
+          {route.chokepoints.length > 0 && (
+            <>
+              <Separator className="bg-border/50" />
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-foreground">Chokepoints on Route</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {route.chokepoints.map((cp) => (
+                    <Badge key={cp} variant="outline" className="border-purple-500/30 text-purple-400 text-[10px] gap-1">
+                      <Anchor className="h-2.5 w-2.5" />
+                      {cp}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* News Highlights */}
+          {allNews.length > 0 && (
+            <>
+              <Separator className="bg-border/50" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Newspaper className="h-3.5 w-3.5 text-primary" />
+                  <p className="text-xs font-medium text-foreground">Related News</p>
+                </div>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {allNews.map((news, i) => (
+                    <div key={i} className="flex items-start gap-2 rounded-lg bg-muted/20 px-2.5 py-2">
+                      <AlertCircle className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground">{news.country}</p>
+                        <p className="text-[11px] text-foreground">{news.text}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Route Details */}
+          <Separator className="bg-border/50" />
           <div className="rounded-lg bg-muted/20 p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Route Details</p>
             <div className="flex items-center gap-2 mb-2">
@@ -187,17 +282,11 @@ export function PathDetailsPanel({ route, onClose }: PathDetailsPanelProps) {
                 {route.toItem}
               </span>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="flex-1 border-border/50 hover:border-primary/30 hover:text-primary">
-              View Alternatives ({mockPathDetails.alternativeRoutes})
-            </Button>
-            <Button size="sm" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5">
-              <Zap className="h-3 w-3" />
-              Full Analysis
-            </Button>
+            {route.pathNodes.length > 2 && (
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Via: {route.pathNodes.slice(1, -1).join(" → ")}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

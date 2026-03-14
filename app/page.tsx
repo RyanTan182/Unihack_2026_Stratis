@@ -5,6 +5,8 @@ import { UnifiedSidebar } from "@/components/unified-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute, type SupplyChainMapRef } from "@/components/supply-chain-map"
 import type { ItemType } from "@/components/supply-chain-map"
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
+import { syncStoredToProducts } from "@/lib/sync-products"
+import { storedProductToMapProduct, type MapProduct } from "@/lib/decompose/to-map-product"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { analyzeSupplyChain } from "@/lib/supply-chain-analyzer"
 import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/lib/supply-chain-analyzer"
@@ -20,6 +22,8 @@ import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateAllCountriesInChunks } from "./lib/risk-client"
 import type { SupplyChainInsightsData, ComponentRiskForInsights } from "@/components/sidebar-sections/insights-section"
 
+export type AlternativeEntry = { country: string; risk: string; reason: string }
+
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
 type CountryRiskData = {
@@ -31,6 +35,16 @@ type CountryRiskData = {
   exportRisk: number
   overallRisk: number
   newsHighlights: string[]
+}
+
+// Map chokepoints to their connected countries for risk derivation
+const chokeToCountriesMap: Record<string, string[]> = {
+  "Suez Canal": ["Egypt", "Greece", "Italy", "France", "Netherlands", "Germany", "Turkey"],
+  "Panama Canal": ["United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "Japan", "South Korea"],
+  "Strait of Hormuz": ["Iran", "Saudi Arabia", "United Arab Emirates", "Qatar", "India", "Pakistan"],
+  "Strait of Malacca": ["China", "Singapore", "Malaysia", "Indonesia", "Thailand", "Vietnam", "India", "Bangladesh", "Taiwan", "Japan", "South Korea", "Philippines", "Australia"],
+  "Bab-el-Mandeb": ["Egypt", "Saudi Arabia", "United Arab Emirates", "Yemen", "Djibouti", "Ethiopia", "South Africa", "Nigeria", "India"],
+  "Bosphorus": ["Turkey", "Greece", "Romania", "Bulgaria", "Georgia", "Ukraine", "Russia"],
 }
 
 // Mock data for country risks with news-based analysis
@@ -557,6 +571,10 @@ export default function SupplyChainCrisisDetector() {
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
 
+  // Alternative supplier scanning
+  const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
+  const [altScanLoading, setAltScanLoading] = useState(false)
+
   // Map ref for demo mode control
   const mapRef = useRef<SupplyChainMapRef>(null)
 
@@ -585,24 +603,50 @@ export default function SupplyChainCrisisDetector() {
   // resolvedCountryRisks must be defined before insights
   const resolvedCountryRisks = useMemo(() => {
     return countryRisks.map((node) => {
-      if (node.type !== "country") return node
+      if (node.type === "country") {
+        const snapshot = riskSnapshots[node.id]
+        if (!snapshot) return node
 
-      const snapshot = riskSnapshots[node.id]
-      if (!snapshot) return node
+        return {
+          ...node,
+          importRisk: snapshot.importRisk,
+          exportRisk: snapshot.exportRisk,
+          overallRisk: snapshot.overallRisk,
+          newsHighlights: [
+            snapshot.summary,
+            `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
+            `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+          ],
+        }
+      }
+
+      const relatedCountries = chokeToCountriesMap[node.id] ?? []
+      if (relatedCountries.length === 0) return node
+
+      const availableSnapshots = relatedCountries
+        .map((countryName: string) => riskSnapshots[countryName])
+        .filter(Boolean)
+
+      if (availableSnapshots.length === 0) {
+        return node
+      }
+
+      const totalImport = availableSnapshots.reduce((sum: number, s: CountryRiskEvaluation) => sum + s.importRisk, 0)
+      const totalExport = availableSnapshots.reduce((sum: number, s: CountryRiskEvaluation) => sum + s.exportRisk, 0)
+      const totalOverall = availableSnapshots.reduce((sum: number, s: CountryRiskEvaluation) => sum + s.overallRisk, 0)
 
       return {
         ...node,
-        importRisk: snapshot.importRisk,
-        exportRisk: snapshot.exportRisk,
-        overallRisk: snapshot.overallRisk,
+        importRisk: totalImport / availableSnapshots.length,
+        exportRisk: totalExport / availableSnapshots.length,
+        overallRisk: totalOverall / availableSnapshots.length,
         newsHighlights: [
-          snapshot.summary,
-          `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
-          `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+          ...node.newsHighlights,
+          `Derived from ${availableSnapshots.length} neighboring countries`,
         ],
       }
     })
-  }, [countryRisks, riskSnapshots])
+  }, [riskSnapshots])
 
   // Calculate insights from stored products
   const insights = useMemo<SupplyChainInsights | undefined>(() => {
@@ -688,7 +732,7 @@ export default function SupplyChainCrisisDetector() {
     }
 
     save()
-  }, [riskSnapshots, hasLoadedSnapshots])
+  }, [hasLoadedSnapshots, hasCompleteSnapshots, riskSnapshots])
 
   // Bulk evaluate countries
   useEffect(() => {
@@ -800,6 +844,36 @@ export default function SupplyChainCrisisDetector() {
       setSelectedFoundRouteId(routes[0].id)
     }
   }, [])
+
+  // Apply alternative supplier to a tree node
+  const handleApplyAlternative = useCallback(
+    (nodeId: string, newCountry: string) => {
+      const cr = resolvedCountryRisks.find((c) => c.name === newCountry)
+      const newRisk = cr?.overallRisk ?? 0
+
+      setStoredProducts((prev) =>
+        prev.map((sp) => {
+          const node = sp.tree.nodes[nodeId]
+          if (!node) return sp
+          return {
+            ...sp,
+            tree: {
+              ...sp.tree,
+              nodes: {
+                ...sp.tree.nodes,
+                [nodeId]: {
+                  ...node,
+                  geographic_concentration: { [newCountry]: 100 },
+                  risk_score: newRisk,
+                },
+              },
+            },
+          }
+        }),
+      )
+    },
+    [resolvedCountryRisks],
+  )
 
   // Handle "Find Safe Routes" from product card - extracts high-risk countries
   const handleFindSafeRoute = useCallback((product: StoredProduct, targetCountry?: string) => {
@@ -953,6 +1027,7 @@ export default function SupplyChainCrisisDetector() {
         {/* Path Details Panel - shows when a route is clicked */}
         <PathDetailsPanel
           route={selectedRoute}
+          countryRisks={resolvedCountryRisks}
           onClose={() => setSelectedRoute(null)}
         />
 

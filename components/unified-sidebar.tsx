@@ -61,6 +61,8 @@ import {
 interface CountryRisk {
   id: string
   name: string
+  type?: "country" | "chokepoint"
+  connections?: string[]
   importRisk: number
   exportRisk: number
   overallRisk: number
