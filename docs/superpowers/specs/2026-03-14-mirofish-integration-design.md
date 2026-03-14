@@ -1,8 +1,15 @@
 # MiroFish Integration Design — Predictive Geopolitical Risk for Stratis
 
+## Prerequisites
+
+- **MiroFish**: https://github.com/666ghj/MiroFish (open-source, 16k+ GitHub stars)
+- API endpoints listed in this spec are verified against MiroFish's Flask backend source code
+- Requires Python 3.11-3.12, Docker for sidecar deployment
+- Requires a free Zep Cloud account for agent memory (GraphRAG)
+
 ## Purpose
 
-Integrate MiroFish, an open-source multi-agent swarm intelligence engine, into Stratis to provide predictive geopolitical risk analysis. Instead of only showing current risk scores derived from news, the system will simulate how geopolitical scenarios evolve over 1-6 months using thousands of AI agents (traders, government officials, military analysts, diplomats, journalists, protesters). This turns Stratis from a reactive dashboard into a forward-looking strategic decision-making tool.
+Integrate MiroFish, an open-source multi-agent swarm intelligence engine, into Stratis to provide predictive geopolitical risk analysis. Instead of only showing current risk scores derived from news, the system will simulate how geopolitical scenarios evolve over 1-6 months using 20-30 AI agents (traders, government officials, military analysts, diplomats, journalists, protesters). This turns Stratis from a reactive dashboard into a forward-looking strategic decision-making tool.
 
 ## Goals
 
@@ -70,6 +77,13 @@ A TypeScript client wrapping MiroFish's Flask REST API (port 5001). Handles the 
 9. **Report retrieval** — `GET /report/<id>`
 
 All async operations return a `task_id` for polling. The client handles retry logic and timeout management.
+
+#### Error Handling
+
+- **Per-step failure**: If any step in the pipeline (ontology, graph build, create, prepare, start) fails, the client returns an error with the failed step name and MiroFish's error message. The UI shows an error state on the prediction card with a "Retry" button.
+- **Global timeout**: 20-minute timeout from trigger to completion. If exceeded, the simulation is marked as "timed_out" and the UI shows "Simulation timed out — try a simpler scenario or fewer countries."
+- **Partial results**: If the simulation completes but report generation fails, the raw agent actions and sentiment data are still available in the status endpoint.
+- **MiroFish unavailable**: If the sidecar is not running, `/api/predict/trigger` returns a clear error: "MiroFish service unavailable — ensure Docker is running."
 
 ### Seed Document Builder (`lib/mirofish/seed-builder.ts`)
 
@@ -195,14 +209,16 @@ Fetches completed simulation results.
 }
 ```
 
-### Automatic Monitoring
+### Automatic Monitoring (Stretch Goal)
 
-A background process triggered periodically (or on significant GDELT events):
+Client-side polling from the predictions hook, running every 5 minutes while the predictions panel is mounted:
 
 1. Calls existing `/api/gdelt` endpoint for countries in the user's supply chain
 2. Filters for significant events (new conflict, policy change, natural disaster themes)
 3. Auto-triggers `/api/predict/trigger` with `source: "automatic"`
 4. Results surface as alert toasts when simulation completes
+
+For the hackathon demo, this is a stretch goal. The core demo relies on manual what-if triggers and pre-started simulations.
 
 ---
 
@@ -252,10 +268,12 @@ Shown when a simulation is active and the user expands it:
 - X-axis: simulation rounds, Y-axis: aggregate agent sentiment (-1 to 1)
 - Color zones: red (negative/crisis), yellow (uncertain), green (stable)
 
-**Knowledge Graph Embed**
+**Knowledge Graph Embed (Stretch Goal)**
 - Iframe of MiroFish's Vue frontend (port 5002 — remapped to avoid conflict with Next.js on 3000)
 - Shows D3.js knowledge graph of entities and relationships
 - Shown only when user clicks "Show Knowledge Graph" — keeps default view clean
+- Requires CORS/X-Frame-Options configuration in MiroFish's Docker setup
+- Fallback: if iframe fails, show a static "Knowledge graph available in MiroFish dashboard" link
 
 **Round Progress Indicator**
 - "Round 4 of 10 — 6 agents active" status line
@@ -284,6 +302,10 @@ React hook managing prediction state:
 - `completedPredictions` — list of finished predictions with results
 - `pollStatus(simulationId)` — polling logic with 5-second interval
 - Auto-stops polling when simulation completes
+
+**State persistence:** Prediction results are held in React state (in-memory). They do not persist across page refreshes. For demo purposes, the pre-started fallback simulation ensures results are always available.
+
+**Sentiment computation:** The `sentimentByRound` data is computed by the Stratis backend — it fetches agent actions per round via `/simulation/<id>/actions`, then uses a lightweight LLM call to classify each action's sentiment (-1 to 1) and averages across agents per round.
 
 ---
 
@@ -327,6 +349,8 @@ New variables in `.env.local`:
 - ~20-30 agents auto-generated from knowledge graph
 - Full geopolitical spectrum configured via simulation requirement prompt
 
+**Estimated runtime:** With 10 rounds and ~25 active agents, expect ~250 LLM API calls per simulation. MiroFish runs agents serially per round. At ~2-3 seconds per call via OpenRouter, expect ~10-15 minutes wall-clock time. The 5-second polling interval is appropriate for this duration.
+
 ---
 
 ## Demo Flow
@@ -356,6 +380,13 @@ components/predictions-panel.tsx         — Main predictions UI panel
 components/prediction-card.tsx           — Individual prediction result card
 components/prediction-alert.tsx          — Inline risk sidebar indicator
 hooks/use-predictions.ts                — React hook for prediction state management
+```
+
+## Modified Files
+
+```
+components/nav-sidebar.tsx               — Add "Predictions" nav item (icon, label, click handler matching existing onInventoryClick pattern)
+app/page.tsx                             — Add predictions panel state + rendering, wire up nav sidebar callback
 ```
 
 ## Dependencies
