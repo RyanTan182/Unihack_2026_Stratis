@@ -602,7 +602,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Bab-el-Mandeb", "Egypt", "Greece", "Italy", "France", "Netherlands", "Germany", "Turkey"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 64,
+    overallRisk: 0,
     newsHighlights: [
       "Critical Europe-Asia shipping corridor",
       "Any Red Sea disruption can propagate into Mediterranean trade",
@@ -616,7 +616,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "Japan", "South Korea"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 58,
+    overallRisk: 0,
     newsHighlights: [
       "Key Atlantic-Pacific transit route",
       "Capacity constraints can affect East-West shipping times",
@@ -630,7 +630,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Iran", "Oman", "Saudi Arabia", "United Arab Emirates", "Qatar", "India", "Pakistan"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 78,
+    overallRisk: 0,
     newsHighlights: [
       "Major global energy chokepoint",
       "High sensitivity to geopolitical escalation",
@@ -644,7 +644,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["China", "Singapore", "Malaysia", "Indonesia", "Thailand", "Vietnam", "India", "Bangladesh", "Taiwan", "Japan", "South Korea", "Philippines", "Australia", "Bab-el-Mandeb"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 61,
+    overallRisk: 0,
     newsHighlights: [
       "Shortest major sea route between Indian and Pacific Oceans",
       "Core artery for East Asian manufacturing supply chains",
@@ -658,7 +658,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Strait of Malacca", "Suez Canal", "Egypt", "Saudi Arabia", "United Arab Emirates", "Yemen", "Djibouti", "Ethiopia", "South Africa", "Nigeria", "India"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 83,
+    overallRisk: 0,
     newsHighlights: [
       "Southern gateway to the Red Sea",
       "Strongly coupled with Suez Canal risk",
@@ -672,7 +672,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Turkey", "Greece", "Romania", "Bulgaria", "Georgia", "Ukraine", "Russia"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 57,
+    overallRisk: 0,
     newsHighlights: [
       "Essential outlet for Black Sea trade",
       "Important for grain, energy, and regional shipping",
@@ -681,16 +681,13 @@ const countryRisks: CountryRiskData[] = [
   },
 ]
 
-function chunkArray<T>(items: T[], chunkSize: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < items.length; i += chunkSize) {
-    chunks.push(items.slice(i, i + chunkSize))
-  }
-  return chunks
-}
-
-function getAllCountryNodes(countryRisks: CountryRiskData[]) {
-  return countryRisks.filter((node) => node.type === "country")
+const chokeToCountriesMap: Record<string, any> = {
+  "Suez Canal": ["Egypt", "Israel"],
+  "Panama Canal": ["Panama", "Cuba", "United States"],
+  "Strait of Hormuz": ["Iran", "Oman", "Saudi Arabia", "United Arab Emirates"],
+  "Strait of Malacca": ["Singapore", "Malaysia", "Indonesia"],
+  "Bab-el-Mandeb": ["Yemen", "Djibouti", "Ethiopia"],
+  "Bosphorus": ["Turkey", "Greece", "Romania", "Bulgaria"],
 }
 
 export default function SupplyChainCrisisDetector() {
@@ -783,24 +780,50 @@ export default function SupplyChainCrisisDetector() {
 
   const resolvedCountryRisks = useMemo(() => {
     return countryRisks.map((node) => {
-      if (node.type !== "country") return node
+      if (node.type === "country") {
+        const snapshot = riskSnapshots[node.id]
+        if (!snapshot) return node
 
-      const snapshot = riskSnapshots[node.id]
-      if (!snapshot) return node
+        return {
+          ...node,
+          importRisk: snapshot.importRisk,
+          exportRisk: snapshot.exportRisk,
+          overallRisk: snapshot.overallRisk,
+          newsHighlights: [
+            snapshot.summary,
+            `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
+            `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+          ],
+        }
+      }
+      
+      const relatedCountries = chokeToCountriesMap[node.id] ?? []
+      if (relatedCountries.length === 0) return node
+
+      const availableSnapshots = relatedCountries
+        .map((countryName: string) => riskSnapshots[countryName])
+        .filter(Boolean)
+
+      if (availableSnapshots.length === 0) {
+        return node
+      }
+
+      const totalImport = availableSnapshots.reduce((sum, s) => sum + s.importRisk, 0)
+      const totalExport = availableSnapshots.reduce((sum, s) => sum + s.exportRisk, 0)
+      const totalOverall = availableSnapshots.reduce((sum, s) => sum + s.overallRisk, 0)
 
       return {
         ...node,
-        importRisk: snapshot.importRisk,
-        exportRisk: snapshot.exportRisk,
-        overallRisk: snapshot.overallRisk,
+        importRisk: totalImport / availableSnapshots.length,
+        exportRisk: totalExport / availableSnapshots.length,
+        overallRisk: totalOverall / availableSnapshots.length,
         newsHighlights: [
-          snapshot.summary,
-          `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
-          `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+          ...node.newsHighlights,
+          `Derived from ${availableSnapshots.length} neighboring countries`,
         ],
       }
     })
-  }, [countryRisks, riskSnapshots])
+  }, [riskSnapshots])
 
   const handleReset = () => {
     setSelectedCountry(null)
