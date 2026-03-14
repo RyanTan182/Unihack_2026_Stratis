@@ -127,7 +127,7 @@ const getRiskColor = (risk: number): string => {
   if (risk >= 60) return "text-orange-400"
   if (risk >= 40) return "text-yellow-400"
   if (risk >= 20) return "text-emerald-400"
-  return "text-zinc-400"
+  return "text-cyan-400"
 }
 
 const NEWS_CACHE_TTL_MS = 5 * 60 * 1000 // change to 30 * 1000 for 30s
@@ -490,7 +490,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                     { color: "bg-orange-500", textColor: "text-orange-400", label: "High", range: "60-79" },
                     { color: "bg-yellow-500", textColor: "text-yellow-400", label: "Medium", range: "40-59" },
                     { color: "bg-emerald-500", textColor: "text-emerald-400", label: "Low", range: "20-39" },
-                    { color: "bg-zinc-500", textColor: "text-zinc-400", label: "Minimal", range: "0-19" },
+                    { color: "bg-cyan-500", textColor: "text-cyan-400", label: "Minimal", range: "0-19" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
                       <div
@@ -499,7 +499,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                           backgroundColor: item.color.includes('red') ? '#ef4444' :
                             item.color.includes('orange') ? '#f97316' :
                             item.color.includes('yellow') ? '#eab308' :
-                            item.color.includes('emerald') ? '#22c55e' : '#a1a1aa'
+                            item.color.includes('emerald') ? '#22c55e' : '#06b6d4'
                         }}
                       />
                       <span className={cn("flex-1 text-xs font-medium", item.textColor)}>{item.label}</span>

@@ -994,17 +994,13 @@ export default function SupplyChainCrisisDetector() {
         />
 
         {/* Product Supply Chain Panel */}
-        {/* <ProductSupplyChain
+        <ProductSupplyChain
           isOpen={isProductBuilderOpen}
           onClose={() => setIsProductBuilderOpen(false)}
           countryRisks={countryRisks}
           products={products}
           onProductsChange={setProducts}
-          onAddToInventory={handleAddToInventory}
-          inventoryProductIds={inventoryProducts.map((p) => p.id)}
-          mapAddRequest={mapAddRequest}
-          onMapAddRequestHandled={() => setMapAddRequest(null)}
-        /> */}
+        />
 
         {/* Path Details Panel - shows when a route is clicked */}
         <PathDetailsPanel
