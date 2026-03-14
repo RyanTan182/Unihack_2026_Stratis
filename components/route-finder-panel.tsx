@@ -37,14 +37,26 @@ interface RouteFinderPanelProps {
   preselectedDestination?: string
 }
 
+import { CHOKEPOINT_RISKS } from "@/lib/chokepoints"
+
+const CHOKEPOINT_DISPLAY_NAMES: Record<string, string> = {
+  "Strait of Hormuz": "Hormuz",
+  "Strait of Malacca": "Malacca",
+  "Panama Canal": "Panama",
+}
+
 const CHOKEPOINTS = [
-  { id: "Strait of Hormuz", name: "Hormuz", risk: 78 },
-  { id: "Bab-el-Mandeb", name: "Bab-el-Mandeb", risk: 83 },
-  { id: "Suez Canal", name: "Suez Canal", risk: 64 },
-  { id: "Strait of Malacca", name: "Malacca", risk: 61 },
-  { id: "Panama Canal", name: "Panama", risk: 58 },
-  { id: "Bosphorus", name: "Bosphorus", risk: 57 },
-]
+  "Strait of Hormuz",
+  "Bab-el-Mandeb",
+  "Suez Canal",
+  "Strait of Malacca",
+  "Panama Canal",
+  "Bosphorus",
+].map((id) => ({
+  id,
+  name: CHOKEPOINT_DISPLAY_NAMES[id] ?? id,
+  risk: CHOKEPOINT_RISKS[id] ?? 0,
+}))
 
 export function RouteFinderPanel({
   isOpen,

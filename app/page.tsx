@@ -25,7 +25,8 @@ import type { FoundRoute } from "@/lib/route-types"
 import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
-import { collectCountriesFromProducts } from "./lib/risk-country-utils";
+import { collectCountriesFromProducts } from "./lib/risk-country-utils"
+import { getChokepointRisk } from "@/lib/chokepoints"
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
@@ -613,7 +614,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Bab-el-Mandeb", "Egypt", "Greece", "Italy", "France", "Netherlands", "Germany", "Turkey"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 0,
+    overallRisk: getChokepointRisk("Suez Canal"),
     newsHighlights: [
       "Critical Europe-Asia shipping corridor",
       "Any Red Sea disruption can propagate into Mediterranean trade",
@@ -627,7 +628,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "Japan", "South Korea"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 0,
+    overallRisk: getChokepointRisk("Panama Canal"),
     newsHighlights: [
       "Key Atlantic-Pacific transit route",
       "Capacity constraints can affect East-West shipping times",
@@ -641,7 +642,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Iran", "Oman", "Saudi Arabia", "United Arab Emirates", "Qatar", "India", "Pakistan"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 0,
+    overallRisk: getChokepointRisk("Strait of Hormuz"),
     newsHighlights: [
       "Major global energy chokepoint",
       "High sensitivity to geopolitical escalation",
@@ -655,7 +656,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["China", "Singapore", "Malaysia", "Indonesia", "Thailand", "Vietnam", "India", "Bangladesh", "Taiwan", "Japan", "South Korea", "Philippines", "Australia", "Bab-el-Mandeb"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 0,
+    overallRisk: getChokepointRisk("Strait of Malacca"),
     newsHighlights: [
       "Shortest major sea route between Indian and Pacific Oceans",
       "Core artery for East Asian manufacturing supply chains",
@@ -669,7 +670,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Strait of Malacca", "Suez Canal", "Egypt", "Saudi Arabia", "United Arab Emirates", "Yemen", "Djibouti", "Ethiopia", "South Africa", "Nigeria", "India"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 0,
+    overallRisk: getChokepointRisk("Bab-el-Mandeb"),
     newsHighlights: [
       "Southern gateway to the Red Sea",
       "Strongly coupled with Suez Canal risk",
@@ -683,7 +684,7 @@ const countryRisks: CountryRiskData[] = [
     connections: ["Turkey", "Greece", "Romania", "Bulgaria", "Georgia", "Ukraine", "Russia"],
     importRisk: 0,
     exportRisk: 0,
-    overallRisk: 0,
+    overallRisk: getChokepointRisk("Bosphorus"),
     newsHighlights: [
       "Essential outlet for Black Sea trade",
       "Important for grain, energy, and regional shipping",

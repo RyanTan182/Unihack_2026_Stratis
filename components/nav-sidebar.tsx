@@ -1,20 +1,6 @@
 "use client"
 
-import {
-  Home,
-  Mail,
-  BarChart2,
-  FileText,
-  Flag,
-  MapPin,
-  List,
-  Users,
-  Globe,
-  Compass,
-  HelpCircle,
-  Layers,
-  Zap,
-} from "lucide-react"
+import { Home, Package, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { IconButton } from "@/components/ui/icon-button"
@@ -40,18 +26,8 @@ export function NavSidebar({
   isLocationActive,
 }: NavSidebarProps) {
   const navItems: NavItem[] = [
-    { icon: Home, label: "Dashboard", active: false },
-    { icon: Mail, label: "Alerts" },
-    { icon: BarChart2, label: "Analytics" },
-    { icon: FileText, label: "Reports" },
-    { icon: Flag, label: "Flags" },
-    { icon: MapPin, label: "Locations", active: isLocationActive, onClick: onLocationClick },
-    { icon: List, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
-    { icon: Users, label: "Suppliers" },
-    { icon: Globe, label: "Global View" },
-    { icon: Compass, label: "Routes" },
-    { icon: Layers, label: "Layers" },
-    { icon: HelpCircle, label: "Help" },
+    { icon: Home, label: "Risk & Locations", active: isLocationActive, onClick: onLocationClick },
+    { icon: Package, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
   ]
   return (
     <TooltipProvider delayDuration={0}>
