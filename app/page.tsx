@@ -705,6 +705,7 @@ export default function SupplyChainCrisisDetector() {
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
+  const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false)
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
   const [isBulkEvaluating, setIsBulkEvaluating] = useState(false)
   const [bulkProgress, setBulkProgress] = useState({
@@ -714,8 +715,62 @@ export default function SupplyChainCrisisDetector() {
     totalChunks: 0,
   })
 
+  const requiredCountryIds = useMemo(() => {
+    return countryRisks
+      .filter((node) => node.type === "country")
+      .map((node) => node.id)
+  }, [])
+
+  const hasCompleteSnapshots = useMemo(() => {
+    return requiredCountryIds.every((id) => !!riskSnapshots[id])
+  }, [requiredCountryIds, riskSnapshots])
+
   useEffect(() => {
+    const loadSnapshots = async () => {
+      try {
+        const res = await fetch("/data/risk-snapshots.json", { cache: "no-store" })
+
+        if (!res.ok) {
+          setHasLoadedSnapshots(true)
+          return
+        }
+
+        const data = await res.json()
+        setRiskSnapshots(data ?? {})
+      } catch (err) {
+        console.log("No cached risk snapshots")
+      } finally {
+        setHasLoadedSnapshots(true)
+      }
+    }
+
+    loadSnapshots()
+  }, [])
+
+  useEffect(() => {
+    if (!hasLoadedSnapshots) return
+    if (!Object.keys(riskSnapshots).length) return
+
+    const save = async () => {
+      await fetch("/api/save-risk-snapshots", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(riskSnapshots),
+      })
+    }
+
+    save()
+  }, [riskSnapshots])
+
+  useEffect(() => {
+    if (!hasLoadedSnapshots) return
     if (!countryRisks.length) return
+    if (hasCompleteSnapshots) {
+      console.log("Using cached risk snapshots. Skipping evaluation.")
+      return
+    }
 
     let cancelled = false;
 
