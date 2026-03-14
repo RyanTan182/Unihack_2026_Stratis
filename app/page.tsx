@@ -7,10 +7,7 @@ import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
-<<<<<<< HEAD
 import type { ItemType } from "@/components/product-supply-chain"
-=======
->>>>>>> c66e497f0180dfcf83234d373ca67e52d2e4ddf7
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
@@ -890,11 +887,7 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={customRoute}
-<<<<<<< HEAD
           products={mapProducts}
-=======
-          products={products}
->>>>>>> c66e497f0180dfcf83234d373ca67e52d2e4ddf7
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
@@ -1001,25 +994,17 @@ export default function SupplyChainCrisisDetector() {
         />
 
         {/* Product Supply Chain Panel */}
-<<<<<<< HEAD
         {/* <ProductSupplyChain
-=======
-        <ProductSupplyChain
->>>>>>> c66e497f0180dfcf83234d373ca67e52d2e4ddf7
           isOpen={isProductBuilderOpen}
           onClose={() => setIsProductBuilderOpen(false)}
           countryRisks={countryRisks}
           products={products}
           onProductsChange={setProducts}
-<<<<<<< HEAD
           onAddToInventory={handleAddToInventory}
           inventoryProductIds={inventoryProducts.map((p) => p.id)}
           mapAddRequest={mapAddRequest}
           onMapAddRequestHandled={() => setMapAddRequest(null)}
         /> */}
-=======
-        />
->>>>>>> c66e497f0180dfcf83234d373ca67e52d2e4ddf7
 
         {/* Path Details Panel - shows when a route is clicked */}
         <PathDetailsPanel

@@ -403,7 +403,9 @@ function extractProductRoutes(
   return routes
 }
 
-// Generate GeoJSON for route arcs
+// Generate GeoJSON for route arcs.
+// When the path crosses the Pacific (|lon delta| > 180°), outputs coordinates that extend
+// beyond [-180, 180] so the line flows onto the next world copy (Mapbox renderWorldCopies).
 function generateArcLine(
   from: [number, number],
   to: [number, number]
@@ -411,21 +413,32 @@ function generateArcLine(
   const points: [number, number][] = []
   const segments = 100
 
-  // Calculate midpoint with elevation
-  const midLon = (from[0] + to[0]) / 2
-  const midLat = (from[1] + to[1]) / 2
+  let fromLon = from[0]
+  let toLon = to[0]
+  const lonDelta = toLon - fromLon
+
+  // Pacific crossing: use the path that extends into the next world copy
+  if (lonDelta > 180) {
+    toLon = fromLon + lonDelta - 360 // go west, extend past -180
+  } else if (lonDelta < -180) {
+    toLon = fromLon + lonDelta + 360 // go east (Pacific), extend past 180
+  }
+
+  const effectiveLonDelta = toLon - fromLon
+  const latDelta = to[1] - from[1]
   const distance = Math.sqrt(
-    Math.pow(to[0] - from[0], 2) + Math.pow(to[1] - from[1], 2)
+    Math.pow(effectiveLonDelta, 2) + Math.pow(latDelta, 2)
   )
   const elevation = Math.min(distance * 0.15, 15) // Cap elevation
 
   for (let i = 0; i <= segments; i++) {
     const t = i / segments
-    const lon = from[0] + (to[0] - from[0]) * t
-    const lat = from[1] + (to[1] - from[1]) * t
+    const lon = fromLon + effectiveLonDelta * t
+    const lat = from[1] + latDelta * t
 
     // Add elevation using a parabolic curve
     const elev = Math.sin(t * Math.PI) * elevation
+    // Don't normalize lon: values outside [-180, 180] render on adjacent world copies
     points.push([lon, lat + elev * 0.5])
   }
 
@@ -912,8 +925,6 @@ export function SupplyChainMap({
           mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
           // Enable infinite horizontal scroll (world wrapping)
           renderWorldCopies={true}
-          // Map bounds for initial view
-          maxBounds={[[-180, -85], [180, 85]]}
           // Zoom constraints
           minZoom={1}
           maxZoom={8}
