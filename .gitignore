@@ -9,3 +9,7 @@ node_modules/
 .env*.local
 .DS_Store
 .env
+.Planning/
+.playwright-mcp/
+.superpowers/
+decomposition-demo/

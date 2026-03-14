@@ -1,9 +1,0 @@
-{"type":"server-started","port":55203,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:55203","screen_dir":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600"}
-{"type":"screen-added","file":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600/input-ux.html"}
-{"source":"user-event","type":"click","text":"PRODUCT NAME\n          Tesla Model 3\n        \n        \n          FIRST-TIER SUPPLIERS\n          \n            Panasonic ×\n            CATL ×\n            LG Energy ×\n          \n          Add supplier...\n        \n        ⚡ Decompose Supply Chain\n      \n    \n    \n      A — Structured Form\n      Separate fields for product name and tag-style supplier input. Clean, explicit.","choice":"a","id":null,"timestamp":1773398025186}
-{"type":"screen-added","file":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600/architecture.html"}
-{"type":"screen-added","file":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600/panel-ui.html"}
-{"type":"screen-added","file":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600/map-markers.html"}
-{"type":"screen-added","file":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600/tree-style.html"}
-{"type":"screen-added","file":"/Users/john/Unihack_2026_Stratis/.superpowers/brainstorm/55102-1773396600/waiting.html"}
-{"type":"server-stopped","reason":"owner process exited"}
