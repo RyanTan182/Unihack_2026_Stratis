@@ -1,20 +1,6 @@
 "use client"
 
-import {
-  Home,
-  Mail,
-  BarChart2,
-  FileText,
-  Flag,
-  MapPin,
-  List,
-  Users,
-  Globe,
-  Compass,
-  HelpCircle,
-  Layers,
-  Zap,
-} from "lucide-react"
+import { Home, Package, Zap, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { IconButton } from "@/components/ui/icon-button"
@@ -31,6 +17,8 @@ interface NavSidebarProps {
   isInventoryOpen?: boolean
   onLocationClick?: () => void
   isLocationActive?: boolean
+  onAlertsClick?: () => void
+  isAlertsActive?: boolean
 }
 
 export function NavSidebar({
@@ -38,24 +26,17 @@ export function NavSidebar({
   isInventoryOpen,
   onLocationClick,
   isLocationActive,
+  onAlertsClick,
+  isAlertsActive,
 }: NavSidebarProps) {
   const navItems: NavItem[] = [
-    { icon: Home, label: "Dashboard", active: false },
-    { icon: Mail, label: "Alerts" },
-    { icon: BarChart2, label: "Analytics" },
-    { icon: FileText, label: "Reports" },
-    { icon: Flag, label: "Flags" },
-    { icon: MapPin, label: "Locations", active: isLocationActive, onClick: onLocationClick },
-    { icon: List, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
-    { icon: Users, label: "Suppliers" },
-    { icon: Globe, label: "Global View" },
-    { icon: Compass, label: "Routes" },
-    { icon: Layers, label: "Layers" },
-    { icon: HelpCircle, label: "Help" },
+    { icon: Home, label: "Risk & Locations", active: isLocationActive, onClick: onLocationClick },
+    { icon: Package, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
+    { icon: AlertTriangle, label: "Alerts", active: isAlertsActive, onClick: onAlertsClick },
   ]
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex h-full w-full flex-col items-center border-r border-sidebar-border bg-sidebar py-4">
+      <div className="flex h-full w-full flex-col items-center border-r border-sidebar-border bg-sidebar py-4 stagger-children">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-1">
           <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg glow-primary">

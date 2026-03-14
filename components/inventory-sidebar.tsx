@@ -1172,12 +1172,12 @@ export function InventorySidebar({
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Decomposing...
+                Building Supply Chain Model...
               </>
             ) : (
               <>
                 <Search className="h-4 w-4" />
-                Decompose Supply Chain
+                Predict Supply Chain
               </>
             )}
           </Button>

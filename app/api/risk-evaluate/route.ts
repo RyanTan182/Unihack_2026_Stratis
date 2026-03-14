@@ -51,8 +51,9 @@ function factorGroupSchema() {
       tariff: factorSchema(),
       conflict: factorSchema(),
       policy: factorSchema(),
+      labor: factorSchema(),
     },
-    required: ["tariff", "conflict", "policy"],
+    required: ["tariff", "conflict", "policy", "labor"],
   }
 }
 
@@ -60,11 +61,14 @@ function weightedFactorRisk(factors: {
   tariff: { score: number }
   conflict: { score: number }
   policy: { score: number }
+  labor?: { score: number }
 }) {
+  const laborScore = factors.labor?.score ?? 50 // default mid-range when missing (backward compat)
   return Math.round(
-    factors.tariff.score * 0.35 +
-    factors.conflict.score * 0.40 +
-    factors.policy.score * 0.25
+    factors.tariff.score * 0.28 +
+    factors.conflict.score * 0.35 +
+    factors.policy.score * 0.22 +
+    laborScore * 0.15
   )
 }
 
@@ -120,11 +124,13 @@ export async function POST(req: NextRequest) {
       - tariff risk
       - conflict risk
       - policy risk
+      - labor risk
 
       Definitions:
       - tariff risk: tariffs, duties, sanctions-like trade barriers, customs cost escalation
       - conflict risk: war, armed tension, military escalation, security instability, serious geopolitical confrontation
       - policy risk: export controls, regulation changes, industrial policy, administrative restrictions, licensing, government intervention
+      - labor risk: worker rights violations, forced labor, modern slavery, child labor, hazardous working conditions, weak enforcement of labor laws
 
       Instructions:
       - Use the provided news headlines as evidence.
@@ -145,11 +151,13 @@ export async function POST(req: NextRequest) {
               tariff: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
               conflict: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
               policy: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
+              labor: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
             },
             exportFactors: {
               tariff: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
               conflict: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
               policy: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
+              labor: { score: "0-100", confidence: "0-1", rationale: "string", evidence: ["string"] },
             },
             summary: "string",
             assumptions: ["string"],
