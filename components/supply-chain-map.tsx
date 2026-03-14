@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Spinner } from "@/components/ui/spinner"
 import { extractChokepointsFromPath } from "@/lib/utils"
 
-interface CountryRisk {
+export interface CountryRisk {
   id: string
   name: string
   type: "country" | "chokepoint"
@@ -59,7 +59,7 @@ interface CustomRoute {
 
 type ItemType = "product" | "component" | "material" | "resource"
 
-interface SupplyChainItem {
+export interface SupplyChainItem {
   id: string
   name: string
   type: ItemType

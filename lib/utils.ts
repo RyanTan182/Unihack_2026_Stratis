@@ -1,32 +1,98 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import type { SupplyChainItem, CountryRisk } from '@/components/supply-chain-map'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 // Types for supply chain traversal
-interface CountryRiskForTraversal {
-  id: string
-  name: string
-  type: "country" | "chokepoint"
-  connections: string[]
-}
-
-interface SupplyChainItemForTraversal {
-  id: string
-  country: string
-  children: SupplyChainItemForTraversal[]
-}
-
 interface TraversalResult {
   uniqueCountries: string[]
   uniqueChokepoints: string[]
 }
 
+export function buildCountryGraph(
+  countryRisks: CountryRisk[]
+): Map<string, CountryRisk[]> {
+  const riskMap = new Map(countryRisks.map((r) => [r.id, r]))
+  const graph = new Map<string, CountryRisk[]>()
+  
+  countryRisks.forEach((node) => {
+    if (!graph.has(node.id)) graph.set(node.id, [])
+    node.connections?.forEach((connId) => {
+      const connNode = riskMap.get(connId)
+      if (connNode) {
+        if (!graph.has(connId)) graph.set(connId, [])
+        graph.get(node.id)!.push(connNode)
+        graph.get(connId)!.push(node)
+      }
+    })
+  })
+
+  return graph
+}
+
+export function findHighestRiskPath(
+  graph: Map<string, CountryRisk[]>
+): {
+  path: string[]
+  maxRisk: number
+} {
+  // Extract all unique nodes from the graph
+  const allNodes = new Map<string, CountryRisk>()
+  graph.forEach((neighbors) => {
+    neighbors.forEach((neighbor) => {
+      if (!allNodes.has(neighbor.id)) {
+        allNodes.set(neighbor.id, neighbor)
+      }
+    })
+  })
+
+  // Find the node with maximum overall risk
+  let maxRiskNodeId: string | null = null
+  let maxRiskValue = 0
+
+  allNodes.forEach((node) => {
+    if (node.overallRisk > maxRiskValue) {
+      maxRiskValue = node.overallRisk
+      maxRiskNodeId = node.id
+    }
+  })
+
+  if (!maxRiskNodeId) {
+    return { path: [], maxRisk: 0 }
+  }
+
+  // Find a path to this node using BFS from any starting point
+  for (const [startId] of graph) {
+    const queue: string[][] = [[startId]]
+    const visited = new Set<string>([startId])
+
+    while (queue.length > 0) {
+      const path = queue.shift()!
+      const current = path[path.length - 1]
+
+      if (current === maxRiskNodeId) {
+        return { path, maxRisk: maxRiskValue }
+      }
+
+      const neighbors = graph.get(current) || []
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor.id)) {
+          visited.add(neighbor.id)
+          queue.push([...path, neighbor.id])
+        }
+      }
+    }
+  }
+
+  return { path: [], maxRisk: 0 }
+}
+
 export function extractChokepointsFromPath(
   path: string[],
-  riskMap: Map<string, CountryRiskForTraversal>
+  riskMap: Map<string, CountryRisk>
 ): string[] {
   return path.filter((nodeId) => {
     const node = riskMap.get(nodeId)
@@ -35,34 +101,19 @@ export function extractChokepointsFromPath(
 }
 
 export function traverseSupplyChainBFS(
-  rootItem: SupplyChainItemForTraversal,
+  rootItem: SupplyChainItem,
   rootCountry: string,
-  countryRisks: CountryRiskForTraversal[]
+  countryRisks: CountryRisk[]
 ): TraversalResult {
   const uniqueCountries = new Set<string>()
   const uniqueChokepoints = new Set<string>()
 
   const riskMap = new Map(countryRisks.map((r) => [r.id, r]))
-
-  const graph = new Map<string, string[]>()
-  countryRisks.forEach((node) => {
-    if (!graph.has(node.id)) graph.set(node.id, [])
-    node.connections?.forEach((conn) => {
-      if (!graph.has(conn)) graph.set(conn, [])
-      graph.get(node.id)!.push(conn)
-      graph.get(conn)!.push(node.id)
-    })
-  })
-
-  graph.forEach((connections) => {
-    const unique = Array.from(new Set(connections))
-    connections.length = 0
-    connections.push(...unique)
-  })
+  const nodeGraph = buildCountryGraph(countryRisks)
 
   const findShortestPath = (start: string, end: string): string[] => {
     if (start === end) return [start]
-    if (!graph.has(start) || !graph.has(end)) return [start, end]
+    if (!nodeGraph.has(start) || !nodeGraph.has(end)) return [start, end]
 
     const queue: string[][] = [[start]]
     const visited = new Set<string>([start])
@@ -70,15 +121,15 @@ export function traverseSupplyChainBFS(
     while (queue.length > 0) {
       const path = queue.shift()!
       const current = path[path.length - 1]
-      const neighbors = graph.get(current) || []
+      const neighbors = nodeGraph.get(current) || []
 
       for (const neighbor of neighbors) {
-        if (visited.has(neighbor)) continue
+        if (visited.has(neighbor.id)) continue
 
-        const nextPath = [...path, neighbor]
-        if (neighbor === end) return nextPath
+        const nextPath = [...path, neighbor.id]
+        if (neighbor.id === end) return nextPath
 
-        visited.add(neighbor)
+        visited.add(neighbor.id)
         queue.push(nextPath)
       }
     }
@@ -86,7 +137,7 @@ export function traverseSupplyChainBFS(
     return [start, end]
   }
 
-  const queue: Array<{ item: SupplyChainItemForTraversal; parentCountry: string }> = [
+  const queue: Array<{ item: SupplyChainItem; parentCountry: string }> = [
     { item: rootItem, parentCountry: rootCountry },
   ]
   const visitedItems = new Set<string>()
