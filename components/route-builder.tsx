@@ -241,8 +241,8 @@ export function RouteBuilder({
   if (!isOpen) return null
 
   return (
-    <div className="absolute right-4 top-16 z-20 w-96 animate-in slide-in-from-right-4 duration-300">
-      <Card className="max-h-[calc(100vh-8rem)] overflow-hidden border-primary/20 glass-panel shadow-2xl">
+    <div className="absolute right-4 top-20 z-20 w-[380px] animate-in slide-in-from-right-4 duration-300">
+      <Card className="max-h-[calc(100vh-6rem)] overflow-hidden border-primary/20 glass-panel shadow-2xl">
         <CardHeader className="pb-3 border-b border-border/50">
           <div className="flex items-start justify-between">
             <div className="space-y-1">

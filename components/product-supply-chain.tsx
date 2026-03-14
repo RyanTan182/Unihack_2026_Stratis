@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   ChevronLeft,
   ChevronDown,
@@ -20,6 +20,15 @@ import {
   Loader2,
   Globe,
   List,
+  Navigation,
+  Route,
+  ArrowRight,
+  Activity,
+  Shield,
+  DollarSign,
+  Target,
+  Zap,
+  AlertCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,9 +56,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { EmptyState } from "@/components/ui/empty-state"
+import { InsightsPanel } from "@/components/insights-panel"
+import type { FoundRoute } from "@/lib/route-types"
+import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/lib/supply-chain-analyzer"
+import { getRiskLevel } from "@/lib/risk-calculator"
+import { EmptyState } from "./ui/empty-state"
 
 export interface CountryRisk {
   id: string
@@ -79,6 +93,7 @@ interface Product {
   name: string
   type: "product"
   country: string
+  destinationCountry: string // User-specified destination for route calculations
   color: string
   riskPrediction: number
   riskDirection: "up" | "down"
@@ -93,6 +108,16 @@ interface ProductSupplyChainProps {
   onProductsChange: (products: Product[]) => void
   onAddToInventory?: (product: Product) => void
   inventoryProductIds?: string[]
+  /** When set, add an item of this type in this country (from map right-click) */
+  mapAddRequest?: { country: string; itemType: ItemType } | null
+  onClearMapAddRequest?: () => void
+  // New props for insights and route integration
+  insights?: SupplyChainInsights
+  onFindSafeRoute?: (origin: string, destination: string, itemName: string) => void
+  foundRoutes?: FoundRoute[]
+  selectedFoundRouteId?: string | null
+  onClearFoundRoutes?: () => void
+  onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
 }
 
 // Modern product palette with glow effects
@@ -217,6 +242,9 @@ function SupplyChainItemRow({
   onUpdate,
   onDelete,
   onAddChild,
+  onFindSafeRoute,
+  onViewAlternatives,
+  parentDestination,
 }: {
   item: SupplyChainItem
   depth: number
@@ -225,6 +253,9 @@ function SupplyChainItemRow({
   onUpdate: (item: SupplyChainItem) => void
   onDelete: () => void
   onAddChild: (parentId: string, type: ItemType) => void
+  onFindSafeRoute?: (origin: string, destination: string, itemName: string) => void
+  onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
+  parentDestination?: string
 }) {
   const [isExpanded, setIsExpanded] = useState(item.isExpanded ?? true)
   const [alternatives, setAlternatives] = useState<{ country: string; risk: string; reason: string }[]>([])
@@ -281,14 +312,14 @@ function SupplyChainItemRow({
       {depth > 0 && (
         <div
           className="absolute left-0 top-0 h-full border-l border-border/30"
-          style={{ marginLeft: `${(depth - 1) * 24 + 20}px` }}
+          style={{ marginLeft: `${(depth - 1) * 16 + 12}px` }}
         />
       )}
 
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div
-          className="group flex items-center gap-2.5 rounded-xl border border-border/50 bg-card/50 p-3 transition-all hover:border-primary/30 hover:bg-card/80"
-          style={{ marginLeft: `${depth * 24}px` }}
+          className="group flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-card/50 p-2.5 transition-all hover:border-primary/30 hover:bg-card/80"
+          style={{ marginLeft: `${depth * 16}px` }}
         >
           {/* Expand/Collapse button */}
           {hasChildren ? (
@@ -328,14 +359,14 @@ function SupplyChainItemRow({
           </div>
 
           {/* Location + Risk Badge */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-1 min-w-0">
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
               <span className="text-[10px] text-muted-foreground">Location</span>
               <Select
                 value={item.country}
                 onValueChange={(country) => onUpdate({ ...item, country })}
               >
-                <SelectTrigger className="h-7 w-[130px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
+                <SelectTrigger className="h-7 w-[90px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -527,9 +558,13 @@ function ProductListItem({
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{product.name || "Unnamed Product"}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {product.components.length} component{product.components.length !== 1 ? "s" : ""}
-        </p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs text-muted-foreground">{product.components.length} component{product.components.length !== 1 ? "s" : ""}</span>
+          <span className="text-muted-foreground">•</span>
+          <span className="text-xs text-muted-foreground">
+            {product.country} → {product.destinationCountry}
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-col items-end gap-0.5">
@@ -564,14 +599,77 @@ export function ProductSupplyChain({
   onProductsChange,
   onAddToInventory,
   inventoryProductIds = [],
+  mapAddRequest,
+  onClearMapAddRequest,
+  // New props for insights and route integration
+  insights,
+  onFindSafeRoute,
+  foundRoutes,
+  selectedFoundRouteId,
+  onClearFoundRoutes,
+  onViewAlternatives,
 }: ProductSupplyChainProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [view, setView] = useState<"list" | "detail">("list")
   const [aiDialogOpen, setAiDialogOpen] = useState(false)
   const [aiResult, setAiResult] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [showInsightsPanel, setShowInsightsPanel] = useState(false)
 
   const selectedProduct = products.find((p) => p.id === selectedProductId)
+
+  // Handle map right-click add request
+  useEffect(() => {
+    if (!mapAddRequest || !onClearMapAddRequest) return
+
+    const { country, itemType } = mapAddRequest
+    const prediction = generatePrediction(45)
+
+    if (itemType === "product") {
+      const color = PRODUCT_COLORS[products.length % PRODUCT_COLORS.length]
+      const newProduct: Product = {
+        id: `product-${Date.now()}`,
+        name: "",
+        type: "product",
+        country,
+        destinationCountry: "United States",
+        color,
+        riskPrediction: prediction.value,
+        riskDirection: prediction.direction,
+        components: [],
+      }
+      onProductsChange([...products, newProduct])
+      setSelectedProductId(newProduct.id)
+      setView("detail")
+    } else {
+      const targetProduct = selectedProduct ?? products[0]
+      if (!targetProduct) return
+
+      const newItem: SupplyChainItem = {
+        id: `${itemType}-${Date.now()}`,
+        name: "",
+        type: itemType,
+        country,
+        riskPrediction: prediction.value,
+        riskDirection: prediction.direction,
+        children: [],
+        isExpanded: true,
+      }
+
+      onProductsChange(
+        products.map((p) =>
+          p.id === targetProduct.id
+            ? { ...p, components: [...p.components, newItem] }
+            : p
+        )
+      )
+      setSelectedProductId(targetProduct.id)
+      setView("detail")
+    }
+
+    onClearMapAddRequest()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when mapAddRequest is set
+  }, [mapAddRequest])
 
   const handleAiOptimize = () => {
     if (!selectedProduct) return
@@ -618,6 +716,7 @@ export function ProductSupplyChain({
       name: "",
       type: "product",
       country: "China",
+      destinationCountry: "United States",
       color,
       riskPrediction: prediction.value,
       riskDirection: prediction.direction,
@@ -682,8 +781,8 @@ export function ProductSupplyChain({
   if (!isOpen) return null
 
   return (
-    <div className="absolute right-4 top-4 z-20 w-[420px] animate-in slide-in-from-right-4">
-      <Card className="max-h-[calc(100vh-2rem)] overflow-hidden border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl">
+    <div className="absolute right-4 top-20 z-20 w-[380px] animate-in slide-in-from-right-4">
+      <Card className="max-h-[calc(100vh-6rem)] overflow-hidden border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl">
         <CardContent className="p-0">
           {view === "list" ? (
             // Product List View
@@ -791,6 +890,31 @@ export function ProductSupplyChain({
                   Add another product
                 </Button>
               </div>
+
+              {/* Insights Panel */}
+              {insights && (
+                <button
+                  onClick={() => setShowInsightsPanel(true)}
+                  className="w-full rounded-xl border border-border/50 bg-muted/30 p-4 text-left hover:border-primary/30 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Supply Chain Health</span>
+                    </div>
+                    <Badge className={cn(
+                      insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                      insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-red-500/20 text-red-400"
+                    )}>
+                      {insights.healthScore}%
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {insights.recommendations.length} recommendations • {insights.priceImpact.estimated} price impact
+                  </p>
+                </button>
+              )}
             </div>
           ) : (
             // Product Detail View
@@ -818,36 +942,77 @@ export function ProductSupplyChain({
                       <Package className="h-6 w-6 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <Input
-                        value={selectedProduct.name}
-                        onChange={(e) =>
-                          updateProduct({ ...selectedProduct, name: e.target.value })
-                        }
-                        className="h-auto border-0 bg-transparent p-0 text-lg font-semibold shadow-none focus-visible:ring-0"
-                        placeholder="Product name..."
-                      />
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={selectedProduct.name}
+                          onChange={(e) =>
+                            updateProduct({ ...selectedProduct, name: e.target.value })
+                          }
+                          className="h-auto border-0 bg-transparent p-0 text-lg font-semibold shadow-none focus-visible:ring-0"
+                          placeholder="Product name..."
+                        />
+                        {insights && (
+                          <Badge className={cn(
+                            "border-0 shrink-0",
+                            insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                            insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                            "bg-red-500/20 text-red-400"
+                          )}>
+                            <Shield className="h-3 w-3 mr-1" />
+                            {insights.healthScore}%
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-[10px] text-muted-foreground">Location</span>
-                      <Select
-                        value={selectedProduct.country}
-                        onValueChange={(country) =>
-                          updateProduct({ ...selectedProduct, country })
-                        }
-                      >
-                        <SelectTrigger className="h-7 w-[110px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countryRisks
-                            .sort((a, b) => a.name.localeCompare(b.name))
-                            .map((country) => (
-                              <SelectItem key={country.id} value={country.name}>
-                                {country.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">Origin</span>
+                          <Select
+                            value={selectedProduct.country}
+                            onValueChange={(country) =>
+                              updateProduct({ ...selectedProduct, country })
+                            }
+                          >
+                            <SelectTrigger className="h-7 w-[100px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countryRisks
+                                .sort((a, b) => a.name.localeCompare(b.name))
+                                .map((country) => (
+                                  <SelectItem key={country.id} value={country.name}>
+                                    {country.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className="text-[10px] text-muted-foreground">Destination</span>
+                          <Select
+                            value={selectedProduct.destinationCountry}
+                            onValueChange={(destinationCountry) =>
+                              updateProduct({ ...selectedProduct, destinationCountry })
+                            }
+                          >
+                            <SelectTrigger className="h-7 w-[100px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countryRisks
+                                .filter(c => c.type === "country")
+                                .sort((a, b) => a.name.localeCompare(b.name))
+                                .map((country) => (
+                                  <SelectItem key={country.id} value={country.name}>
+                                    {country.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -897,6 +1062,9 @@ export function ProductSupplyChain({
                       updateProduct({ ...selectedProduct, components: newComponents })
                     }}
                     onAddChild={addChildToItem}
+                    onFindSafeRoute={onFindSafeRoute}
+                    onViewAlternatives={onViewAlternatives}
+                    parentDestination={selectedProduct.destinationCountry}
                   />
                 ))}
 
@@ -921,6 +1089,81 @@ export function ProductSupplyChain({
               </div>
 
               <div className="border-t border-border/50 p-4">
+                {/* Analyze Supply Chain Button */}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10 mb-3"
+                  onClick={() => setShowInsightsPanel(true)}
+                  disabled={!insights}
+                >
+                  <Activity className="h-4 w-4" />
+                  Analyze Supply Chain
+                  {insights && (
+                    <Badge className={cn(
+                      "ml-auto border-0",
+                      insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                      insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-red-500/20 text-red-400"
+                    )}>
+                      {insights.healthScore}% Health
+                    </Badge>
+                  )}
+                </Button>
+
+                {/* Inline Mini Health Overview */}
+                {insights && (
+                  <div className="mb-3 rounded-xl border border-border/50 bg-muted/30 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-muted-foreground">Supply Chain Overview</span>
+                      <Badge className={cn(
+                        "border-0",
+                        insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                        insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                        "bg-red-500/20 text-red-400"
+                      )}>
+                        {insights.healthScore}%
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="rounded-lg bg-card/50 border border-border/30 p-2">
+                        <p className="text-[10px] text-muted-foreground">Geopolitical</p>
+                        <p className={cn(
+                          "text-sm font-semibold",
+                          insights.riskBreakdown.geopolitical < 40 ? "text-emerald-400" :
+                          insights.riskBreakdown.geopolitical < 60 ? "text-yellow-400" : "text-red-400"
+                        )}>
+                          {insights.riskBreakdown.geopolitical}%
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-card/50 border border-border/30 p-2">
+                        <p className="text-[10px] text-muted-foreground">Logistics</p>
+                        <p className={cn(
+                          "text-sm font-semibold",
+                          insights.riskBreakdown.logistics < 40 ? "text-emerald-400" :
+                          insights.riskBreakdown.logistics < 60 ? "text-yellow-400" : "text-red-400"
+                        )}>
+                          {insights.riskBreakdown.logistics}%
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-card/50 border border-border/30 p-2">
+                        <p className="text-[10px] text-muted-foreground">Price Impact</p>
+                        <p className={cn(
+                          "text-sm font-semibold",
+                          insights.priceImpact.estimated.startsWith('+') ? "text-red-400" : "text-emerald-400"
+                        )}>
+                          {insights.priceImpact.estimated}
+                        </p>
+                      </div>
+                    </div>
+                    {insights.recommendations.length > 0 && (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <AlertCircle className="h-3 w-3 text-primary" />
+                        {insights.recommendations.length} recommendation{insights.recommendations.length !== 1 ? 's' : ''} available
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
                   style={{ boxShadow: '0 8px 20px rgba(6, 182, 212, 0.25)' }}
@@ -970,6 +1213,17 @@ export function ProductSupplyChain({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Insights Panel */}
+      {showInsightsPanel && insights && (
+        <InsightsPanel
+          isOpen={showInsightsPanel}
+          onClose={() => setShowInsightsPanel(false)}
+          insights={insights}
+          onFindSafeRoute={onFindSafeRoute}
+          onViewAlternatives={onViewAlternatives}
+        />
+      )}
     </div>
   )
 }

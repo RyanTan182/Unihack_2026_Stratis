@@ -5,14 +5,24 @@ import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
 import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
+import type { ItemType } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
+import { analyzeSupplyChain } from "@/lib/supply-chain-analyzer"
+import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/lib/supply-chain-analyzer"
+import { SupplierRecommendations } from "@/components/supplier-recommendations"
+import { RouteFinderPanel } from "@/components/route-finder-panel"
+import { RouteSummary } from "@/components/route-summary"
+import { PriceRiskTimeline } from "@/components/price-risk-timeline"
+import { AlertBanner, type AlertData } from "@/components/alert-banner"
 import { Button } from "@/components/ui/button"
-import { Route, Package, Layers, Globe, Factory } from "lucide-react"
+import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import type { FoundRoute } from "@/lib/route-types"
+import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import { collectCountriesFromProducts } from "./lib/risk-country-utils";
@@ -700,7 +710,11 @@ export default function SupplyChainCrisisDetector() {
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
   const [showRiskZones, setShowRiskZones] = useState(false)
   const [isRelocationOpen, setIsRelocationOpen] = useState(false)
+  const [isRouteFinderOpen, setIsRouteFinderOpen] = useState(false)
+  const [foundRoutes, setFoundRoutes] = useState<FoundRoute[]>([])
+  const [selectedFoundRouteId, setSelectedFoundRouteId] = useState<string | null>(null)
   const [storedProducts, setStoredProducts] = useState<StoredProduct[]>([])
+  const [decompositionTree, setDecompositionTree] = useState<DecompositionTree | null>(null)
   const [activeTree, setActiveTree] = useState<DecompositionTree | null>(null)
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
@@ -714,6 +728,18 @@ export default function SupplyChainCrisisDetector() {
     completedChunks: 0,
     totalChunks: 0,
   })
+  const [mapAddRequest, setMapAddRequest] = useState<{
+    country: string
+    itemType: ItemType
+  } | null>(null)
+  const [safeRouteContext, setSafeRouteContext] = useState<{
+    origin: string
+    destination: string
+    itemName: string
+  } | null>(null)
+  const [alternativesPanelOpen, setAlternativesPanelOpen] = useState(false)
+  const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
+  const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -724,6 +750,34 @@ export default function SupplyChainCrisisDetector() {
   const hasCompleteSnapshots = useMemo(() => {
     return requiredCountryIds.every((id) => !!riskSnapshots[id])
   }, [requiredCountryIds, riskSnapshots])
+
+  // resolvedCountryRisks must be defined before insights
+  const resolvedCountryRisks = useMemo(() => {
+    return countryRisks.map((node) => {
+      if (node.type !== "country") return node
+
+      const snapshot = riskSnapshots[node.id]
+      if (!snapshot) return node
+
+      return {
+        ...node,
+        importRisk: snapshot.importRisk,
+        exportRisk: snapshot.exportRisk,
+        overallRisk: snapshot.overallRisk,
+        newsHighlights: [
+          snapshot.summary,
+          `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
+          `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+        ],
+      }
+    })
+  }, [countryRisks, riskSnapshots])
+
+  // Calculate insights from products
+  const insights = useMemo(() => {
+    if (products.length === 0) return undefined
+    return analyzeSupplyChain(products, resolvedCountryRisks)
+  }, [products, resolvedCountryRisks])
 
   useEffect(() => {
     const loadSnapshots = async () => {
@@ -836,52 +890,15 @@ export default function SupplyChainCrisisDetector() {
     }
   }, [countryRisks])
 
-  const resolvedCountryRisks = useMemo(() => {
-    return countryRisks.map((node) => {
-      if (node.type === "country") {
-        const snapshot = riskSnapshots[node.id]
-        if (!snapshot) return node
-
-        return {
-          ...node,
-          importRisk: snapshot.importRisk,
-          exportRisk: snapshot.exportRisk,
-          overallRisk: snapshot.overallRisk,
-          newsHighlights: [
-            snapshot.summary,
-            `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
-            `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
-          ],
-        }
-      }
-      
-      const relatedCountries = chokeToCountriesMap[node.id] ?? []
-      if (relatedCountries.length === 0) return node
-
-      const availableSnapshots = relatedCountries
-        .map((countryName: string) => riskSnapshots[countryName])
-        .filter(Boolean)
-
-      if (availableSnapshots.length === 0) {
-        return node
-      }
-
-      const totalImport = availableSnapshots.reduce((sum, s) => sum + s.importRisk, 0)
-      const totalExport = availableSnapshots.reduce((sum, s) => sum + s.exportRisk, 0)
-      const totalOverall = availableSnapshots.reduce((sum, s) => sum + s.overallRisk, 0)
-
-      return {
-        ...node,
-        importRisk: totalImport / availableSnapshots.length,
-        exportRisk: totalExport / availableSnapshots.length,
-        overallRisk: totalOverall / availableSnapshots.length,
-        newsHighlights: [
-          ...node.newsHighlights,
-          `Derived from ${availableSnapshots.length} neighboring countries`,
-        ],
-      }
-    })
-  }, [riskSnapshots])
+  // Initialize route graph with country risks data
+  useEffect(() => {
+    if (!resolvedCountryRisks.length) return
+    try {
+      getRouteGraph(resolvedCountryRisks)
+    } catch (error) {
+      console.error("Failed to initialize route graph:", error)
+    }
+  }, [resolvedCountryRisks])
 
   const handleReset = () => {
     setSelectedCountry(null)
@@ -915,6 +932,60 @@ export default function SupplyChainCrisisDetector() {
     setIsInventorySidebarOpen((prev) => !prev)
   }
 
+  const handleFindSafeRouteForProduct = (origin: string, destination: string, itemName: string) => {
+    setSafeRouteContext({ origin, destination, itemName })
+    setIsRouteFinderOpen(true)
+    setIsProductBuilderOpen(false)
+  }
+
+  const handleClearFoundRoutes = () => {
+    setFoundRoutes([])
+    setSelectedFoundRouteId(null)
+    setSafeRouteContext(null)
+  }
+
+  const handleInventoryProductsChange = (updated: Product[]) => {
+    // Keep core products list in sync with any changes made in Inventory
+    setProducts((prev) => {
+      if (prev.length === 0) return prev
+      const updatedById = new Map(updated.map((p) => [p.id, p]))
+      let changed = false
+
+      const next = prev.map((p) => {
+        const candidate = updatedById.get(p.id)
+        if (!candidate) return p
+        if (candidate === p) return p
+        changed = true
+        return candidate
+      })
+
+      return changed ? next : prev
+    })
+  }
+
+  // Handler for viewing supplier alternatives
+  const handleViewAlternatives = (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => {
+    // Find the component risk from insights
+    if (insights) {
+      const componentRisk = insights.highRiskComponents.find(c => c.componentId === component.componentId)
+      if (componentRisk) {
+        setSelectedComponentRisk(componentRisk)
+        setAlternativesPanelOpen(true)
+      }
+    }
+  }
+
+  // Handler for alert click
+  const handleAlertClick = (alert: AlertData) => {
+    if (alert.relatedComponentId && insights) {
+      const componentRisk = insights.highRiskComponents.find(c => c.componentId === alert.relatedComponentId)
+      if (componentRisk) {
+        setSelectedComponentRisk(componentRisk)
+        setAlternativesPanelOpen(true)
+      }
+    }
+  }
+
   return (
     <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
@@ -944,6 +1015,14 @@ export default function SupplyChainCrisisDetector() {
 
       {/* Main Map Area */}
       <div className="relative h-full w-full overflow-hidden">
+        {/* Alert Banner - positioned below action buttons */}
+        <div className="absolute left-4 right-4 top-20 z-20">
+          <AlertBanner
+            insights={insights}
+            onAlertClick={handleAlertClick}
+          />
+        </div>
+
         <SupplyChainMap
           countryRisks={resolvedCountryRisks}
           onCountrySelect={setSelectedCountry}
@@ -953,6 +1032,12 @@ export default function SupplyChainCrisisDetector() {
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
+          onAddItemAtCountry={(country, itemType) => {
+            setMapAddRequest({ country, itemType })
+            setIsProductBuilderOpen(true)
+          }}
+          foundRoutes={foundRoutes}
+          selectedFoundRouteId={selectedFoundRouteId}
         />
 
         {/* Action Buttons */}
@@ -1014,6 +1099,26 @@ export default function SupplyChainCrisisDetector() {
           </Button>
 
           <Button
+            variant={isRouteFinderOpen ? "default" : "secondary"}
+            size="sm"
+            className={cn(
+              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+              isRouteFinderOpen
+                ? "bg-primary text-primary-foreground glow-primary"
+                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
+            )}
+            onClick={() => {
+              setIsRouteFinderOpen(!isRouteFinderOpen)
+              setIsRouteBuilderOpen(false)
+              setIsProductBuilderOpen(false)
+              setIsRelocationOpen(false)
+            }}
+          >
+            <Navigation className="h-4 w-4" />
+            Safe Routes
+          </Button>
+
+          <Button
             variant={showRiskZones ? "default" : "secondary"}
             size="sm"
             className={cn(
@@ -1040,6 +1145,24 @@ export default function SupplyChainCrisisDetector() {
             <Layers className="h-4 w-4" />
             Clear
           </Button>
+
+          {/* Route Summary Button */}
+          {products.length > 0 && (
+            <Button
+              variant={isRouteSummaryOpen ? "default" : "secondary"}
+              size="sm"
+              className={cn(
+                "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+                isRouteSummaryOpen
+                  ? "bg-primary text-primary-foreground glow-primary"
+                  : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
+              )}
+              onClick={() => setIsRouteSummaryOpen(!isRouteSummaryOpen)}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Routes
+            </Button>
+          )}
         </div>
 
         {/* Route Builder Panel */}
@@ -1051,6 +1174,24 @@ export default function SupplyChainCrisisDetector() {
           onRouteChange={setCustomRoute}
         />
 
+        {/* Safe Route Finder Panel */}
+        <RouteFinderPanel
+          isOpen={isRouteFinderOpen}
+          onClose={() => {
+            setIsRouteFinderOpen(false)
+            setSafeRouteContext(null)
+          }}
+          countryRisks={resolvedCountryRisks}
+          onRouteFound={(routes) => {
+            setFoundRoutes(routes)
+            if (routes.length > 0) {
+              setSelectedFoundRouteId(routes[0].id)
+            }
+          }}
+          preselectedOrigin={safeRouteContext?.origin}
+          preselectedDestination={safeRouteContext?.destination}
+        />
+
         {/* Product Supply Chain Panel */}
         <ProductSupplyChain
           isOpen={isProductBuilderOpen}
@@ -1060,6 +1201,13 @@ export default function SupplyChainCrisisDetector() {
           onProductsChange={setProducts}
           onAddToInventory={handleAddToInventory}
           inventoryProductIds={storedProducts.map((p) => p.id)}
+          mapAddRequest={mapAddRequest}
+          onClearMapAddRequest={() => setMapAddRequest(null)}
+          onFindSafeRoute={handleFindSafeRouteForProduct}
+          foundRoutes={foundRoutes}
+          selectedFoundRouteId={selectedFoundRouteId}
+          onClearFoundRoutes={handleClearFoundRoutes}
+          onViewAlternatives={handleViewAlternatives}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}
@@ -1074,6 +1222,41 @@ export default function SupplyChainCrisisDetector() {
           onClose={() => setIsRelocationOpen(false)}
           countryRisks={countryRisks}
           onCountrySelect={setSelectedCountry}
+        />
+
+        {/* Route Summary Panel */}
+        <RouteSummary
+          isOpen={isRouteSummaryOpen}
+          onClose={() => setIsRouteSummaryOpen(false)}
+          products={products}
+          countryRisks={resolvedCountryRisks}
+          onRouteClick={(origin, destination) => {
+            setSafeRouteContext({ origin, destination, itemName: 'Selected Route' })
+            setIsRouteFinderOpen(true)
+            setIsRouteSummaryOpen(false)
+          }}
+        />
+
+        {/* Supplier Recommendations Panel */}
+        <SupplierRecommendations
+          isOpen={alternativesPanelOpen}
+          onClose={() => setAlternativesPanelOpen(false)}
+          componentRisk={selectedComponentRisk}
+          destinationCountry={products[0]?.destinationCountry || 'United States'}
+          onSelectAlternative={(alternative) => {
+            // Handle alternative selection - could update the supply chain
+            console.log('Selected alternative:', alternative)
+          }}
+          onViewRoute={(origin, destination) => {
+            setSafeRouteContext({ origin, destination, itemName: 'Alternative Route' })
+            setIsRouteFinderOpen(true)
+            setAlternativesPanelOpen(false)
+          }}
+          onReplaceSupplier={(alternative) => {
+            // Handle supplier replacement in supply chain
+            console.log('Replace supplier with:', alternative)
+            setAlternativesPanelOpen(false)
+          }}
         />
       </div>
     </div>
