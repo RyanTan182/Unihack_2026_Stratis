@@ -10,6 +10,7 @@ import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { syncStoredToProducts } from "@/lib/sync-products"
+import { storedProductToMapProduct, type MapProduct } from "@/lib/decompose/to-map-product"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { analyzeSupplyChain } from "@/lib/supply-chain-analyzer"
@@ -784,6 +785,13 @@ export default function SupplyChainCrisisDetector() {
     return analyzeSupplyChain(products, resolvedCountryRisks)
   }, [products, resolvedCountryRisks])
 
+  // Convert stored products to map products for the right panel
+  const mapProducts = useMemo(() => {
+    return storedProducts
+      .map((sp, i) => storedProductToMapProduct(sp, i))
+      .filter((mp): mp is MapProduct => mp !== null)
+  }, [storedProducts])
+
   useEffect(() => {
     const loadSnapshots = async () => {
       try {
@@ -1208,6 +1216,20 @@ export default function SupplyChainCrisisDetector() {
           alternativesMap={alternativesMap}
           altScanLoading={altScanLoading}
           onApplyAlternative={handleApplyAlternative}
+          onFindSafeRoute={handleFindSafeRouteForProduct}
+          insights={insights}
+          onViewAlternatives={handleViewAlternatives}
+          rightPanelProducts={products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            country: p.country,
+            components: p.components.map((c) => ({
+              name: c.name,
+              type: c.type,
+              country: c.country,
+              children: c.children,
+            })),
+          }))}
         />
       ) : (
         <RiskSidebar
@@ -1415,6 +1437,7 @@ export default function SupplyChainCrisisDetector() {
           selectedFoundRouteId={selectedFoundRouteId}
           onClearFoundRoutes={handleClearFoundRoutes}
           onViewAlternatives={handleViewAlternatives}
+          mapProducts={mapProducts}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}

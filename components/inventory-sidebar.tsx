@@ -19,6 +19,8 @@ import {
   PenLine,
   Trash2,
   Check,
+  Navigation,
+  Activity,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,6 +39,13 @@ import type {
   SupplyChainNode,
   StoredProduct,
 } from "@/lib/decompose/types"
+import { InsightsPanel } from "@/components/insights-panel"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -559,6 +568,28 @@ function ProductCard({
 
 // --- Main component ---
 
+interface ComponentRiskForInsights {
+  componentId: string
+  componentName: string
+  country: string
+  risk: number
+}
+
+interface SupplyChainInsightsData {
+  healthScore: number
+  riskBreakdown: {
+    geopolitical: number
+    logistics: number
+    priceVolatility: number
+  }
+  highRiskComponents: ComponentRiskForInsights[]
+  priceImpact: {
+    estimated: string
+    factors: { source: string; impact: 'increase' | 'decrease' | 'neutral'; magnitude: number; description: string }[]
+  }
+  recommendations: { id: string; type: 'critical' | 'warning' | 'info' | 'opportunity'; title: string; description: string; action: string }[]
+}
+
 interface InventorySidebarProps {
   products: StoredProduct[]
   onProductAdd: (product: StoredProduct) => void
@@ -569,6 +600,10 @@ interface InventorySidebarProps {
   alternativesMap?: Record<string, AlternativeEntry[]>
   altScanLoading?: boolean
   onApplyAlternative?: (nodeId: string, country: string) => void
+  onFindSafeRoute?: (origin: string, destination: string, itemName: string) => void
+  insights?: SupplyChainInsightsData
+  onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
+  rightPanelProducts?: { id: string; name: string; country: string; components: { name: string; type: string; country: string; children: any[] }[] }[]
 }
 
 function createManualStoredProduct(
@@ -645,6 +680,10 @@ export function InventorySidebar({
   alternativesMap = {},
   altScanLoading = false,
   onApplyAlternative,
+  onFindSafeRoute,
+  insights,
+  onViewAlternatives,
+  rightPanelProducts = [],
 }: InventorySidebarProps) {
   const [view, setView] = useState<"list" | "chooser" | "form" | "manual" | "tree" | "detail">("list")
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
@@ -655,6 +694,11 @@ export function InventorySidebar({
   const [manualName, setManualName] = useState("")
   const [manualCountry, setManualCountry] = useState("China")
   const [manualComponents, setManualComponents] = useState<ManualComponent[]>([])
+
+  const [showInsightsPanel, setShowInsightsPanel] = useState(false)
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [aiResult, setAiResult] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
 
   const { tree, isLoading, error, durationMs, decompose, abort } = useDecompose()
 
@@ -724,6 +768,48 @@ export function InventorySidebar({
     setManualCountry("China")
     setManualComponents([])
   }, [manualName, manualCountry, manualComponents, onProductAdd, onTreeChange, onProductSelect])
+
+  const handleAiOptimize = useCallback(() => {
+    const currentProduct = rightPanelProducts.find((p) => {
+      const stored = products.find((sp) => sp.id === p.id)
+      return stored?.id === activeProductId
+    }) ?? rightPanelProducts[0]
+
+    if (!currentProduct) return
+    setAiDialogOpen(true)
+    setAiLoading(true)
+    setAiResult(null)
+
+    const serializeItem = (item: { name: string; type: string; country: string; children: any[] }): unknown => ({
+      name: item.name || item.type,
+      type: item.type,
+      country: item.country,
+      children: item.children.map(serializeItem),
+    })
+
+    fetch("/api/ai/optimize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        product: {
+          name: currentProduct.name || "Unnamed",
+          country: currentProduct.country,
+          components: currentProduct.components.map(serializeItem),
+        },
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.result) {
+          setAiResult(data.result)
+        } else {
+          const detail = data.detail ? `\n\n${data.detail}` : ""
+          setAiResult(`Error: ${data.error ?? "No response"}${detail}`)
+        }
+      })
+      .catch(() => setAiResult("Failed to get AI response. Check your API key."))
+      .finally(() => setAiLoading(false))
+  }, [rightPanelProducts, products, activeProductId])
 
   const addManualComponent = useCallback(() => {
     setManualComponents((prev) => [
@@ -1015,6 +1101,23 @@ export function InventorySidebar({
               </div>
             </div>
 
+            {onFindSafeRoute && manualComponents.length > 0 && (
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={() => {
+                  manualComponents.forEach((comp) => {
+                    if (comp.name.trim() && comp.country) {
+                      onFindSafeRoute(comp.country, manualCountry, comp.name)
+                    }
+                  })
+                }}
+              >
+                <Navigation className="h-4 w-4" />
+                Analyse Component Routes
+              </Button>
+            )}
+
             <Button
               className="w-full gap-2"
               onClick={handleManualSave}
@@ -1186,6 +1289,82 @@ export function InventorySidebar({
             )}
           </div>
         </div>
+
+        {/* Action buttons */}
+        <div className="border-t border-sidebar-border p-4 space-y-2">
+          {insights && (
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10"
+              onClick={() => setShowInsightsPanel(true)}
+            >
+              <Activity className="h-4 w-4" />
+              Analyse Supply Chain
+              <Badge className={cn(
+                "ml-auto border-0 text-[10px]",
+                insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
+                insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
+                "bg-red-500/20 text-red-400"
+              )}>
+                {insights.healthScore}%
+              </Badge>
+            </Button>
+          )}
+
+          <Button
+            className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+            onClick={handleAiOptimize}
+            disabled={aiLoading || rightPanelProducts.length === 0}
+          >
+            {aiLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Ask AI to optimize plan
+          </Button>
+        </div>
+
+        {showInsightsPanel && insights && (
+          <InsightsPanel
+            isOpen={showInsightsPanel}
+            onClose={() => setShowInsightsPanel(false)}
+            insights={insights}
+            onFindSafeRoute={onFindSafeRoute}
+            onViewAlternatives={onViewAlternatives}
+          />
+        )}
+
+        <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+          <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto rounded-xl border-border/50 bg-card/95 backdrop-blur-xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Optimization — {activeProduct?.name || "Product"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="mt-2">
+              {aiLoading ? (
+                <div className="flex flex-col items-center gap-4 py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Analyzing your supply chain...</p>
+                </div>
+              ) : aiResult ? (
+                <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
+                  {aiResult.split("\n").map((line, i) => {
+                    if (line.startsWith("# ")) return <h3 key={i} className="mt-3 text-base font-semibold text-foreground">{line.slice(2)}</h3>
+                    if (line.startsWith("## ")) return <h4 key={i} className="mt-2 text-sm font-semibold text-foreground">{line.slice(3)}</h4>
+                    if (line.startsWith("### ")) return <h4 key={i} className="mt-2 text-sm font-medium text-foreground">{line.slice(4)}</h4>
+                    if (line.startsWith("- ") || line.startsWith("* ")) return <p key={i} className="ml-3 text-sm text-muted-foreground">{line}</p>
+                    if (line.startsWith("**")) return <p key={i} className="text-sm font-semibold text-foreground">{line.replace(/\*\*/g, "")}</p>
+                    if (line.trim() === "") return <div key={i} className="h-2" />
+                    return <p key={i} className="text-sm text-muted-foreground">{line}</p>
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

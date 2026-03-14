@@ -17,18 +17,7 @@ import {
   MapPin,
   Loader2,
   Globe,
-  List,
-  Navigation,
-  Route,
   ArrowRight,
-  Activity,
-  Shield,
-  DollarSign,
-  Target,
-  Zap,
-  AlertCircle,
-  Plus,
-  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -50,19 +39,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { InsightsPanel } from "@/components/insights-panel"
 import type { FoundRoute } from "@/lib/route-types"
 import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/lib/supply-chain-analyzer"
-import { getRiskLevel } from "@/lib/risk-calculator"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import type { MapProduct, MapSupplyChainItem } from "@/lib/decompose/to-map-product"
 import { EmptyState } from "./ui/empty-state"
 
 export interface CountryRisk {
@@ -122,6 +103,7 @@ interface ProductSupplyChainProps {
   selectedFoundRouteId?: string | null
   onClearFoundRoutes?: () => void
   onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
+  mapProducts?: MapProduct[]
 }
 
 // Modern product palette with glow effects
@@ -503,6 +485,44 @@ function SupplyChainItemRow({
   )
 }
 
+function MapPreviewItem({
+  item,
+  depth,
+  productColor,
+}: {
+  item: MapSupplyChainItem
+  depth: number
+  productColor: string
+}) {
+  const riskColor = item.riskPrediction >= 70 ? "text-red-400" :
+    item.riskPrediction >= 40 ? "text-yellow-400" : "text-emerald-400"
+
+  return (
+    <div>
+      <div
+        className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+        style={{ marginLeft: `${depth * 12}px` }}
+      >
+        <div
+          className="h-2.5 w-2.5 rounded-full shrink-0"
+          style={{ backgroundColor: productColor }}
+        />
+        <span className="text-xs font-medium text-foreground truncate flex-1">{item.name}</span>
+        <span className="text-[10px] text-muted-foreground">{item.country}</span>
+        <span className={cn("text-[10px] font-semibold", riskColor)}>
+          {item.riskPrediction}%
+        </span>
+        {item.isPredicted && (
+          <span className="text-[9px] text-muted-foreground italic">pred</span>
+        )}
+      </div>
+      {item.children.map((child) => (
+        <MapPreviewItem key={child.id} item={child} depth={depth + 1} productColor={productColor} />
+      ))}
+    </div>
+  )
+}
+
 function ProductListItem({
   product,
   countryRisks,
@@ -595,15 +615,13 @@ export function ProductSupplyChain({
   selectedFoundRouteId,
   onClearFoundRoutes,
   onViewAlternatives,
+  mapProducts = [],
 }: ProductSupplyChainProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [view, setView] = useState<"list" | "detail">("list")
-  const [aiDialogOpen, setAiDialogOpen] = useState(false)
-  const [aiResult, setAiResult] = useState<string | null>(null)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [showInsightsPanel, setShowInsightsPanel] = useState(false)
 
   const selectedProduct = products.find((p) => p.id === selectedProductId)
+  const selectedMapProduct = mapProducts.find((mp) => mp.id === selectedProductId)
 
   const generatePrediction = (base: number) => {
     const value = base + Math.floor(Math.random() * 20)
@@ -663,62 +681,6 @@ export function ProductSupplyChain({
     onClearMapAddRequest()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when mapAddRequest is set
   }, [mapAddRequest])
-
-  const handleAiOptimize = () => {
-    if (!selectedProduct) return
-    setAiDialogOpen(true)
-    setAiLoading(true)
-    setAiResult(null)
-
-    const serializeItem = (item: SupplyChainItem): unknown => ({
-      name: item.name || item.type,
-      type: item.type,
-      country: item.country,
-      children: item.children.map(serializeItem),
-    })
-
-    fetch("/api/ai/optimize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        product: {
-          name: selectedProduct.name || "Unnamed",
-          country: selectedProduct.country,
-          components: selectedProduct.components.map(serializeItem),
-        },
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.result) {
-          setAiResult(data.result)
-        } else {
-          const detail = data.detail ? `\n\n${data.detail}` : ""
-          setAiResult(`Error: ${data.error ?? "No response"}${detail}`)
-        }
-      })
-      .catch(() => setAiResult("Failed to get AI response. Check your API key."))
-      .finally(() => setAiLoading(false))
-  }
-
-  const addProduct = () => {
-    const prediction = generatePrediction(35)
-    const color = PRODUCT_COLORS[products.length % PRODUCT_COLORS.length]
-    const newProduct: Product = {
-      id: `product-${Date.now()}`,
-      name: "",
-      type: "product",
-      country: "China",
-      destinationCountry: "United States",
-      color,
-      riskPrediction: prediction.value,
-      riskDirection: prediction.direction,
-      components: [],
-    }
-    onProductsChange([...products, newProduct])
-    setSelectedProductId(newProduct.id)
-    setView("detail")
-  }
 
   const updateProduct = (updated: Product) => {
     onProductsChange(products.map((p) => (p.id === updated.id ? updated : p)))
@@ -872,41 +834,6 @@ export function ProductSupplyChain({
                 </div>
               )}
 
-              <div className="border-t border-border/50 p-4">
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
-                  onClick={addProduct}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add another product
-                </Button>
-              </div>
-
-              {/* Insights Panel */}
-              {insights && (
-                <button
-                  onClick={() => setShowInsightsPanel(true)}
-                  className="w-full rounded-xl border border-border/50 bg-muted/30 p-4 text-left hover:border-primary/30 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Supply Chain Health</span>
-                    </div>
-                    <Badge className={cn(
-                      insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
-                      insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                      "bg-red-500/20 text-red-400"
-                    )}>
-                      {insights.healthScore}%
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {insights.recommendations.length} recommendations • {insights.priceImpact.estimated} price impact
-                  </p>
-                </button>
-              )}
             </div>
           ) : (
             // Product Detail View
@@ -943,17 +870,6 @@ export function ProductSupplyChain({
                           className="h-auto border-0 bg-transparent p-0 text-lg font-semibold shadow-none focus-visible:ring-0"
                           placeholder="Product name..."
                         />
-                        {insights && (
-                          <Badge className={cn(
-                            "border-0 shrink-0",
-                            insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
-                            insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                            "bg-red-500/20 text-red-400"
-                          )}>
-                            <Shield className="h-3 w-3 mr-1" />
-                            {insights.healthScore}%
-                          </Badge>
-                        )}
                       </div>
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -1065,144 +981,44 @@ export function ProductSupplyChain({
                     description="This product has no supply chain components yet"
                   />
                 )}
-              </div>
 
-              <div className="border-t border-border/50 p-4">
-                {/* Analyze Supply Chain Button */}
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10 mb-3"
-                  onClick={() => setShowInsightsPanel(true)}
-                  disabled={!insights}
-                >
-                  <Activity className="h-4 w-4" />
-                  Analyze Supply Chain
-                  {insights && (
-                    <Badge className={cn(
-                      "ml-auto border-0",
-                      insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
-                      insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                      "bg-red-500/20 text-red-400"
-                    )}>
-                      {insights.healthScore}% Health
-                    </Badge>
-                  )}
-                </Button>
-
-                {/* Inline Mini Health Overview */}
-                {insights && (
-                  <div className="mb-3 rounded-xl border border-border/50 bg-muted/30 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-muted-foreground">Supply Chain Overview</span>
-                      <Badge className={cn(
-                        "border-0",
-                        insights.healthScore >= 70 ? "bg-emerald-500/20 text-emerald-400" :
-                        insights.healthScore >= 40 ? "bg-yellow-500/20 text-yellow-400" :
-                        "bg-red-500/20 text-red-400"
-                      )}>
-                        {insights.healthScore}%
-                      </Badge>
+                {/* Map Product Preview */}
+                {selectedMapProduct && selectedMapProduct.components.length > 0 && (
+                  <div className="mt-4 rounded-xl border border-border/50 bg-muted/30 p-4">
+                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      Map Supply Chain
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedMapProduct.components.map((item) => (
+                        <MapPreviewItem key={item.id} item={item} depth={0} productColor={selectedMapProduct.color} />
+                      ))}
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div className="rounded-lg bg-card/50 border border-border/30 p-2">
-                        <p className="text-[10px] text-muted-foreground">Geopolitical</p>
-                        <p className={cn(
-                          "text-sm font-semibold",
-                          insights.riskBreakdown.geopolitical < 40 ? "text-emerald-400" :
-                          insights.riskBreakdown.geopolitical < 60 ? "text-yellow-400" : "text-red-400"
+                    <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: selectedMapProduct.color }} />
+                        {selectedMapProduct.country}
+                      </span>
+                      <span>
+                        Risk: <span className={cn(
+                          "font-semibold",
+                          selectedMapProduct.riskPrediction >= 50 ? "text-red-400" : "text-emerald-400"
                         )}>
-                          {insights.riskBreakdown.geopolitical}%
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-card/50 border border-border/30 p-2">
-                        <p className="text-[10px] text-muted-foreground">Logistics</p>
-                        <p className={cn(
-                          "text-sm font-semibold",
-                          insights.riskBreakdown.logistics < 40 ? "text-emerald-400" :
-                          insights.riskBreakdown.logistics < 60 ? "text-yellow-400" : "text-red-400"
-                        )}>
-                          {insights.riskBreakdown.logistics}%
-                        </p>
-                      </div>
-                      <div className="rounded-lg bg-card/50 border border-border/30 p-2">
-                        <p className="text-[10px] text-muted-foreground">Price Impact</p>
-                        <p className={cn(
-                          "text-sm font-semibold",
-                          insights.priceImpact.estimated.startsWith('+') ? "text-red-400" : "text-emerald-400"
-                        )}>
-                          {insights.priceImpact.estimated}
-                        </p>
-                      </div>
+                          {selectedMapProduct.riskPrediction}%
+                        </span>
+                      </span>
+                      {selectedMapProduct.isPredicted && (
+                        <Badge variant="secondary" className="text-[10px]">Predicted</Badge>
+                      )}
                     </div>
-                    {insights.recommendations.length > 0 && (
-                      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <AlertCircle className="h-3 w-3 text-primary" />
-                        {insights.recommendations.length} recommendation{insights.recommendations.length !== 1 ? 's' : ''} available
-                      </div>
-                    )}
                   </div>
                 )}
-
-                <Button
-                  className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
-                  style={{ boxShadow: '0 8px 20px rgba(6, 182, 212, 0.25)' }}
-                  onClick={handleAiOptimize}
-                  disabled={aiLoading}
-                >
-                  {aiLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  Ask AI to optimize plan
-                </Button>
               </div>
+
             </div>
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-        <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto rounded-xl border-border/50 bg-card/95 backdrop-blur-xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI Optimization — {selectedProduct?.name || "Product"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="mt-2">
-            {aiLoading ? (
-              <div className="flex flex-col items-center gap-4 py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Analyzing your supply chain...</p>
-              </div>
-            ) : aiResult ? (
-              <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
-                {aiResult.split("\n").map((line, i) => {
-                  if (line.startsWith("# ")) return <h3 key={i} className="mt-3 text-base font-semibold text-foreground">{line.slice(2)}</h3>
-                  if (line.startsWith("## ")) return <h4 key={i} className="mt-2 text-sm font-semibold text-foreground">{line.slice(3)}</h4>
-                  if (line.startsWith("### ")) return <h4 key={i} className="mt-2 text-sm font-medium text-foreground">{line.slice(4)}</h4>
-                  if (line.startsWith("- ") || line.startsWith("* ")) return <p key={i} className="ml-3 text-sm text-muted-foreground">{line}</p>
-                  if (line.startsWith("**")) return <p key={i} className="text-sm font-semibold text-foreground">{line.replace(/\*\*/g, "")}</p>
-                  if (line.trim() === "") return <div key={i} className="h-2" />
-                  return <p key={i} className="text-sm text-muted-foreground">{line}</p>
-                })}
-              </div>
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Insights Panel */}
-      {showInsightsPanel && insights && (
-        <InsightsPanel
-          isOpen={showInsightsPanel}
-          onClose={() => setShowInsightsPanel(false)}
-          insights={insights}
-          onFindSafeRoute={onFindSafeRoute}
-          onViewAlternatives={onViewAlternatives}
-        />
-      )}
     </div>
   )
 }
