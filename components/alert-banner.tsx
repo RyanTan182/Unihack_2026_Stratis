@@ -4,126 +4,38 @@ import { useState, useEffect } from "react"
 import {
   AlertTriangle,
   AlertCircle,
-  TrendingUp,
-  Route,
   X,
   Clock,
   ChevronRight,
-  Shield,
   Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { SupplyChainInsights, Recommendation } from "@/lib/supply-chain-analyzer"
 
-export interface AlertData {
-  id: string
-  type: 'high_risk' | 'price_spike' | 'route_disruption' | 'critical_recommendation'
-  severity: 'warning' | 'critical' | 'info'
-  title: string
-  description: string
-  action?: string
-  relatedComponentId?: string
-}
+// Re-export AlertData from lib/alerts
+export type { AlertData } from "@/lib/alerts"
 
 interface AlertBannerProps {
-  insights: SupplyChainInsights | undefined
-  onAlertClick?: (alert: AlertData) => void
+  alerts: import("@/lib/alerts").AlertData[]
+  onAlertClick?: (alert: import("@/lib/alerts").AlertData) => void
   onDismiss?: (alertId: string) => void
   onRemindLater?: (alertId: string) => void
   className?: string
 }
 
 export function AlertBanner({
-  insights,
+  alerts,
   onAlertClick,
   onDismiss,
   onRemindLater,
   className,
 }: AlertBannerProps) {
-  const [alerts, setAlerts] = useState<AlertData[]>([])
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set())
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0)
 
-  // Generate alerts from insights
-  useEffect(() => {
-    if (!insights) {
-      setAlerts([])
-      return
-    }
-
-    const generatedAlerts: AlertData[] = []
-
-    // High risk components
-    const criticalComponents = insights.highRiskComponents.filter(c => c.risk >= 70)
-    if (criticalComponents.length > 0) {
-      generatedAlerts.push({
-        id: 'high-risk-components',
-        type: 'high_risk',
-        severity: 'critical',
-        title: `${criticalComponents.length} High-Risk Component${criticalComponents.length > 1 ? 's' : ''} Detected`,
-        description: `${criticalComponents[0].componentName} from ${criticalComponents[0].country} has ${criticalComponents[0].risk}% risk`,
-        action: 'View alternatives',
-        relatedComponentId: criticalComponents[0].componentId,
-      })
-    }
-
-    // Price spike
-    const priceImpact = parseFloat(insights.priceImpact.estimated.replace('%', '').replace('+', ''))
-    if (priceImpact > 10) {
-      generatedAlerts.push({
-        id: 'price-spike',
-        type: 'price_spike',
-        severity: 'warning',
-        title: `Price Impact Alert: ${insights.priceImpact.estimated}`,
-        description: `Multiple factors contributing to ${insights.priceImpact.estimated} price increase`,
-        action: 'View details',
-      })
-    } else if (priceImpact > 5) {
-      generatedAlerts.push({
-        id: 'price-moderate',
-        type: 'price_spike',
-        severity: 'info',
-        title: `Moderate Price Impact: ${insights.priceImpact.estimated}`,
-        description: 'Monitor price factors that may affect your supply chain costs',
-        action: 'View timeline',
-      })
-    }
-
-    // Critical chokepoints
-    const criticalChokepoints = insights.criticalChokepoints.filter(c => c.risk >= 70)
-    if (criticalChokepoints.length > 0) {
-      generatedAlerts.push({
-        id: 'route-disruption',
-        type: 'route_disruption',
-        severity: 'warning',
-        title: `Critical Chokepoint${criticalChokepoints.length > 1 ? 's' : ''}: ${criticalChokepoints[0].name}`,
-        description: `${criticalChokepoints[0].risk}% risk affecting ${criticalChokepoints[0].affectedComponents.length} components`,
-        action: 'Find alternatives',
-      })
-    }
-
-    // Critical recommendations
-    const criticalRecs = insights.recommendations.filter(r => r.type === 'critical')
-    if (criticalRecs.length > 0) {
-      criticalRecs.forEach((rec, idx) => {
-        generatedAlerts.push({
-          id: `recommendation-${idx}`,
-          type: 'critical_recommendation',
-          severity: 'critical',
-          title: rec.title,
-          description: rec.description,
-          action: rec.action,
-          relatedComponentId: rec.componentId,
-        })
-      })
-    }
-
-    // Filter out dismissed alerts
-    const activeAlerts = generatedAlerts.filter(a => !dismissedAlerts.has(a.id))
-    setAlerts(activeAlerts)
-  }, [insights, dismissedAlerts])
+  // Filter out dismissed alerts
+  const activeAlerts = alerts.filter(a => !dismissedAlerts.has(a.id))
 
   const handleDismiss = (alertId: string) => {
     setDismissedAlerts(prev => new Set([...prev, alertId]))
@@ -131,39 +43,38 @@ export function AlertBanner({
   }
 
   const handleRemindLater = (alertId: string) => {
-    // In a real app, this would schedule a reminder
     handleDismiss(alertId)
     onRemindLater?.(alertId)
   }
 
-  const handleAlertClick = (alert: AlertData) => {
+  const handleAlertClick = (alert: import("@/lib/alerts").AlertData) => {
     onAlertClick?.(alert)
   }
 
   // Auto-cycle through alerts if multiple
   useEffect(() => {
-    if (alerts.length <= 1) return
+    if (activeAlerts.length <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentAlertIndex(prev => (prev + 1) % alerts.length)
+      setCurrentAlertIndex(prev => (prev + 1) % activeAlerts.length)
     }, 8000)
 
     return () => clearInterval(interval)
-  }, [alerts.length])
+  }, [activeAlerts.length])
 
   // Reset index if it goes out of bounds (e.g., after dismissal)
   useEffect(() => {
-    if (alerts.length > 0 && currentAlertIndex >= alerts.length) {
+    if (activeAlerts.length > 0 && currentAlertIndex >= activeAlerts.length) {
       setCurrentAlertIndex(0)
     }
-  }, [alerts.length, currentAlertIndex])
+  }, [activeAlerts.length, currentAlertIndex])
 
-  if (alerts.length === 0) return null
+  if (activeAlerts.length === 0) return null
 
   // Ensure currentAlertIndex is within bounds
-  const safeIndex = Math.min(currentAlertIndex, alerts.length - 1)
-  const currentAlert = alerts[safeIndex]
-  const hasMultipleAlerts = alerts.length > 1
+  const safeIndex = Math.min(currentAlertIndex, activeAlerts.length - 1)
+  const currentAlert = activeAlerts[safeIndex]
+  const hasMultipleAlerts = activeAlerts.length > 1
 
   const severityConfig = {
     critical: {
@@ -275,7 +186,7 @@ export function AlertBanner({
         {/* Multiple Alerts Indicator */}
         {hasMultipleAlerts && (
           <div className="flex items-center gap-1 flex-shrink-0 ml-2 pl-2 border-l border-border/50">
-            {alerts.map((_, idx) => (
+            {activeAlerts.map((_, idx) => (
               <button
                 key={idx}
                 className={cn(
@@ -288,7 +199,7 @@ export function AlertBanner({
               />
             ))}
             <span className="text-[10px] text-muted-foreground ml-1">
-              {currentAlertIndex + 1}/{alerts.length}
+              {currentAlertIndex + 1}/{activeAlerts.length}
             </span>
           </div>
         )}

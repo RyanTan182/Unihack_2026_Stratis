@@ -1027,7 +1027,6 @@ export const SupplyChainMap = React.forwardRef<SupplyChainMapRef, SupplyChainMap
           mapStyle={mapStyle}
           mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
           renderWorldCopies={true}
-          maxBounds={[[-180, -85], [180, 85]]}
           minZoom={1}
           maxZoom={8}
           interactiveLayerIds={['product-routes', 'countries-fill']}
@@ -1298,20 +1297,13 @@ export const SupplyChainMap = React.forwardRef<SupplyChainMapRef, SupplyChainMap
             )
           })}
 
-          {/* Chokepoint markers */}
+          {/* Chokepoint markers - Simplified design */}
           {chokepointNodes.map((node) => {
             const coords = nodeCoordinates[node.id]
             if (!coords) return null
 
             const isSelected = selectedCountry === node.id
             const isActive = activeProductChokepoints.has(node.id)
-            const activeColor = isSelected
-              ? "#7c3aed"
-              : productRoutes.find(r =>
-                  selectedRouteId
-                    ? r.id === selectedRouteId && r.chokepoints.includes(node.id)
-                    : r.chokepoints.includes(node.id)
-                )?.productColor ?? "#7c3aed"
 
             return (
               <Marker
@@ -1325,53 +1317,35 @@ export const SupplyChainMap = React.forwardRef<SupplyChainMapRef, SupplyChainMap
                     <div
                       className="group relative cursor-pointer"
                       onClick={() => onCountrySelect(selectedCountry === node.id ? null : node.id)}
-                      style={{ opacity: isActive ? 1 : 0.5 }}
                     >
-                      {isActive && (
-                        <div
-                          className="absolute animate-pulse rounded-lg"
-                          style={{
-                            width: 44,
-                            height: 44,
-                            margin: -6,
-                            border: `2px solid ${activeColor}`,
-                            borderRadius: 10,
-                            opacity: 0.6,
-                          }}
-                        />
-                      )}
+                      {/* Simplified diamond marker */}
                       <div
-                        className="flex items-center justify-center rounded-md border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        className="flex items-center justify-center rotate-45 transition-all duration-200 group-hover:scale-110"
                         style={{
-                          width: 28,
-                          height: 28,
-                          backgroundColor: getRiskColor(node.overallRisk),
-                          borderColor: isSelected ? "#111827" : "#fff",
-                          borderWidth: isSelected ? 2.5 : 2,
+                          width: 16,
+                          height: 16,
+                          backgroundColor: isActive
+                            ? getRiskColor(node.overallRisk)
+                            : "rgba(100, 100, 120, 0.6)",
+                          border: isSelected
+                            ? "2px solid rgba(255, 255, 255, 0.9)"
+                            : "1px solid rgba(255, 255, 255, 0.4)",
                         }}
-                      >
-                        <div className="h-2 w-2 rounded-full bg-white" />
-                      </div>
+                      />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
-                    <div className="space-y-1.5">
-                      <p className="text-sm font-semibold text-foreground">{node.name}</p>
-                      <p className="text-xs text-muted-foreground">Chokepoint</p>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-foreground">{node.name}</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Risk:</span>
+                        <span className="text-[10px] text-muted-foreground">Risk:</span>
                         <span
-                          className="text-xs font-medium"
+                          className="text-[10px] font-medium"
                           style={{ color: getRiskColor(node.overallRisk) }}
                         >
                           {node.overallRisk}%
                         </span>
                       </div>
-                      {isActive && (
-                        <p className="text-xs font-medium text-primary">
-                          Active in route
-                        </p>
-                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>

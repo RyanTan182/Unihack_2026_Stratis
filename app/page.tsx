@@ -13,7 +13,8 @@ import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/
 import { convertTreeToAnalyzerProducts, extractHighRiskCountries } from "@/lib/product-converter"
 import { SupplierRecommendations } from "@/components/supplier-recommendations"
 import { RouteSummary } from "@/components/route-summary"
-import { AlertBanner, type AlertData } from "@/components/alert-banner"
+import { AlertBanner } from "@/components/alert-banner"
+import { AlertsSidebar } from "@/components/alerts-sidebar"
 import { ActionBar } from "@/components/action-bar"
 import { ProductSupplyChainRoutesPanel } from "@/components/product-supply-chain-routes-panel"
 import { cn } from "@/lib/utils"
@@ -22,6 +23,8 @@ import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateAllCountriesInChunks } from "./lib/risk-client"
 import type { SupplyChainInsightsData, ComponentRiskForInsights } from "@/components/sidebar-sections/insights-section"
+import { generateAlertsFromProducts, type AlertData } from "@/lib/alerts"
+import { NavSidebar } from "@/components/nav-sidebar"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -224,12 +227,13 @@ const countryRisks: CountryRiskData[] = [
     name: "South Africa",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 45,
-    exportRisk: 55,
-    overallRisk: 50,
+    importRisk: 40,
+    exportRisk: 50,
+    overallRisk: 45,
     newsHighlights: [
-      "Port operations experiencing delays",
-      "Mining sector exports fluctuating",
+      "Load shedding affecting manufacturing output",
+      "Labor unrest in mining sector",
+      "Port operations at Durban experiencing delays",
     ],
   },
   {
@@ -350,12 +354,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Egypt",
     type: "country",
     connections: ["Suez Canal", "Bab-el-Mandeb", "Saudi Arabia", "Greece"],
-    importRisk: 48,
-    exportRisk: 58,
-    overallRisk: 53,
+    importRisk: 40,
+    exportRisk: 50,
+    overallRisk: 45,
     newsHighlights: [
-      "Suez Canal operations normal",
-      "Regional tensions monitoring",
+      "Debt burden affecting import capacity",
+      "Suez Canal revenue decline from Red Sea tensions",
+      "Labor rights concerns in manufacturing",
     ],
   },
   {
@@ -363,12 +368,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Nigeria",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 60,
-    exportRisk: 70,
-    overallRisk: 65,
+    importRisk: 50,
+    exportRisk: 60,
+    overallRisk: 55,
     newsHighlights: [
-      "Oil exports facing logistics challenges",
-      "Currency volatility high",
+      "Corruption concerns in port operations",
+      "Security challenges in oil-producing regions",
+      "Currency volatility affecting trade costs",
     ],
   },
   {
@@ -451,6 +457,218 @@ const countryRisks: CountryRiskData[] = [
     newsHighlights: [
       "Sanctions severely limiting trade",
       "Oil exports restricted",
+    ],
+  },
+
+  // New countries with detailed risk data
+  {
+    id: "Congo",
+    name: "Congo (DRC)",
+    type: "country",
+    connections: ["Bab-el-Mandeb", "South Africa"],
+    importRisk: 68,
+    exportRisk: 76,
+    overallRisk: 72,
+    newsHighlights: [
+      "Major cobalt producer with child labor concerns",
+      "Conflict in eastern regions affecting mining",
+      "Infrastructure challenges for export routes",
+    ],
+  },
+  {
+    id: "Zambia",
+    name: "Zambia",
+    type: "country",
+    connections: ["Congo", "South Africa"],
+    importRisk: 48,
+    exportRisk: 62,
+    overallRisk: 55,
+    newsHighlights: [
+      "Copper and cobalt production hub",
+      "Power supply instability affecting mining",
+      "Landlocked logistics challenges",
+    ],
+  },
+  {
+    id: "Zimbabwe",
+    name: "Zimbabwe",
+    type: "country",
+    connections: ["South Africa", "Zambia"],
+    importRisk: 70,
+    exportRisk: 80,
+    overallRisk: 75,
+    newsHighlights: [
+      "Lithium reserves attracting investment",
+      "Sanctions affecting international trade",
+      "Currency instability impacting costs",
+    ],
+  },
+  {
+    id: "Morocco",
+    name: "Morocco",
+    type: "country",
+    connections: ["Spain", "France"],
+    importRisk: 35,
+    exportRisk: 49,
+    overallRisk: 42,
+    newsHighlights: [
+      "Phosphate rock exporter",
+      "Automotive manufacturing growing",
+      "Stable trade relations with EU",
+    ],
+  },
+  {
+    id: "Kazakhstan",
+    name: "Kazakhstan",
+    type: "country",
+    connections: ["Russia", "China"],
+    importRisk: 42,
+    exportRisk: 54,
+    overallRisk: 48,
+    newsHighlights: [
+      "Uranium production concerns",
+      "Russia dependency for transit routes",
+      "Oil export infrastructure development",
+    ],
+  },
+  {
+    id: "Mongolia",
+    name: "Mongolia",
+    type: "country",
+    connections: ["China", "Russia"],
+    importRisk: 45,
+    exportRisk: 59,
+    overallRisk: 52,
+    newsHighlights: [
+      "Copper and rare earth exports to China",
+      "Infrastructure dependency on China",
+      "Harsh winters affecting logistics",
+    ],
+  },
+  {
+    id: "Czechia",
+    name: "Czechia",
+    type: "country",
+    connections: ["Germany", "Poland", "Slovakia"],
+    importRisk: 12,
+    exportRisk: 18,
+    overallRisk: 15,
+    newsHighlights: [
+      "Stable EU manufacturing hub",
+      "Automotive production center",
+      "Reliable logistics infrastructure",
+    ],
+  },
+  {
+    id: "Djibouti",
+    name: "Djibouti",
+    type: "country",
+    connections: ["Bab-el-Mandeb", "Ethiopia"],
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
+    newsHighlights: [
+      "China debt dependency concerns",
+      "Strategic port for regional trade",
+      "Ethiopia transit hub",
+    ],
+  },
+  {
+    id: "Ethiopia",
+    name: "Ethiopia",
+    type: "country",
+    connections: ["Djibouti", "Kenya"],
+    importRisk: 45,
+    exportRisk: 55,
+    overallRisk: 50,
+    newsHighlights: [
+      "Conflict aftermath affecting recovery",
+      "Landlocked nation challenges",
+      "Agricultural export growth",
+    ],
+  },
+  {
+    id: "Tanzania",
+    name: "Tanzania",
+    type: "country",
+    connections: ["Kenya", "South Africa"],
+    importRisk: 38,
+    exportRisk: 48,
+    overallRisk: 43,
+    newsHighlights: [
+      "Mining sector reforms",
+      "Port of Dar es Salaam expansion",
+      "Agricultural export potential",
+    ],
+  },
+  {
+    id: "Kenya",
+    name: "Kenya",
+    type: "country",
+    connections: ["Ethiopia", "Tanzania"],
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
+    newsHighlights: [
+      "Mombasa port improvements",
+      "Tech sector growth",
+      "Agricultural export stability",
+    ],
+  },
+  {
+    id: "Angola",
+    name: "Angola",
+    type: "country",
+    connections: ["South Africa", "Namibia"],
+    importRisk: 45,
+    exportRisk: 55,
+    overallRisk: 50,
+    newsHighlights: [
+      "Oil export dependency",
+      "Infrastructure investment",
+      "Currency volatility concerns",
+    ],
+  },
+  {
+    id: "Ghana",
+    name: "Ghana",
+    type: "country",
+    connections: ["Nigeria", "Ivory Coast"],
+    importRisk: 32,
+    exportRisk: 42,
+    overallRisk: 37,
+    newsHighlights: [
+      "Gold and cocoa exports stable",
+      "Port of Tema modernization",
+      "Democratic stability",
+    ],
+  },
+  {
+    id: "Namibia",
+    name: "Namibia",
+    type: "country",
+    connections: ["South Africa", "Angola"],
+    importRisk: 30,
+    exportRisk: 40,
+    overallRisk: 35,
+    newsHighlights: [
+      "Mining sector diversification",
+      "Walvis Bay port expansion",
+      "Political stability",
+    ],
+  },
+  {
+    id: "Peru",
+    name: "Peru",
+    type: "country",
+    connections: ["Chile", "Brazil", "Panama Canal"],
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
+    newsHighlights: [
+      "Copper production expansion",
+      "Political uncertainty affecting policy",
+      "Mining sector investments",
     ],
   },
 
@@ -572,6 +790,7 @@ export default function SupplyChainCrisisDetector() {
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
   const [routesPanelProduct, setRoutesPanelProduct] = useState<StoredProduct | null>(null)
+  const [isAlertsPanelOpen, setIsAlertsPanelOpen] = useState(false)
 
   // Alternative supplier scanning
   const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
@@ -582,6 +801,12 @@ export default function SupplyChainCrisisDetector() {
 
   // Track route animation state for ActionBar
   const [isRouteAnimating, setIsRouteAnimating] = useState(false)
+
+  // Generate alerts from products
+  const alerts = useMemo<AlertData[]>(() => {
+    if (storedProducts.length === 0) return []
+    return generateAlertsFromProducts(storedProducts, countryRisks)
+  }, [storedProducts, countryRisks])
 
   // Handle route animation with state tracking
   const handleAnimateRoutes = useCallback(() => {
@@ -991,11 +1216,11 @@ export default function SupplyChainCrisisDetector() {
       />
 
       {/* Main Map Area */}
-      <div className="relative flex-1 h-full overflow-hidden">
+      <div className="relative flex-1 h-full overflow-hidden animate-map-in">
         {/* Alert Banner */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
-            insights={insights}
+            alerts={alerts}
             onAlertClick={handleAlertClick}
           />
         </div>
@@ -1072,6 +1297,43 @@ export default function SupplyChainCrisisDetector() {
           product={routesPanelProduct}
           countryRisks={resolvedCountryRisks as RouteCountryRiskData[]}
           onVisualizeRoutes={handleRouteFound}
+        />
+
+        {/* Alerts Sidebar */}
+        <AlertsSidebar
+          isOpen={isAlertsPanelOpen}
+          onClose={() => setIsAlertsPanelOpen(false)}
+          alerts={alerts}
+          countryRisks={sidebarCountryRisks}
+          onDismiss={(alertId: string) => {
+            // In a real app, this would remove the alert from state
+            console.log('Dismissed alert:', alertId)
+          }}
+          onViewAlternatives={(alert) => {
+            if (alert.relatedComponentId && insights) {
+              const componentRisk = insights.highRiskComponents.find(c => c.componentId === alert.relatedComponentId)
+              if (componentRisk) {
+                setSelectedComponentRisk(componentRisk)
+                setAlternativesPanelOpen(true)
+                setIsAlertsPanelOpen(false)
+              }
+            }
+          }}
+        />
+
+        {/* Navigation Sidebar */}
+        <NavSidebar
+          onInventoryClick={() => {
+            // Toggle inventory view - handled by UnifiedSidebar
+          }}
+          isInventoryOpen={false}
+          onLocationClick={() => setSelectedCountry(null)}
+          isLocationActive={selectedCountry !== null}
+          onAlertsClick={() => setIsAlertsPanelOpen(!isAlertsPanelOpen)}
+          isAlertsActive={isAlertsPanelOpen}
+          productCount={storedProducts.length}
+          riskLevel={riskLevel}
+          alertCount={alerts.length}
         />
       </div>
     </div>

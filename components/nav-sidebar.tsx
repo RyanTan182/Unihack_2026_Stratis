@@ -1,8 +1,9 @@
 "use client"
 
 import {
-  MapPin,
-  List,
+  Home,
+  Package,
+  AlertTriangle,
   Zap,
   Activity,
 } from "lucide-react"
@@ -21,9 +22,12 @@ interface NavSidebarProps {
   isInventoryOpen?: boolean
   onLocationClick?: () => void
   isLocationActive?: boolean
+  onAlertsClick?: () => void
+  isAlertsActive?: boolean
   onLogoClick?: () => void
   productCount?: number
   riskLevel?: "low" | "medium" | "high"
+  alertCount?: number
 }
 
 export function NavSidebar({
@@ -31,24 +35,34 @@ export function NavSidebar({
   isInventoryOpen,
   onLocationClick,
   isLocationActive,
+  onAlertsClick,
+  isAlertsActive,
   onLogoClick,
   productCount = 0,
   riskLevel = "low",
+  alertCount = 0,
 }: NavSidebarProps) {
   const navItems: NavItem[] = [
     {
-      icon: MapPin,
-      label: "Risk Monitor",
-      description: "Global risk overview",
+      icon: Home,
+      label: "Risk & Locations",
+      description: "Global overview",
       active: isLocationActive,
       onClick: onLocationClick
     },
     {
-      icon: List,
+      icon: Package,
       label: "Inventory",
       description: `${productCount} products`,
       active: isInventoryOpen,
       onClick: onInventoryClick
+    },
+    {
+      icon: AlertTriangle,
+      label: "Alerts",
+      description: alertCount > 0 ? `${alertCount} active` : "No alerts",
+      active: isAlertsActive,
+      onClick: onAlertsClick
     },
   ]
 
@@ -82,7 +96,7 @@ export function NavSidebar({
             Navigation
           </span>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 stagger-children">
           {navItems.map((item) => (
             <button
               key={item.label}
@@ -115,6 +129,11 @@ export function NavSidebar({
               </div>
               {item.active && (
                 <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+              )}
+              {item.label === "Alerts" && alertCount > 0 && (
+                <div className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-medium text-destructive-foreground">
+                  {alertCount}
+                </div>
               )}
             </button>
           ))}

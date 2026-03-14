@@ -18,6 +18,7 @@ export interface MapSupplyChainItem {
   riskDirection: "up" | "down"
   children: MapSupplyChainItem[]
   isPredicted?: boolean
+  confidence?: number
 }
 
 export interface MapProduct {
@@ -52,6 +53,9 @@ const KNOWN_COUNTRIES = new Set([
   "Nigeria", "Argentina", "Chile", "Poland", "Bangladesh", "Pakistan", "Philippines",
   "Iran", "Panama", "United Arab Emirates", "Oman", "Qatar", "Yemen", "Congo",
   "Czechia", "Georgia", "Greece", "Bulgaria", "Romania", "Djibouti", "Peru", "Ethiopia",
+  // New countries
+  "Zambia", "Zimbabwe", "Morocco", "Kazakhstan", "Mongolia", "Tanzania", "Kenya",
+  "Angola", "Ghana", "Namibia", "Myanmar", "Sudan", "Colombia", "Slovakia", "South Sudan",
 ])
 
 function getTopCountry(geographicConcentration: Record<string, number>): string | null {
@@ -89,7 +93,13 @@ function nodeToSupplyChainItem(
   const country = getTopCountry(node.geographic_concentration)
   if (!country) return null
 
+  // Determine if this is a probabilistic/predicted supplier
   const isPredicted = node.status === "inferred" || node.status === "searching"
+  const confidence = node.confidence ?? 0.5
+
+  // Calculate risk direction based on risk score and confidence
+  const riskDirection = node.risk_score >= 50 ? "up" : "down"
+
   const children: MapSupplyChainItem[] = []
 
   for (const childId of node.children) {
@@ -105,9 +115,10 @@ function nodeToSupplyChainItem(
     type: mapNodeType(node.type),
     country,
     riskPrediction: node.risk_score,
-    riskDirection: node.risk_score >= 50 ? "up" : "down",
+    riskDirection,
     children,
     isPredicted,
+    confidence,
   }
 }
 

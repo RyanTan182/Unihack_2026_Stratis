@@ -2964,5 +2964,1126 @@
         "source": "zimbabwestar.com"
       }
     ]
+  },
+  "Congo": {
+    "nodeId": "Congo",
+    "nodeName": "Congo (DRC)",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.8,
+        "rationale": "Limited recent evidence of trade barriers or sanctions impacting imports.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.7,
+        "rationale": "Ongoing internal instability and regional tensions increase security risks impacting import logistics.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "No significant policy changes reported affecting imports.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.8,
+        "rationale": "No notable recent tariffs or trade barriers reported affecting exports.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.7,
+        "rationale": "Regional conflict and internal instability pose risks to stable export operations.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Exports are not significantly impacted by government policy shifts currently.",
+        "evidence": []
+      }
+    },
+    "summary": "Congo (DRC) faces high export and import risks primarily driven by internal conflict and regional instability.",
+    "assumptions": [
+      "Continued internal conflict influences trade stability.",
+      "No major policy shifts are expected in the immediate future."
+    ],
+    "importRisk": 44,
+    "exportRisk": 44,
+    "overallRisk": 44,
+    "computedAt": "2026-03-14T16:28:54.585Z",
+    "articles": []
+  },
+  "Zambia": {
+    "nodeId": "Zambia",
+    "nodeName": "Zambia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 50,
+        "confidence": 0.9,
+        "rationale": "US tariffs are directly impacting Zambia's exports, indicating a significant tariff risk.",
+        "evidence": [
+          "How US Tariffs Will Impact Zambia's Exports - African Liberty"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "Limited conflict effects on import pathways noted.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.9,
+        "rationale": "Trade policy responses are evolving in reaction to US tariffs.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.9,
+        "rationale": "US tariffs on Zambia’s exports increase export-related tariffs and duties.",
+        "evidence": [
+          "How US Tariffs Will Impact Zambia's Exports"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No significant conflict affecting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.9,
+        "rationale": "Policy adjustments and trade negotiations are likely in response to tariffs.",
+        "evidence": []
+      }
+    },
+    "summary": "Zambia faces considerable export tariff risks due to US-imposed tariffs and policy adjustments but relatively low conflict risks.",
+    "assumptions": [
+      "US tariffs will persist or increase.",
+      "Zambia will seek policy responses to mitigate tariff impacts."
+    ],
+    "importRisk": 33,
+    "exportRisk": 43,
+    "overallRisk": 38,
+    "computedAt": "2026-03-14T16:28:54.585Z",
+    "articles": [
+      {
+        "title": "How New US Tariffs Could Reshape Zambia's Exports",
+        "url": "https://theiatp.org/2025/08/22/how-new-us-tariffs-could-reshape-zambias-exports/",
+        "date": "2025-08-22",
+        "source": "theiatp.org"
+      },
+      {
+        "title": "Zambia’s Economic Outlook",
+        "url": "https://zamreal.com/wp-content/uploads/2025/04/Mutisunge-Zulu-Presentation.pdf",
+        "date": "",
+        "source": "zamreal.com"
+      },
+      {
+        "title": "How US Tariffs will Impact Zambia's Exports - African Liberty",
+        "url": "https://www.africanliberty.org/2025/09/21/the-new-us-tariffs-and-impact-on-zambias-exports/",
+        "date": "2025-09-21",
+        "source": "africanliberty.org"
+      },
+      {
+        "title": "Zambian Economic Recovery Still On The Cards Despite US Tariffs",
+        "url": "https://www.fitchsolutions.com/bmi/country-risk/zambian-economic-recovery-still-cards-despite-us-tariffs-06-05-2025",
+        "date": "2025-05-06",
+        "source": "fitchsolutions.com"
+      },
+      {
+        "title": "Zambia Market Analysis :: Fitch Solutions",
+        "url": "https://www.fitchsolutions.com/bmi/region/zambia",
+        "date": "",
+        "source": "fitchsolutions.com"
+      },
+      {
+        "title": "Zambia's fiscal year 2026 will be better as it recovers from drought ...",
+        "url": "https://energynews.oedigital.com/mining/2025/09/26/zambias-fiscal-year-2026-will-be-better-as-it-recovers-from-drought-debt-and-other-problems",
+        "date": "2025-09-26",
+        "source": "energynews.oedigital.com"
+      },
+      {
+        "title": "Zambia: Country File, Economic Risk Analysis",
+        "url": "https://www.coface.com/news-economy-and-insights/business-risk-dashboard/country-risk-files/zambia",
+        "date": "",
+        "source": "coface.com"
+      },
+      {
+        "title": "2026 Risk Report: Zambia's Economic & Political Outlook",
+        "url": "https://mpelembe.net/index.php/analisis-zambias-2026-economic-outlook/",
+        "date": "2026-01-08",
+        "source": "mpelembe.net"
+      }
+    ]
+  },
+  "Zimbabwe": {
+    "nodeId": "Zimbabwe",
+    "nodeName": "Zimbabwe",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Trade sanctions and export bans on lithium and other goods heighten tariff risks.",
+        "evidence": [
+          "Zimbabwe Imposes Immediate Global Freeze on Lithium Exports"
+        ]
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.6,
+        "rationale": "No active conflict reported, but sanctions could escalate conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.8,
+        "rationale": "International sanctions and export restrictions significantly impact trade policies.",
+        "evidence": [
+          "Trade Sanctions and Embargoes on Goods Manufactured in Zimbabwe"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.9,
+        "rationale": "Immediate export freezes and sanctions increase export tariffs and barriers.",
+        "evidence": [
+          "Zimbabwe Imposes Immediate Global Freeze on Lithium Exports"
+        ]
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.6,
+        "rationale": "Sanctions and export bans heighten overall risk environment.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.8,
+        "rationale": "Trade sanctions significantly alter export policy landscape.",
+        "evidence": [
+          "Trade Sanctions and Embargoes on Goods Manufactured in Zimbabwe"
+        ]
+      }
+    },
+    "summary": "Zimbabwe’s trade environment faces elevated tariff and policy risks mainly due to sanctions and export restrictions, with moderate conflict risks due to sanctions tensions.",
+    "assumptions": [
+      "International sanctions will continue or intensify.",
+      "Trade restrictions will remain in place for the foreseeable future."
+    ],
+    "importRisk": 39,
+    "exportRisk": 46,
+    "overallRisk": 43,
+    "computedAt": "2026-03-14T16:28:54.585Z",
+    "articles": [
+      {
+        "title": "Zimbabwe: Country File, Economic Risk Analysis | Coface",
+        "url": "https://www.coface.com/news-economy-and-insights/business-risk-dashboard/country-risk-files/zimbabwe",
+        "date": "",
+        "source": "coface.com"
+      },
+      {
+        "title": "EV Supply Shock: Zimbabwe Imposes Immediate Global Freeze on ...",
+        "url": "http://business.ricentral.com/ricentral/article/marketminute-2026-2-26-ev-supply-shock-zimbabwe-imposes-immediate-global-freeze-on-lithium-exports",
+        "date": "2026-02-26",
+        "source": "business.ricentral.com"
+      },
+      {
+        "title": "Trade Sanctions and Embargoes on Goods Manufactured in Zimbabwe",
+        "url": "https://www.uscisguide.com/information/trade-sanctions-and-embargoes-on-goods-manufactured-in-zimbabwe/",
+        "date": "2015-12-15",
+        "source": "uscisguide.com"
+      },
+      {
+        "title": "The Impact of International Sanctions on Zimbabwe’s Migratory Regime",
+        "url": "https://www.sihma.org.za/Blog-on-the-move/the-impact-of-international-sanctions-on-zimbabwe-s-migratory-regime",
+        "date": "2024-01-01",
+        "source": "sihma.org.za"
+      },
+      {
+        "title": "Zimbabwe Imposes Immediate Global Freeze on Lithium Exports",
+        "url": "https://markets.financialcontent.com/stocks/article/marketminute-2026-2-26-ev-supply-shock-zimbabwe-imposes-immediate-global-freeze-on-lithium-exports",
+        "date": "2026-02-26",
+        "source": "markets.financialcontent.com"
+      },
+      {
+        "title": "EV Supply Shock: Zimbabwe Imposes Immediate ... - FinancialContent",
+        "url": "https://markets.financialcontent.com/stocks/article/marketminute-2026-2-26-ev-supply-shock-zimbabwe-imposes-immediate-global-freeze-on-lithium-exports?Language=english%2F1000",
+        "date": "2026-02-26",
+        "source": "markets.financialcontent.com"
+      },
+      {
+        "title": "Zimbabwe Outlook, Inflation, ZiG, Sectors & Commodities",
+        "url": "https://www.zb.co.zw/holding/media/insights/monthly-economic-update-zimbabwe-outlook-inflation-zig-sectors-commodities",
+        "date": "2026-01-16",
+        "source": "zb.co.zw"
+      }
+    ]
+  },
+  "Morocco": {
+    "nodeId": "Morocco",
+    "nodeName": "Morocco",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.9,
+        "rationale": "Global tariffs and trade tensions are influencing Morocco’s import environment.",
+        "evidence": [
+          "Morocco navigates between challenges and opportunities"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "Regionally, Morocco faces some risks but currently low conflict levels.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.8,
+        "rationale": "Trade policies are actively responding to global pressure and tariffs.",
+        "evidence": [
+          "Relief in Egypt and Morocco following Trump tariffs"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.9,
+        "rationale": "Tariffs and trade tensions affect Morocco’s export policies.",
+        "evidence": [
+          "Morocco navigates between challenges and opportunities"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No significant conflict impacting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.8,
+        "rationale": "Export policies are adapting to international tariffs and trade dynamics.",
+        "evidence": [
+          "Relief in Egypt and Morocco following Trump tariffs"
+        ]
+      }
+    },
+    "summary": "Morocco faces moderate to high tariff and policy risks driven by global trade tensions; conflict risks remain relatively low.",
+    "assumptions": [
+      "Global trade tensions will influence Morocco's tariffs and policies.",
+      "Regional conflicts are unlikely to escalate significantly."
+    ],
+    "importRisk": 42,
+    "exportRisk": 42,
+    "overallRisk": 42,
+    "computedAt": "2026-03-14T16:28:54.585Z",
+    "articles": [
+      {
+        "title": "Morocco Country Risk Report | Allianz Trade",
+        "url": "https://www.allianz-trade.com/en_global/economic-research/country-reports/Morocco.html",
+        "date": "",
+        "source": "allianz-trade.com"
+      },
+      {
+        "title": "Morocco navigates between challenges and opportunities",
+        "url": "https://northafricapost.com/87371-global-economy-under-pressure-morocco-navigates-between-challenges-and-opportunities.html",
+        "date": "2025-05-27",
+        "source": "northafricapost.com"
+      },
+      {
+        "title": "Why Morocco Manufacturing Is a Strategic Hedge in 2026 - Deepwear",
+        "url": "https://deepwear.info/blog/the-2026-morocco-manufacturing-manifesto-why-the-kingdom-of-speed-is-your-brands-best-hedge-against-tariff-volatility/",
+        "date": "2026-01-20",
+        "source": "deepwear.info"
+      },
+      {
+        "title": "Potential repercussions on Morocco's economy as conflict ...",
+        "url": "https://northafricapost.com/95257-potential-repercussions-on-moroccos-economy-as-conflict-deepens-in-middle-east.html",
+        "date": "2026-03-14",
+        "source": "northafricapost.com"
+      },
+      {
+        "title": "Relief in Egypt and Morocco following Trump tariffs",
+        "url": "https://www.freshplaza.com/north-america/article/9722958/relief-in-egypt-and-morocco-following-trump-tariffs/",
+        "date": "2025-04-11",
+        "source": "freshplaza.com"
+      }
+    ]
+  },
+  "Kazakhstan": {
+    "nodeId": "Kazakhstan",
+    "nodeName": "Kazakhstan",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Recent articles highlight Kazakhstan's role in sanctions evasion and parallel trade issues, indicating increased tariff and customs risks.",
+        "evidence": [
+          "Kazakhstan's Expanding Role in Russia's Sanctions- ...",
+          "Kazakhstan's parallel trade predicament"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No direct conflict or military tension indicated; mostly economic sanctions and trade issues.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Sanctions evasion and trade-related policies suggest moderate policy risk in tariffs and trade regulations.",
+        "evidence": [
+          "Kazakhstan's Expanding Role in Russia's Sanctions- ..."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Trade complications and sanctions exposure may impact exports.",
+        "evidence": [
+          "Kazakhstan's Expanding Role in Russia's Sanctions- ..."
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No signs of conflict or military tensions.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Trade policies are affected by sanctions and regional trade issues.",
+        "evidence": [
+          "Kazakhstan's Expanding Role in Russia's Sanctions- ..."
+        ]
+      }
+    },
+    "summary": "Moderate to high import and export supply chain risks driven primarily by sanctions and trade policy issues.",
+    "assumptions": [
+      "Sanctions continue to influence trade policies and regional trade practices."
+    ],
+    "importRisk": 49,
+    "exportRisk": 49,
+    "overallRisk": 49,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Kazakhstan's Expanding Role in Russia's Sanctions- ...",
+        "url": "https://lansinginstitute.org/2025/12/01/kazakhstans-expanding-role-in-russias-sanctions-evasion-architecture/",
+        "date": "2025-12-01",
+        "source": "lansinginstitute.org"
+      },
+      {
+        "title": "Sanctions exposure in Kazakhstan - Intel Focus",
+        "url": "https://www.intelfocus.org/reports/sanctions-exposure-in-kazakhstan",
+        "date": "2026-01-15",
+        "source": "intelfocus.org"
+      },
+      {
+        "title": "Kazakhstan's parallel trade predicament",
+        "url": "https://www.riskadvisory.com/news/just-passing-through-kazakhstans-parallel-trade-predicament/",
+        "date": "2025-07-09",
+        "source": "riskadvisory.com"
+      },
+      {
+        "title": "Kazakhstan: Country File, Economic Risk Analysis | Coface",
+        "url": "https://www.coface.com/news-economy-and-insights/business-risk-dashboard/country-risk-files/kazakhstan",
+        "date": "",
+        "source": "coface.com"
+      }
+    ]
+  },
+  "Mongolia": {
+    "nodeId": "Mongolia",
+    "nodeName": "Mongolia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.7,
+        "rationale": "U.S. sanctions and trade war impacts pose moderate tariff and trade risks.",
+        "evidence": [
+          "Hit indirectly by sanctions, Mongolia struggles to find workarounds",
+          "Mongolia: Country File, Economic Risk Analysis"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No direct conflict or military tension indicated; mainly trade impact concerns.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Sanctions impact and trade war dynamics present some policy risks in trade management.",
+        "evidence": [
+          "Mongolia: Country File, Economic Risk Analysis"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.7,
+        "rationale": "Trade war effects and sanctions influence Mongolia's export risks.",
+        "evidence": [
+          "Hit indirectly by sanctions, Mongolia struggles to find workarounds"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No conflict indicators — risks are mostly economic and policy based.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Trade restrictions and policy responses to sanctions and tariffs affect exports.",
+        "evidence": [
+          "Mongolia: Country File, Economic Risk Analysis"
+        ]
+      }
+    },
+    "summary": "Moderate import and export risks influenced by sanctions, trade disputes, and policy adjustments.",
+    "assumptions": [
+      "Trade disruptions due to sanctions and trade war escalations persist."
+    ],
+    "importRisk": 39,
+    "exportRisk": 39,
+    "overallRisk": 39,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Hit indirectly by sanctions, Mongolia struggles to find workarounds",
+        "url": "https://www.intellinews.com/hit-indirectly-by-sanctions-mongolia-struggles-to-find-workarounds-351043/",
+        "date": "2024-10-31",
+        "source": "intellinews.com"
+      },
+      {
+        "title": "Mongolia: Country File, Economic Risk Analysis | Coface",
+        "url": "https://www.coface.com/news-economy-and-insights/business-risk-dashboard/country-risk-files/mongolia",
+        "date": "2026-01-01",
+        "source": "coface.com"
+      },
+      {
+        "title": "MONGOLIA, July 2025: Growth and the Impact of the Trump Tariffs",
+        "url": "https://www.prsgroup.com/mongolia-july-2025-growth-and-the-impact-of-the-trump-tariffs/",
+        "date": "2025-07-21",
+        "source": "prsgroup.com"
+      },
+      {
+        "title": "As the US-China Trade War Escalates, Korea Looks to Mongolia for Economic Survival",
+        "url": "https://breezeinflow.com/as-the-us-china-trade-war-escalates-korea-looks-to-mongolia-for-economic-survival/",
+        "date": "2025-03-04",
+        "source": "breezeinflow.com"
+      },
+      {
+        "title": "Economic Overview - Embassy of Mongolia",
+        "url": "https://mongolianembassy.us/about-mongolia/trade-and-economy/",
+        "date": "",
+        "source": "mongolianembassy.us"
+      },
+      {
+        "title": "Mongolia's Gas Pipeline Diversification Comes With Risk",
+        "url": "https://orfamerica.org/orf-america-comments/mongolia-gas-pipeline-diversification",
+        "date": "2025-09-30",
+        "source": "orfamerica.org"
+      }
+    ]
+  },
+  "Czechia": {
+    "nodeId": "Czechia",
+    "nodeName": "Czechia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 75,
+        "confidence": 0.9,
+        "rationale": "Recent news indicates significant tariff concerns, impacts of global trade war, and economic forecasts affected by tariffs.",
+        "evidence": [
+          "Tariff troubles: OECD slashes Czechia growth forecast ...",
+          "Tariffs, turmoil, and the euro: Czechia rethinks its economic ..."
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "No military conflict, but trade tensions and economic policy uncertainties create moderate conflict risk.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 80,
+        "confidence": 0.9,
+        "rationale": "Trade tensions and economic rethinking suggest significant policy risk related to tariffs and economic policy shifts.",
+        "evidence": [
+          "Tariffs, turmoil, and the euro: Czechia rethinks its economic ..."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 75,
+        "confidence": 0.9,
+        "rationale": "Trade tensions and tariffs are affecting Czech exports.",
+        "evidence": [
+          "Tariff troubles: OECD slashes Czechia growth forecast ..."
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "No conflict, but trade tensions influence export risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 80,
+        "confidence": 0.9,
+        "rationale": "Trade policies and economic strategies are impacted by tariffs and global trade issues.",
+        "evidence": [
+          "Tariffs, turmoil, and the euro: Czechia rethinks its economic ..."
+        ]
+      }
+    },
+    "summary": "High risks on both import and export sides driven by trade tensions and tariff policies.",
+    "assumptions": [
+      "Trade tensions and tariff policies will remain significant in the near term."
+    ],
+    "importRisk": 54,
+    "exportRisk": 54,
+    "overallRisk": 54,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Tariff troubles: OECD slashes Czechia growth forecast ...",
+        "url": "https://www.expats.cz/czech-news/article/tariff-troubles-oecd-slashes-czechia-growth-forecast-amid-global-trade-war",
+        "date": "2025-06-04",
+        "source": "expats.cz"
+      },
+      {
+        "title": "Tariffs, turmoil, and the euro: Czechia rethinks its economic ...",
+        "url": "https://www.expats.cz/czech-news/article/czechia-reacts-to-trump-tariffs-as-country-considers-euro-adoption",
+        "date": "2025-04-09",
+        "source": "expats.cz"
+      },
+      {
+        "title": "Economic forecast for Czechia - Economy and Finance",
+        "url": "https://economy-finance.ec.europa.eu/economic-surveillance-eu-member-states/country-pages/czechia/economic-forecast-czechia_en",
+        "date": "2025-11-17",
+        "source": "economy-finance.ec.europa.eu"
+      },
+      {
+        "title": "Tariffs, turmoil, and the euro: Czechia rethinks its economic ...",
+        "url": "https://www.czechtradeoffices.com/ca/news/tariffs,-turmoil,-and-the-euro-czechia-rethinks-its-economic-future",
+        "date": "2025-05-27",
+        "source": "czechtradeoffices.com"
+      },
+      {
+        "title": "New OECD Economic Survey of Czechia",
+        "url": "https://www.spcr.cz/en/new-oecd-economic-survey-czechia-0",
+        "date": "2025-04-01",
+        "source": "spcr.cz"
+      }
+    ]
+  },
+  "Tanzania": {
+    "nodeId": "Tanzania",
+    "nodeName": "Tanzania",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "US tariffs and global trade disruptions impact Tanzania's import risks.",
+        "evidence": [
+          "How U.S. Tariffs Impact Tanzania’s Economy: Risks, Resilience, and Regional Solidarity",
+          "How Trump’s global tariffs could affect Tanzania"
+        ]
+      },
+      "conflict": {
+        "score": 15,
+        "confidence": 0.5,
+        "rationale": "No indication of conflict or instability; risks mostly economic.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 60,
+        "confidence": 0.8,
+        "rationale": "Trade policies affected by US tariffs and international trade pressures.",
+        "evidence": [
+          "How Trump’s global tariffs could affect Tanzania"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Exports are subject to international trade policies and tariffs, especially from US and global influences.",
+        "evidence": [
+          "How U.S. Tariffs Impact Tanzania’s Economy: Risks, Resilience, and Regional Solidarity"
+        ]
+      },
+      "conflict": {
+        "score": 15,
+        "confidence": 0.5,
+        "rationale": "No conflict; economic risks are predominant.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 60,
+        "confidence": 0.8,
+        "rationale": "Trade policies are impacted by global tariffs and economic conditions.",
+        "evidence": [
+          "How Trump’s global tariffs could affect Tanzania"
+        ]
+      }
+    },
+    "summary": "Moderate trade-related risks impacted by global tariffs and policy shifts.",
+    "assumptions": [
+      "Global tariff policies will continue to influence Tanzanian trade dynamics."
+    ],
+    "importRisk": 44,
+    "exportRisk": 44,
+    "overallRisk": 44,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "How U.S. Tariffs Impact Tanzania’s Economy: Risks, Resilience, and Regional Solidarity - Tanzania",
+        "url": "https://tanzania.eu.com/how-u-s-tariffs-impact-tanzanias-economy-risks-resilience-and-regional-solidarity/",
+        "date": "2025-04-09",
+        "source": "tanzania.eu.com"
+      },
+      {
+        "title": "[PDF] MONTHLY ECONOMIC REVIEW BANK OF TANZANIA January 2026",
+        "url": "https://www.bot.go.tz/Publications/Regular/Monthly%20Economic%20Review/sw/2026020312553211.pdf",
+        "date": "",
+        "source": "bot.go.tz"
+      },
+      {
+        "title": "[PDF] Review Economic Monthly - Bank of Tanzania",
+        "url": "https://www.bot.go.tz/Publications/Regular/Monthly%20Economic%20Review/en/2026021821282158.pdf",
+        "date": "",
+        "source": "bot.go.tz"
+      },
+      {
+        "title": "How Trump’s global tariffs could affect Tanzania",
+        "url": "https://www.thecitizen.co.tz/tanzania/news/national/how-trump-s-global-tariffs-could-affect-tanzania-4989334",
+        "date": "2025-04-05",
+        "source": "thecitizen.co.tz"
+      },
+      {
+        "title": "Trump’s Tariff Shockwaves Global Trade, Africa, and Tanzania Face New Economic Pressures - TICGL",
+        "url": "https://ticgl.com/trumps-tariff-shockwaves-global-trade-africa-and-tanzania-face-new-economic-pressures/",
+        "date": "2025-04-12",
+        "source": "ticgl.com"
+      },
+      {
+        "title": "Tanzania: Country File, Economic Risk Analysis | Coface",
+        "url": "https://www.coface.com/news-economy-and-insights/business-risk-dashboard/country-risk-files/tanzania-united-republic-of",
+        "date": "",
+        "source": "coface.com"
+      },
+      {
+        "title": "Africa'S Economic Crossroads Navigating Protectionism - Tanzania",
+        "url": "https://www.africa-press.net/tanzania/all-news/africas-economic-crossroads-navigating-protectionism",
+        "date": "2025-05-25",
+        "source": "africa-press.net"
+      },
+      {
+        "title": "Analysts warn of uncertainty as Tanzania heads into 2026",
+        "url": "https://www.thecitizen.co.tz/tanzania/news/national/analysts-warn-of-uncertainty-as-tanzania-heads-into-2026-5312540",
+        "date": "2025-12-31",
+        "source": "thecitizen.co.tz"
+      }
+    ]
+  },
+  "Kenya": {
+    "nodeId": "Kenya",
+    "nodeName": "Kenya",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Trade shifts and digital adoption reports highlight moderate tariff and trade risks.",
+        "evidence": [
+          "Kenya's trade shifts and digital adoption to support economic ..."
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No military conflict indicated; primarily economic and trade policy considerations.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Trade policies and economic strategies face challenges due to global trade shifts.",
+        "evidence": [
+          "Kenya's trade shifts and digital adoption to support economic ..."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Trade and digital transformation strategies pose export risks that can be mitigated.",
+        "evidence": [
+          "Kenya's trade shifts and digital adoption to support economic ..."
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No conflict; risks relate primarily to trade policies.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Trade and economic policies focus on adapting to global trade dynamics.",
+        "evidence": [
+          "Kenya's trade shifts and digital adoption to support economic ..."
+        ]
+      }
+    },
+    "summary": "Moderate risks on both import and export due to trade and policy adjustments.",
+    "assumptions": [
+      "Trade policy reforms and digitalization efforts will influence supply chain stability."
+    ],
+    "importRisk": 45,
+    "exportRisk": 45,
+    "overallRisk": 45,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Kenya's trade shifts and digital adoption to support economic ...",
+        "url": "https://www.mastercard.com/news/eemea/en/newsroom/press-releases/en/2026/january/mastercard-economics-institute-s-2026-economic-outlook-kenya-s-trade-shifts-and-digital-adoption-to-support-economic-momentum/",
+        "date": "2026-01-26",
+        "source": "mastercard.com"
+      },
+      {
+        "title": "Kenya's Trade Outlook 2026: Growth, Opportunities, and Strategies - DHL",
+        "url": "https://www.dhl.com/discover/en-ke/small-business-advice/business-innovation-trends/kenya-s-trade-outlook-2026",
+        "date": "2026-03-08",
+        "source": "dhl.com"
+      },
+      {
+        "title": "US 10pc global tariff hurt Kenyan firms, CBK survey - Capital FM",
+        "url": "https://www.capitalfm.co.ke/business/2026/02/us-10pc-global-tariff-hurt-kenyan-firms-cbk-survey/",
+        "date": "2026-02-23",
+        "source": "capitalfm.co.ke"
+      },
+      {
+        "title": "CBK: Trump's Tariff Changes Continue to Affect Kenyan Businesses",
+        "url": "https://businesstoday.co.ke/cbk-says-tariff-changes-continue-businesses/",
+        "date": "2026-02-23",
+        "source": "businesstoday.co.ke"
+      }
+    ]
+  },
+  "Angola": {
+    "nodeId": "Angola",
+    "nodeName": "Angola",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Economic and debt challenges suggest some tariff and trade policy risks.",
+        "evidence": [
+          "Angola's economic and debt challenges - Global Energy News"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No direct conflict noted; economic and debt issues could generate domestic instability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.7,
+        "rationale": "Debt and economic challenges imply moderate policy risks impacting trade policies.",
+        "evidence": [
+          "Angola's economic and debt challenges"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Economic challenges may limit export capacity and policy support.",
+        "evidence": [
+          "Angola's economic and debt challenges"
+        ]
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No conflict, but economic instability poses risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.7,
+        "rationale": "Economic and debt issues influence trade policy and export strategies.",
+        "evidence": [
+          "Angola's economic and debt challenges"
+        ]
+      }
+    },
+    "summary": "Moderate risks on import and export sides mainly driven by economic and policy challenges.",
+    "assumptions": [
+      "Debt management and economic reforms will influence future trade stability."
+    ],
+    "importRisk": 40,
+    "exportRisk": 40,
+    "overallRisk": 40,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Angola's economic and debt challenges - Global Energy News",
+        "url": "https://energynews.oedigital.com/energy-markets/2025/05/15/angolas-economic-and-debt-challenges",
+        "date": "2025-05-15",
+        "source": "energynews.oedigital.com"
+      },
+      {
+        "title": "Angola Country Risk Report | Allianz Trade",
+        "url": "https://www.allianz-trade.com/en_global/economic-research/country-reports/Angola.html",
+        "date": "",
+        "source": "allianz-trade.com"
+      },
+      {
+        "title": "Angola Bets on Faster Export Diversification as 2026 Approaches",
+        "url": "https://furtherafrica.com/2025/12/30/angola-export-diversification-2026/",
+        "date": "2025-12-30",
+        "source": "furtherafrica.com"
+      },
+      {
+        "title": "Angola Market Analysis :: Fitch Solutionswww.fitchsolutions.com › bmi › region › angola",
+        "url": "https://www.fitchsolutions.com/bmi/region/angola",
+        "date": "",
+        "source": "fitchsolutions.com"
+      },
+      {
+        "title": "[PDF] The Angolan Economy - Growth in a Volatile Oil Market Environment",
+        "url": "https://www.eaglestone.eu/xms/files/Angola_Budget_2026_EN.pdf",
+        "date": "",
+        "source": "eaglestone.eu"
+      }
+    ]
+  },
+  "Ghana": {
+    "nodeId": "Ghana",
+    "nodeName": "Ghana",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Global economic risks and trade tensions pose substantial tariff and economic policy risks.",
+        "evidence": [
+          "Economic Confrontation Tops World Risks in 2026, Ghana Likely on ...",
+          "Ghana braces for Economic Storm as Global Trade Wars ..."
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No military conflict; primarily economic risks from global trade environment.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 60,
+        "confidence": 0.8,
+        "rationale": "Trade tensions and global economic pressures impact policy environment.",
+        "evidence": [
+          "Economic Confrontation Tops World Risks in 2026, Ghana Likely on ..."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Export risks are affected by global tensions and trade policies.",
+        "evidence": [
+          "Economic Confrontation Tops World Risks in 2026, Ghana Likely on ..."
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "Riskiest factors are economic rather than conflict-based.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 60,
+        "confidence": 0.8,
+        "rationale": "Trade environment influences national export strategies.",
+        "evidence": [
+          "Economic Confrontation Tops World Risks in 2026, Ghana Likely on ..."
+        ]
+      }
+    },
+    "summary": "Moderate to high risks driven by global trade tensions affecting tariffs and policies.",
+    "assumptions": [
+      "Global trade tensions will persist, impacting trade policies and economic stability."
+    ],
+    "importRisk": 42,
+    "exportRisk": 42,
+    "overallRisk": 42,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Economic Confrontation Tops World Risks in 2026, Ghana Likely on ...",
+        "url": "https://thehighstreetjournal.com/economic-confrontation-tops-world-risks-in-2026-ghana-likely-on-edge/",
+        "date": "2026-01-17",
+        "source": "thehighstreetjournal.com"
+      },
+      {
+        "title": "International Trade 2026 - Ghana - Chambers Global Practice Guides",
+        "url": "https://practiceguides.chambers.com/practice-guides/international-trade-2026/ghana/trends-and-developments/O23608",
+        "date": "2025-12-16",
+        "source": "practiceguides.chambers.com"
+      },
+      {
+        "title": "Ghana braces for Economic Storm as Global Trade Wars ...",
+        "url": "https://www.myjoyonline.com/ghana-braces-for-economic-storm-as-global-trade-wars-intensify/",
+        "date": "2025-06-12",
+        "source": "myjoyonline.com"
+      },
+      {
+        "title": "African CEOs turn to AfCFTA as tariff turbulence intensifies | News Ghana",
+        "url": "https://www.newsghana.com.gh/african-ceos-turn-to-afcfta-as-tariff-turbulence-intensifies/",
+        "date": "2025-10-18",
+        "source": "newsghana.com.gh"
+      }
+    ]
+  },
+  "Namibia": {
+    "nodeId": "Namibia",
+    "nodeName": "Namibia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Trade disruptions from US tariffs and trade war are likely to impact Namibia’s trade environment.",
+        "evidence": [
+          "NAMIBIA'S TRADE SHIFTS AMID U.S TARIF—NBC",
+          "Trump's Tariffs Detonate Trade War ...WTO, IMF Raise Red Flags"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No conflict or conflict-related tensions are indicated, risks are mainly economic and trade-related.",
+        "evidence": [
+          "Namibia: Country File, Economic Risk Analysis - Coface for trade"
+        ]
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Trade policies are affected by US tariffs and global trade tensions.",
+        "evidence": [
+          "Trump's Tariffs Detonate Trade War ...WTO, IMF Raise Red Flags"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Trade tensions and tariffs impacting Namibia’s exports.",
+        "evidence": [
+          "NAMIBIA'S TRADE SHIFTS AMID U.S TARIF—NBC"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No conflict risks indicated.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Trade policy adjustments due to tariffs and trade tensions.",
+        "evidence": [
+          "Trump's Tariffs Detonate Trade War ...WTO, IMF Raise Red Flags"
+        ]
+      }
+    },
+    "summary": "Moderate trade-related risks mainly on tariffs and trade policy due to US tariffs and global trade tensions.",
+    "assumptions": [
+      "Trade environment remains uncertain with ongoing trade tensions and policy adjustments."
+    ],
+    "importRisk": 45,
+    "exportRisk": 45,
+    "overallRisk": 45,
+    "computedAt": "2026-03-14T16:31:05.563Z",
+    "articles": [
+      {
+        "title": "Namibia: Trump's Tariffs Detonate Trade War ...WTO, IMF Raise Red Flags",
+        "url": "https://allafrica.com/stories/202504080235.html",
+        "date": "2025-04-08",
+        "source": "allafrica.com"
+      },
+      {
+        "title": "THE DAILY ROUNDUP WITH NINA | Namibia's trade shifts amid U.S Tariffs - nbc",
+        "url": "https://www.youtube.com/watch?v=2J_m1Q-WNeA",
+        "date": "2025-04-10",
+        "source": "youtube.com"
+      },
+      {
+        "title": "Shifting trade dynamics: Namibia’s imports decline by 9.3% - Business Express",
+        "url": "https://nambusinessexpress.com/?p=9396",
+        "date": "2025-04-13",
+        "source": "nambusinessexpress.com"
+      },
+      {
+        "title": "Namibia: Country File, Economic Risk Analysis - Coface for trade",
+        "url": "https://www.coface.co.in/news-economy-and-insights/business-risk-dashboard/country-risk-files/namibia",
+        "date": "2024-01-01",
+        "source": "coface.co.in"
+      },
+      {
+        "title": "Namibia: Country File, Economic Risk Analysis | Coface",
+        "url": "https://www.coface.com/news-economy-and-insights/business-risk-dashboard/country-risk-files/namibia",
+        "date": "",
+        "source": "coface.com"
+      }
+    ]
   }
 }
