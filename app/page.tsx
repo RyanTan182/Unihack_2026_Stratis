@@ -7,6 +7,7 @@ import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
+import type { ItemType } from "@/components/product-supply-chain"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
@@ -713,6 +714,10 @@ export default function SupplyChainCrisisDetector() {
     completedChunks: 0,
     totalChunks: 0,
   })
+  const [mapAddRequest, setMapAddRequest] = useState<{
+    country: string
+    itemType: ItemType
+  } | null>(null)
 
   useEffect(() => {
     if (!countryRisks.length) return
@@ -846,7 +851,7 @@ export default function SupplyChainCrisisDetector() {
   }
 
   return (
-    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
+    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background animate-slide-up">
       {/* Left Navigation Sidebar */}
       <NavSidebar
         onInventoryClick={handleToggleInventory}
@@ -884,10 +889,14 @@ export default function SupplyChainCrisisDetector() {
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
+          onAddItemAtCountry={(country, itemType) => {
+            setMapAddRequest({ country, itemType })
+            setIsProductBuilderOpen(true)
+          }}
         />
 
         {/* Action Buttons */}
-        <div className="absolute left-4 top-4 z-10 flex gap-2">
+        <div className="absolute left-4 top-4 z-10 flex gap-2 stagger-children">
           <Button
             variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}
             size="sm"
@@ -991,6 +1000,8 @@ export default function SupplyChainCrisisDetector() {
           onProductsChange={setProducts}
           onAddToInventory={handleAddToInventory}
           inventoryProductIds={inventoryProducts.map((p) => p.id)}
+          mapAddRequest={mapAddRequest}
+          onMapAddRequestHandled={() => setMapAddRequest(null)}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}

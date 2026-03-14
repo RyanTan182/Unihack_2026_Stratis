@@ -31,7 +31,7 @@ const METRIC_CONFIG = {
 
 const MARKET_ACCESS_COLORS = {
   excellent: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  good: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+  good: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30",
   moderate: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   limited: "bg-red-500/15 text-red-400 border-red-500/30",
 }

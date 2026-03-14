@@ -31,13 +31,13 @@ const getRiskLevel = (score: number) => {
   if (score >= 60) return { label: "High", color: "bg-orange-500 text-white", textColor: "text-orange-400" }
   if (score >= 40) return { label: "Medium", color: "bg-yellow-500 text-foreground", textColor: "text-yellow-400" }
   if (score >= 20) return { label: "Low", color: "bg-emerald-500 text-white", textColor: "text-emerald-400" }
-  return { label: "Minimal", color: "bg-cyan-500 text-white", textColor: "text-cyan-400" }
+  return { label: "Minimal", color: "bg-zinc-500 text-white", textColor: "text-zinc-400" }
 }
 
 const getAccessBadgeColor = (access: string) => {
   switch (access) {
     case "excellent": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-    case "good": return "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+    case "good": return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"
     case "moderate": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
     default: return "bg-red-500/20 text-red-400 border-red-500/30"
   }
@@ -170,7 +170,7 @@ export function RelocationResults({
                     <div className={cn(
                       "score-badge",
                       index === 0 ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30" :
-                      index === 1 ? "bg-gradient-to-br from-cyan-500 to-cyan-600 text-white shadow-lg shadow-cyan-500/30" :
+                      index === 1 ? "bg-gradient-to-br from-zinc-600 to-zinc-700 text-white shadow-lg shadow-zinc-500/20" :
                       "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg shadow-primary/30"
                     )}>
                       {index + 1}

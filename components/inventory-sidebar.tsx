@@ -155,11 +155,12 @@ function InventoryItemRow({
             {hasChildren ? (
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0">
-                  {isExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
+                  <ChevronRight
+                    className={cn(
+                      "h-3 w-3 transition-transform duration-200",
+                      isExpanded && "rotate-90"
+                    )}
+                  />
                 </Button>
               </CollapsibleTrigger>
             ) : (
