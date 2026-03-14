@@ -115,8 +115,8 @@ function nodeToSupplyChainItems(
     children.push(...nodeToSupplyChainItems(child, tree))
   }
 
-  // Verified or single-country: one item
-  if (!isPredicted || alternatives.length <= 1) {
+  // Single country: one item
+  if (alternatives.length <= 1) {
     const country = getTopCountry(node.geographic_concentration)
     if (!country) return []
     const item: MapSupplyChainItem = {
@@ -129,13 +129,14 @@ function nodeToSupplyChainItems(
       children,
       isPredicted: isPredicted || undefined,
     }
-    if (isPredicted && alternatives.length > 1) {
+    if (isPredicted && alternatives.length === 1) {
+      item.countryPercentage = alternatives[0].percentage
       item.countryAlternatives = alternatives
     }
     return [item]
   }
 
-  // Predicted with multiple countries: expand to one item per country
+  // Multiple countries: expand to one item per country (primary full opacity, others by %)
   return alternatives.map(({ country, percentage }) => ({
     id: `${node.id}-${country}`,
     name: node.name,
@@ -143,8 +144,8 @@ function nodeToSupplyChainItems(
     country,
     riskPrediction: node.risk_score,
     riskDirection: node.risk_score >= 50 ? "up" : "down",
-    children: [], // expanded leaves have no children at each location
-    isPredicted: true,
+    children,
+    isPredicted: isPredicted || undefined,
     countryPercentage: percentage,
     countryAlternatives: alternatives,
   }))

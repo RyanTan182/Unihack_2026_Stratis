@@ -1026,8 +1026,40 @@ export default function SupplyChainCrisisDetector() {
     const fromDecomposition = storedProducts
       .map((stored, i) => storedProductToMapProduct(stored, i))
       .filter((p): p is NonNullable<typeof p> => p !== null)
-    return [...fromDecomposition, ...products]
+    const productIds = new Set(products.map((p) => p.id))
+    // Prefer products list (has destinationCountry); add decomposition-only items to avoid duplicates
+    return [...products, ...fromDecomposition.filter((p) => !productIds.has(p.id))]
   }, [storedProducts, products])
+
+  // Filter products to selected node subtree (path from root + selected + children)
+  const filteredMapProducts = useMemo(() => {
+    if (!selectedDecompNodeId) return mapProducts
+
+    function findPathToNode<T extends { id: string; children: T[] }>(
+      items: T[],
+      targetId: string
+    ): T[] | null {
+      for (const item of items) {
+        if (item.id === targetId || item.id.startsWith(targetId + "-")) {
+          return [item]
+        }
+        const childPath = findPathToNode(item.children, targetId)
+        if (childPath) {
+          return [{ ...item, children: childPath }]
+        }
+      }
+      return null
+    }
+
+    const filtered: typeof mapProducts = []
+    for (const product of mapProducts) {
+      const path = findPathToNode(product.components, selectedDecompNodeId)
+      if (path && path.length > 0) {
+        filtered.push({ ...product, components: path })
+      }
+    }
+    return filtered.length > 0 ? filtered : mapProducts
+  }, [mapProducts, selectedDecompNodeId])
 
   // Calculate insights from products
   const insights = useMemo(() => {
@@ -1168,8 +1200,17 @@ export default function SupplyChainCrisisDetector() {
     setIsRouteBuilderOpen(false)
   }
 
-  const handleProductAdd = (product: StoredProduct) => {
-    setStoredProducts((prev) => [...prev, product])
+  const handleProductAdd = (stored: StoredProduct) => {
+    setStoredProducts((prev) => [...prev, stored])
+    // Also add to Product Supply Chain list so it appears in insights, route finder, etc.
+    const mapProduct = storedProductToMapProduct(stored, storedProducts.length)
+    if (mapProduct) {
+      const product: Product = {
+        ...mapProduct,
+        destinationCountry: "United States",
+      }
+      setProducts((prev) => [...prev, product])
+    }
   }
 
   const handleTreeChange = (tree: DecompositionTree | null) => {
@@ -1267,7 +1308,7 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={customRoute}
-          products={mapProducts}
+          products={filteredMapProducts}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
