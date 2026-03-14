@@ -4,6 +4,7 @@
  */
 
 import type { RouteNode, CountryRiskData, GraphEdge } from './route-types'
+import { calculateDistance } from './risk-calculator'
 
 // Country coordinates for distance calculations
 const COUNTRY_COORDINATES: Record<string, [number, number]> = {
@@ -61,34 +62,6 @@ const COUNTRY_COORDINATES: Record<string, [number, number]> = {
   "Strait of Malacca": [100.00, 3.00],
   "Bab-el-Mandeb": [43.42, 12.50],
   "Bosphorus": [29.00, 41.00],
-}
-
-/**
- * Calculate distance between two coordinates using Haversine formula
- */
-export function calculateDistance(
-  coord1: [number, number],
-  coord2: [number, number]
-): number {
-  const R = 6371 // Earth's radius in km
-  const [lon1, lat1] = coord1
-  const [lon2, lat2] = coord2
-
-  const dLat = toRad(lat2 - lat1)
-  const dLon = toRad(lon2 - lon1)
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2)
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-  return Math.round(R * c)
-}
-
-function toRad(deg: number): number {
-  return deg * (Math.PI / 180)
 }
 
 /**
@@ -334,13 +307,11 @@ let _graphInstance: RouteGraph | null = null
 
 /**
  * Get or create the global route graph instance
+ * Returns null if not initialized and no data provided
  */
-export function getRouteGraph(data?: CountryRiskData[]): RouteGraph {
+export function getRouteGraph(data?: CountryRiskData[]): RouteGraph | null {
   if (!_graphInstance && data) {
     _graphInstance = RouteGraph.fromCountryRisks(data)
-  }
-  if (!_graphInstance) {
-    throw new Error('Route graph not initialized. Call getRouteGraph with data first.')
   }
   return _graphInstance
 }
