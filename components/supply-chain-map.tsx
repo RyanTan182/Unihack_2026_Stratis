@@ -15,7 +15,7 @@ import { extractChokepointsFromPath } from "@/lib/utils"
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
-interface CountryRisk {
+export interface CountryRisk {
   id: string
   name: string
   type: "country" | "chokepoint"
