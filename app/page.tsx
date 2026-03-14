@@ -26,6 +26,9 @@ import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import { collectCountriesFromProducts } from "./lib/risk-country-utils";
+import { PredictionsPanel } from "@/components/predictions-panel"
+import { usePredictions } from "@/hooks/use-predictions"
+import { toast } from "sonner"
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
@@ -740,6 +743,28 @@ export default function SupplyChainCrisisDetector() {
   const [alternativesPanelOpen, setAlternativesPanelOpen] = useState(false)
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
+  const [isPredictionsOpen, setIsPredictionsOpen] = useState(false)
+  const predictions = usePredictions()
+
+  useEffect(() => {
+    for (const result of predictions.completedPredictions) {
+      for (const country of result.prediction.affectedCountries) {
+        if (country.predictedRisk - country.currentRisk > 20) {
+          toast.warning(
+            `Prediction Alert: ${result.prediction.summary}`,
+            {
+              description: `${country.country} risk predicted to rise from ${country.currentRisk} to ${country.predictedRisk}`,
+              action: {
+                label: "View Details",
+                onClick: () => setIsPredictionsOpen(true),
+              },
+              id: `prediction-${result.simulationId}-${country.country}`,
+            }
+          )
+        }
+      }
+    }
+  }, [predictions.completedPredictions])
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -975,6 +1000,11 @@ export default function SupplyChainCrisisDetector() {
         isInventoryOpen={isInventorySidebarOpen}
         onLocationClick={() => setIsInventorySidebarOpen(false)}
         isLocationActive={!isInventorySidebarOpen}
+        onPredictionsClick={() => {
+          setIsPredictionsOpen(!isPredictionsOpen)
+          setIsInventorySidebarOpen(false)
+        }}
+        isPredictionsOpen={isPredictionsOpen}
       />
 
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
@@ -991,6 +1021,8 @@ export default function SupplyChainCrisisDetector() {
           selectedCountry={selectedCountry}
           onCountrySelect={setSelectedCountry}
           onReset={handleReset}
+          predictions={predictions.completedPredictions}
+          onPredictionClick={() => setIsPredictionsOpen(true)}
         />
       )}
 
@@ -1236,6 +1268,17 @@ export default function SupplyChainCrisisDetector() {
             // Handle supplier replacement in supply chain
             setAlternativesPanelOpen(false)
           }}
+        />
+
+        {/* Predictions Panel */}
+        <PredictionsPanel
+          isOpen={isPredictionsOpen}
+          onClose={() => setIsPredictionsOpen(false)}
+          activePredictions={predictions.activePredictions}
+          completedPredictions={predictions.completedPredictions}
+          isTriggering={predictions.isTriggering}
+          error={predictions.error}
+          onTrigger={predictions.triggerPrediction}
         />
       </div>
     </div>

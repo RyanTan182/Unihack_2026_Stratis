@@ -14,6 +14,7 @@ import {
   HelpCircle,
   Layers,
   Zap,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -31,6 +32,8 @@ interface NavSidebarProps {
   isInventoryOpen?: boolean
   onLocationClick?: () => void
   isLocationActive?: boolean
+  onPredictionsClick?: () => void
+  isPredictionsOpen?: boolean
 }
 
 export function NavSidebar({
@@ -38,6 +41,8 @@ export function NavSidebar({
   isInventoryOpen,
   onLocationClick,
   isLocationActive,
+  onPredictionsClick,
+  isPredictionsOpen,
 }: NavSidebarProps) {
   const navItems: NavItem[] = [
     { icon: Home, label: "Dashboard", active: false },
@@ -51,6 +56,7 @@ export function NavSidebar({
     { icon: Globe, label: "Global View" },
     { icon: Compass, label: "Routes" },
     { icon: Layers, label: "Layers" },
+    { icon: Sparkles, label: "Predictions", active: isPredictionsOpen, onClick: onPredictionsClick },
     { icon: HelpCircle, label: "Help" },
   ]
   return (

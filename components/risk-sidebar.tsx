@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
+import { PredictionAlert } from "@/components/prediction-alert"
+import type { PredictionResult } from "@/lib/mirofish/types"
 
 interface CountryRisk {
   id: string
@@ -39,6 +41,8 @@ interface RiskSidebarProps {
   selectedCountry: string | null
   onCountrySelect: (countryId: string | null) => void
   onReset: () => void
+  predictions?: PredictionResult[]
+  onPredictionClick?: () => void
 }
 
 const riskMetrics: RiskMetric[] = [
@@ -189,7 +193,7 @@ const writeCachedNews = (country: string, articles: NewsArticle[]) => {
   )
 }
 
-export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onReset }: RiskSidebarProps) {
+export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onReset, predictions, onPredictionClick }: RiskSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"filters" | "metrics" | "risk" | "options">("risk")
   const [expandedMetrics, setExpandedMetrics] = useState<string[]>(["political-stability", "trade-barriers"])
@@ -522,24 +526,38 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                     .filter((c) => c.overallRisk >= 60)
                     .sort((a, b) => b.overallRisk - a.overallRisk)
                     .map((country) => (
-                      <button
-                        key={country.id}
-                        onClick={() => onCountrySelect(country.name)}
-                        className={cn(
-                          "group flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-xs transition-all",
-                          selectedCountry === country.name
-                            ? "bg-primary/10 text-primary"
-                            : "text-foreground hover:bg-muted/50 hover:text-primary"
-                        )}
-                      >
-                        <span className="font-medium">{country.name}</span>
-                        <span className={cn(
-                          "rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                          country.overallRisk >= 80 ? "border-red-500/50 text-red-400" : "border-orange-500/50 text-orange-400"
-                        )}>
-                          {country.overallRisk}%
-                        </span>
-                      </button>
+                      <div key={country.id}>
+                        <button
+                          onClick={() => onCountrySelect(country.name)}
+                          className={cn(
+                            "group flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-xs transition-all",
+                            selectedCountry === country.name
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground hover:bg-muted/50 hover:text-primary"
+                          )}
+                        >
+                          <span className="font-medium">{country.name}</span>
+                          <span className={cn(
+                            "rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                            country.overallRisk >= 80 ? "border-red-500/50 text-red-400" : "border-orange-500/50 text-orange-400"
+                          )}>
+                            {country.overallRisk}%
+                          </span>
+                        </button>
+                        {predictions?.map((result) => {
+                          const match = result.prediction.affectedCountries.find(
+                            (c) => c.country.toLowerCase() === country.name.toLowerCase()
+                          )
+                          if (!match) return null
+                          return (
+                            <PredictionAlert
+                              key={result.simulationId}
+                              prediction={match}
+                              onClick={onPredictionClick}
+                            />
+                          )
+                        })}
+                      </div>
                     ))}
                 </div>
               </div>
