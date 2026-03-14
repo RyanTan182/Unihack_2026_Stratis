@@ -19,6 +19,7 @@ import {
   MapPin,
   Loader2,
   Globe,
+  List,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -48,11 +49,12 @@ import {
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { EmptyState } from "@/components/ui/empty-state"
 
 export interface CountryRisk {
   id: string
   name: string
-  type: string
+  type: "country" | "chokepoint"
   importRisk: number
   exportRisk: number
   overallRisk: number
@@ -89,18 +91,20 @@ interface ProductSupplyChainProps {
   countryRisks: CountryRisk[]
   products: Product[]
   onProductsChange: (products: Product[]) => void
+  onAddToInventory?: (product: Product) => void
+  inventoryProductIds?: string[]
 }
 
-// Distinct product palette — each new product cycles through these
+// Modern product palette with glow effects
 const PRODUCT_COLORS = [
-  "#2563eb", // blue
-  "#16a34a", // green
-  "#ea580c", // orange
-  "#7c3aed", // violet
-  "#0891b2", // cyan
-  "#db2777", // pink
-  "#ca8a04", // yellow
-  "#dc2626", // red
+  "#06b6d4", // Cyan
+  "#22c55e", // Green
+  "#f59e0b", // Amber
+  "#8b5cf6", // Violet
+  "#ec4899", // Pink
+  "#14b8a6", // Teal
+  "#f97316", // Orange
+  "#ef4444", // Red
 ]
 
 const itemTypeConfig: Record<ItemType, { icon: typeof Package; color: string; label: string }> = {
@@ -110,14 +114,14 @@ const itemTypeConfig: Record<ItemType, { icon: typeof Package; color: string; la
   resource: { icon: Fuel, color: "text-white", label: "Resource" },
 }
 
-// Adjust hex color opacity by blending with white
+// Adjust hex color opacity by blending with dark background
 function adjustColorAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
   const b = parseInt(hex.slice(5, 7), 16)
-  const br = Math.round(r * alpha + 255 * (1 - alpha))
-  const bg = Math.round(g * alpha + 255 * (1 - alpha))
-  const bb = Math.round(b * alpha + 255 * (1 - alpha))
+  const br = Math.round(r * alpha + 15 * (1 - alpha))
+  const bg = Math.round(g * alpha + 23 * (1 - alpha))
+  const bb = Math.round(b * alpha + 42 * (1 - alpha))
   return `rgb(${br},${bg},${bb})`
 }
 
@@ -259,7 +263,7 @@ function SupplyChainItemRow({
       .finally(() => setAltLoading(false))
   }
 
-  // Lighten the product color for child items based on depth
+  // Style the product color based on depth
   const iconBg = item.type === "product" ? productColor : adjustColorAlpha(productColor, 0.7 - depth * 0.1)
 
   const availableChildTypes: ItemType[] =
@@ -276,23 +280,23 @@ function SupplyChainItemRow({
       {/* Connecting line for nested items */}
       {depth > 0 && (
         <div
-          className="absolute left-0 top-0 h-full border-l-2 border-border"
+          className="absolute left-0 top-0 h-full border-l border-border/30"
           style={{ marginLeft: `${(depth - 1) * 24 + 20}px` }}
         />
       )}
 
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <div
-          className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 transition-all hover:shadow-sm"
+          className="group flex items-center gap-2.5 rounded-xl border border-border/50 bg-card/50 p-3 transition-all hover:border-primary/30 hover:bg-card/80"
           style={{ marginLeft: `${depth * 24}px` }}
         >
           {/* Expand/Collapse button */}
           {hasChildren ? (
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0">
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 hover:bg-muted">
                 <ChevronDown
                   className={cn(
-                    "h-4 w-4 transition-transform",
+                    "h-4 w-4 transition-transform duration-200",
                     !isExpanded && "-rotate-90"
                   )}
                 />
@@ -304,8 +308,11 @@ function SupplyChainItemRow({
 
           {/* Icon */}
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-            style={{ backgroundColor: iconBg }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-lg"
+            style={{
+              backgroundColor: iconBg,
+              boxShadow: `0 4px 12px ${productColor}30`
+            }}
           >
             <Icon className="h-5 w-5 text-white" />
           </div>
@@ -315,7 +322,7 @@ function SupplyChainItemRow({
             <Input
               value={item.name}
               onChange={(e) => onUpdate({ ...item, name: e.target.value })}
-              className="h-8 border-0 bg-transparent p-0 text-base font-medium shadow-none focus-visible:ring-0"
+              className="h-8 border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-0"
               placeholder={`${config.label} name...`}
             />
           </div>
@@ -323,12 +330,12 @@ function SupplyChainItemRow({
           {/* Location + Risk Badge */}
           <div className="flex items-center gap-1.5">
             <div className="flex flex-col items-end gap-0.5">
-              <span className="text-xs text-muted-foreground">Location</span>
+              <span className="text-[10px] text-muted-foreground">Location</span>
               <Select
                 value={item.country}
                 onValueChange={(country) => onUpdate({ ...item, country })}
               >
-                <SelectTrigger className="h-7 w-[130px] border-0 bg-transparent p-0 text-sm font-medium shadow-none focus:ring-0">
+                <SelectTrigger className="h-7 w-[130px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -347,17 +354,20 @@ function SupplyChainItemRow({
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="shrink-0 rounded-full">
-                    <Badge variant="destructive" className="cursor-pointer gap-1 text-[10px]">
+                    <Badge
+                      variant="destructive"
+                      className="cursor-pointer gap-1 border-0 text-[10px] font-medium"
+                    >
                       <AlertTriangle className="h-3 w-3" />
                       {countryData?.overallRisk}%
                     </Badge>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-72 p-3" side="left">
+                <PopoverContent className="w-72 rounded-xl border-border/50 bg-card/95 p-3 shadow-xl backdrop-blur-xl" side="left">
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm font-semibold text-foreground">{item.country}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
                         Risk: {countryData!.overallRisk}% — Import: {countryData!.importRisk}% / Export: {countryData!.exportRisk}%
                       </p>
                     </div>
@@ -366,7 +376,7 @@ function SupplyChainItemRow({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full gap-1.5 text-xs"
+                        className="w-full gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
                         onClick={fetchAlternatives}
                       >
                         <Globe className="h-3 w-3" />
@@ -382,7 +392,7 @@ function SupplyChainItemRow({
                     )}
 
                     {altError && (
-                      <p className="text-xs text-destructive">{altError}</p>
+                      <p className="text-xs text-red-400">{altError}</p>
                     )}
 
                     {alternatives.length > 0 && (
@@ -391,7 +401,7 @@ function SupplyChainItemRow({
                         {alternatives.map((alt, i) => (
                           <button
                             key={i}
-                            className="flex w-full items-center justify-between rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-left transition-colors hover:bg-muted"
+                            className="flex w-full items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-2.5 py-2 text-left transition-colors hover:bg-muted/50 hover:border-primary/30"
                             onClick={() => onUpdate({ ...item, country: alt.country })}
                           >
                             <div>
@@ -400,7 +410,7 @@ function SupplyChainItemRow({
                             </div>
                             <Badge
                               variant={alt.risk === "low" ? "secondary" : alt.risk === "high" ? "destructive" : "default"}
-                              className="ml-2 shrink-0 text-[10px]"
+                              className="ml-2 shrink-0 border-0 text-[10px]"
                             >
                               {alt.risk}
                             </Badge>
@@ -419,13 +429,12 @@ function SupplyChainItemRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 hover:text-red-400 transition-all"
             onClick={onDelete}
+            aria-label={`Delete ${item.name || item.type}`}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
-
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </div>
 
         {/* Children */}
@@ -462,7 +471,7 @@ function SupplyChainItemRow({
                     key={type}
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs"
+                    className="h-8 gap-1.5 text-xs border-border/50 hover:border-primary/30 hover:text-primary"
                     onClick={() => onAddChild(item.id, type)}
                   >
                     <Plus className="h-3 w-3" />
@@ -504,42 +513,45 @@ function ProductListItem({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-primary/50 hover:shadow-sm"
+      className="group flex w-full items-center gap-3 rounded-xl border border-border/50 bg-card/50 p-4 text-left transition-all hover:border-primary/30 hover:bg-card/80"
     >
       <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: product.color }}
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-lg"
+        style={{
+          backgroundColor: product.color,
+          boxShadow: `0 8px 20px ${product.color}25`
+        }}
       >
         <Icon className="h-6 w-6 text-white" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">{product.name || "Unnamed Product"}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="truncate text-sm font-medium text-foreground">{product.name || "Unnamed Product"}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
           {product.components.length} component{product.components.length !== 1 ? "s" : ""}
         </p>
       </div>
 
       <div className="flex flex-col items-end gap-0.5">
-        <span className="text-xs text-muted-foreground">Prediction</span>
+        <span className="text-[10px] text-muted-foreground">Prediction</span>
         <div className="flex items-center gap-1">
           <span
             className={cn(
               "text-sm font-semibold",
-              product.riskDirection === "up" ? "text-red-500" : "text-green-500"
+              product.riskDirection === "up" ? "text-red-400" : "text-emerald-400"
             )}
           >
             {product.riskPrediction}%
           </span>
           {product.riskDirection === "up" ? (
-            <TrendingUp className="h-4 w-4 text-red-500" />
+            <TrendingUp className="h-4 w-4 text-red-400" />
           ) : (
-            <TrendingDown className="h-4 w-4 text-green-500" />
+            <TrendingDown className="h-4 w-4 text-emerald-400" />
           )}
         </div>
       </div>
 
-      <ChevronDown className="-rotate-90 h-4 w-4 text-muted-foreground" />
+      <ChevronDown className="-rotate-90 h-4 w-4 text-muted-foreground group-hover:text-primary [@media(hover:none)]:text-primary transition-colors" />
     </button>
   )
 }
@@ -550,6 +562,8 @@ export function ProductSupplyChain({
   countryRisks,
   products,
   onProductsChange,
+  onAddToInventory,
+  inventoryProductIds = [],
 }: ProductSupplyChainProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [view, setView] = useState<"list" | "detail">("list")
@@ -668,30 +682,29 @@ export function ProductSupplyChain({
   if (!isOpen) return null
 
   return (
-    <div className="absolute right-4 top-4 z-20 w-[400px] animate-in slide-in-from-right-4">
-      <Card className="max-h-[calc(100vh-2rem)] overflow-hidden border-border bg-card/98 shadow-xl backdrop-blur-sm">
+    <div className="absolute right-4 top-4 z-20 w-[420px] animate-in slide-in-from-right-4">
+      <Card className="max-h-[calc(100vh-2rem)] overflow-hidden border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl">
         <CardContent className="p-0">
           {view === "list" ? (
             // Product List View
             <div className="flex flex-col">
-              <div className="flex items-center justify-between border-b border-border p-4">
-                <h2 className="text-lg font-semibold text-foreground">Products</h2>
-                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <div className="flex items-center justify-between border-b border-border/50 p-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">Products</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Supply chain management</p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:bg-muted">
                   <X className="h-4 w-4" />
                 </Button>
               </div>
 
               <div className="max-h-[60vh] space-y-3 overflow-y-auto p-4">
                 {products.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <Package className="mx-auto h-12 w-12 text-muted-foreground/30" />
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      No products added yet
-                    </p>
-                    <p className="text-xs text-muted-foreground/70">
-                      Add a product to analyze its supply chain risk
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={<Package className="h-7 w-7 text-muted-foreground/50" />}
+                    title="No products added yet"
+                    description="Add a product to analyze its supply chain risk"
+                  />
                 ) : (
                   products.map((product) => (
                     <ProductListItem
@@ -710,23 +723,23 @@ export function ProductSupplyChain({
                 {products.length > 0 && (() => {
                   const analysis = analyzeSupplyChain(products, countryRisks)
                   if (analysis.totalRoutes === 0) return null
-                  
+
                   return (
-                    <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
+                    <div className="mt-4 rounded-xl border border-border/50 bg-muted/30 p-4">
                       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <MapPin className="h-4 w-4" />
+                        <MapPin className="h-4 w-4 text-primary" />
                         Route Risk Analysis
                       </h3>
-                      
+
                       {/* Risk Stats */}
                       <div className="mb-3 grid grid-cols-2 gap-2">
-                        <div className="rounded-lg bg-card p-2.5">
-                          <p className="text-xs text-muted-foreground">Total Routes</p>
-                          <p className="text-lg font-semibold text-foreground">{analysis.totalRoutes}</p>
+                        <div className="rounded-lg bg-card/50 border border-border/30 p-3">
+                          <p className="text-[10px] text-muted-foreground">Total Routes</p>
+                          <p className="text-xl font-bold text-foreground mt-0.5">{analysis.totalRoutes}</p>
                         </div>
-                        <div className="rounded-lg bg-card p-2.5">
-                          <p className="text-xs text-muted-foreground">Highest Risk</p>
-                          <p className={cn("text-lg font-semibold", analysis.highestRisk >= 60 ? "text-red-500" : "text-green-500")}>
+                        <div className="rounded-lg bg-card/50 border border-border/30 p-3">
+                          <p className="text-[10px] text-muted-foreground">Highest Risk</p>
+                          <p className={cn("text-xl font-bold mt-0.5", analysis.highestRisk >= 60 ? "text-red-400" : "text-emerald-400")}>
                             {analysis.highestRisk}%
                           </p>
                         </div>
@@ -735,33 +748,29 @@ export function ProductSupplyChain({
                       {/* Route Status */}
                       <div className="mb-3 flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-1.5">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/10">
-                            <AlertTriangle className="h-3 w-3 text-red-500" />
-                          </div>
-                          <span className="text-red-500 font-medium">{analysis.dangerousRoutes}</span>
-                          <span className="text-muted-foreground">dangerous</span>
+                          <AlertTriangle className="h-4 w-4 text-red-400" />
+                          <span className="text-red-400 font-medium">{analysis.dangerousRoutes}</span>
+                          <span className="text-muted-foreground text-xs">dangerous</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10">
-                            <CheckCircle className="h-3 w-3 text-green-500" />
-                          </div>
-                          <span className="text-green-500 font-medium">{analysis.safeRoutes}</span>
-                          <span className="text-muted-foreground">safe</span>
+                          <CheckCircle className="h-4 w-4 text-emerald-400" />
+                          <span className="text-emerald-400 font-medium">{analysis.safeRoutes}</span>
+                          <span className="text-muted-foreground text-xs">safe</span>
                         </div>
                       </div>
 
                       {/* High Risk Locations */}
                       {analysis.riskLocations.length > 0 && (
-                        <div className="border-t border-border pt-3">
-                          <p className="mb-2 text-xs font-medium text-red-500 flex items-center gap-1">
+                        <div className="border-t border-border/30 pt-3">
+                          <p className="mb-2 text-xs font-medium text-red-400 flex items-center gap-1">
                             <AlertTriangle className="h-3 w-3" />
                             High Risk Locations
                           </p>
                           <div className="space-y-1.5">
                             {analysis.riskLocations.slice(0, 3).map((loc) => (
-                              <div key={loc.country} className="flex items-center justify-between rounded-lg bg-red-500/5 px-2.5 py-1.5">
+                              <div key={loc.country} className="flex items-center justify-between rounded-lg bg-red-500/5 border border-red-500/10 px-3 py-2">
                                 <span className="text-sm font-medium text-foreground">{loc.country}</span>
-                                <span className="text-xs font-semibold text-red-500">{loc.risk}% risk</span>
+                                <span className="text-xs font-semibold text-red-400">{loc.risk}% risk</span>
                               </div>
                             ))}
                           </div>
@@ -772,10 +781,10 @@ export function ProductSupplyChain({
                 })()}
               </div>
 
-              <div className="border-t border-border p-4">
+              <div className="border-t border-border/50 p-4">
                 <Button
                   variant="outline"
-                  className="w-full gap-2"
+                  className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
                   onClick={addProduct}
                 >
                   <Plus className="h-4 w-4" />
@@ -786,11 +795,11 @@ export function ProductSupplyChain({
           ) : (
             // Product Detail View
             <div className="flex flex-col">
-              <div className="border-b border-border p-4">
+              <div className="border-b border-border/50 p-4">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mb-3 -ml-2 gap-1 text-muted-foreground"
+                  className="mb-3 -ml-2 gap-1 text-muted-foreground hover:text-foreground"
                   onClick={() => setView("list")}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -800,8 +809,11 @@ export function ProductSupplyChain({
                 {selectedProduct && (
                   <div className="flex items-center gap-3">
                     <div
-                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
-                      style={{ backgroundColor: selectedProduct.color }}
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-lg"
+                      style={{
+                        backgroundColor: selectedProduct.color,
+                        boxShadow: `0 8px 20px ${selectedProduct.color}25`
+                      }}
                     >
                       <Package className="h-6 w-6 text-white" />
                     </div>
@@ -816,14 +828,14 @@ export function ProductSupplyChain({
                       />
                     </div>
                     <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-xs text-muted-foreground">Location</span>
+                      <span className="text-[10px] text-muted-foreground">Location</span>
                       <Select
                         value={selectedProduct.country}
                         onValueChange={(country) =>
                           updateProduct({ ...selectedProduct, country })
                         }
                       >
-                        <SelectTrigger className="h-7 w-[110px] border-0 bg-transparent p-0 text-sm font-medium shadow-none focus:ring-0">
+                        <SelectTrigger className="h-7 w-[110px] border-0 bg-transparent p-0 text-xs font-medium shadow-none focus:ring-0">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -840,12 +852,28 @@ export function ProductSupplyChain({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-red-400"
                       onClick={() => deleteProduct(selectedProduct.id)}
+                      aria-label={`Delete ${selectedProduct.name || 'product'}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
+                )}
+
+                {selectedProduct && onAddToInventory && (
+                  <Button
+                    variant={inventoryProductIds.includes(selectedProduct.id) ? "secondary" : "outline"}
+                    size="sm"
+                    className="mt-2 w-full gap-2 text-xs"
+                    onClick={() => onAddToInventory(selectedProduct)}
+                    disabled={inventoryProductIds.includes(selectedProduct.id)}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                    {inventoryProductIds.includes(selectedProduct.id)
+                      ? "Already in Inventory"
+                      : "Add to Inventory"}
+                  </Button>
                 )}
               </div>
 
@@ -873,18 +901,17 @@ export function ProductSupplyChain({
                 ))}
 
                 {selectedProduct && selectedProduct.components.length === 0 && (
-                  <div className="rounded-xl border-2 border-dashed border-border py-8 text-center">
-                    <Boxes className="mx-auto h-10 w-10 text-muted-foreground/30" />
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      No components added
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={<Boxes className="h-7 w-7 text-muted-foreground/50" />}
+                    title="No components added"
+                    description="Add components to define your supply chain"
+                  />
                 )}
 
                 {selectedProduct && (
                   <Button
                     variant="outline"
-                    className="mt-2 w-full gap-2"
+                    className="mt-2 w-full gap-2 border-border/50 hover:border-primary/30 hover:text-primary"
                     onClick={() => addChildToItem(selectedProduct.id, "component")}
                   >
                     <Plus className="h-4 w-4" />
@@ -893,9 +920,10 @@ export function ProductSupplyChain({
                 )}
               </div>
 
-              <div className="border-t border-border p-4">
+              <div className="border-t border-border/50 p-4">
                 <Button
-                  className="w-full gap-2 bg-foreground text-background hover:bg-foreground/90"
+                  className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                  style={{ boxShadow: '0 8px 20px rgba(6, 182, 212, 0.25)' }}
                   onClick={handleAiOptimize}
                   disabled={aiLoading}
                 >
@@ -913,29 +941,29 @@ export function ProductSupplyChain({
       </Card>
 
       <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-        <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto">
+        <DialogContent className="max-h-[80vh] max-w-lg overflow-y-auto rounded-xl border-border/50 bg-card/95 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Sparkles className="h-5 w-5 text-primary" />
               AI Optimization — {selectedProduct?.name || "Product"}
             </DialogTitle>
           </DialogHeader>
           <div className="mt-2">
             {aiLoading ? (
-              <div className="flex flex-col items-center gap-3 py-8">
+              <div className="flex flex-col items-center gap-4 py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 <p className="text-sm text-muted-foreground">Analyzing your supply chain...</p>
               </div>
             ) : aiResult ? (
               <div className="prose prose-sm max-w-none dark:prose-invert text-sm">
                 {aiResult.split("\n").map((line, i) => {
-                  if (line.startsWith("# ")) return <h3 key={i} className="mt-3 text-base font-semibold">{line.slice(2)}</h3>
-                  if (line.startsWith("## ")) return <h4 key={i} className="mt-2 text-sm font-semibold">{line.slice(3)}</h4>
-                  if (line.startsWith("### ")) return <h4 key={i} className="mt-2 text-sm font-medium">{line.slice(4)}</h4>
-                  if (line.startsWith("- ") || line.startsWith("* ")) return <p key={i} className="ml-3 text-sm text-foreground">{line}</p>
+                  if (line.startsWith("# ")) return <h3 key={i} className="mt-3 text-base font-semibold text-foreground">{line.slice(2)}</h3>
+                  if (line.startsWith("## ")) return <h4 key={i} className="mt-2 text-sm font-semibold text-foreground">{line.slice(3)}</h4>
+                  if (line.startsWith("### ")) return <h4 key={i} className="mt-2 text-sm font-medium text-foreground">{line.slice(4)}</h4>
+                  if (line.startsWith("- ") || line.startsWith("* ")) return <p key={i} className="ml-3 text-sm text-muted-foreground">{line}</p>
                   if (line.startsWith("**")) return <p key={i} className="text-sm font-semibold text-foreground">{line.replace(/\*\*/g, "")}</p>
                   if (line.trim() === "") return <div key={i} className="h-2" />
-                  return <p key={i} className="text-sm text-foreground">{line}</p>
+                  return <p key={i} className="text-sm text-muted-foreground">{line}</p>
                 })}
               </div>
             ) : null}
