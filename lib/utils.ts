@@ -33,6 +33,63 @@ export function buildCountryGraph(
   return graph
 }
 
+export function findHighestRiskPath(
+  graph: Map<string, CountryRisk[]>
+): {
+  path: string[]
+  maxRisk: number
+} {
+  // Extract all unique nodes from the graph
+  const allNodes = new Map<string, CountryRisk>()
+  graph.forEach((neighbors) => {
+    neighbors.forEach((neighbor) => {
+      if (!allNodes.has(neighbor.id)) {
+        allNodes.set(neighbor.id, neighbor)
+      }
+    })
+  })
+
+  // Find the node with maximum overall risk
+  let maxRiskNodeId: string | null = null
+  let maxRiskValue = 0
+
+  allNodes.forEach((node) => {
+    if (node.overallRisk > maxRiskValue) {
+      maxRiskValue = node.overallRisk
+      maxRiskNodeId = node.id
+    }
+  })
+
+  if (!maxRiskNodeId) {
+    return { path: [], maxRisk: 0 }
+  }
+
+  // Find a path to this node using BFS from any starting point
+  for (const [startId] of graph) {
+    const queue: string[][] = [[startId]]
+    const visited = new Set<string>([startId])
+
+    while (queue.length > 0) {
+      const path = queue.shift()!
+      const current = path[path.length - 1]
+
+      if (current === maxRiskNodeId) {
+        return { path, maxRisk: maxRiskValue }
+      }
+
+      const neighbors = graph.get(current) || []
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor.id)) {
+          visited.add(neighbor.id)
+          queue.push([...path, neighbor.id])
+        }
+      }
+    }
+  }
+
+  return { path: [], maxRisk: 0 }
+}
+
 export function extractChokepointsFromPath(
   path: string[],
   riskMap: Map<string, CountryRisk>
