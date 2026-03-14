@@ -18,6 +18,10 @@ export interface MapSupplyChainItem {
   riskDirection: "up" | "down"
   children: MapSupplyChainItem[]
   isPredicted?: boolean
+  /** Percentage for this specific country when predicted (0-100) */
+  countryPercentage?: number
+  /** All possible countries with percentages for AI-predicted items */
+  countryAlternatives?: { country: string; percentage: number }[]
 }
 
 export interface MapProduct {
@@ -52,6 +56,9 @@ const KNOWN_COUNTRIES = new Set([
   "Nigeria", "Argentina", "Chile", "Poland", "Bangladesh", "Pakistan", "Philippines",
   "Iran", "Panama", "United Arab Emirates", "Oman", "Qatar", "Yemen", "Congo",
   "Czechia", "Georgia", "Greece", "Bulgaria", "Romania", "Djibouti", "Peru", "Ethiopia",
+  "Zambia", "Zimbabwe", "Morocco", "Kazakhstan", "Mongolia", "Tanzania", "Kenya",
+  "Angola", "Ghana", "Bolivia", "Colombia", "Namibia", "New Zealand", "Belgium",
+  "Sweden", "Austria", "Portugal", "Hungary", "Myanmar", "Sri Lanka",
 ])
 
 function getTopCountry(geographicConcentration: Record<string, number>): string | null {
@@ -64,6 +71,18 @@ function getTopCountry(geographicConcentration: Record<string, number>): string 
   }
   // Fallback: use first country even if not in known list (route may not render)
   return normalizeCountryName(sorted[0][0])
+}
+
+/** Get all countries with percentages, normalized and filtered to known countries */
+function getAllCountriesWithPercentages(
+  geographicConcentration: Record<string, number>
+): { country: string; percentage: number }[] {
+  const entries = Object.entries(geographicConcentration)
+  if (entries.length === 0) return []
+  return entries
+    .map(([country, pct]) => ({ country: normalizeCountryName(country), percentage: pct }))
+    .filter(({ country }) => KNOWN_COUNTRIES.has(country))
+    .sort((a, b) => b.percentage - a.percentage)
 }
 
 function mapNodeType(nodeType: SupplyChainNode["type"]): MapItemType {
@@ -82,33 +101,53 @@ function mapNodeType(nodeType: SupplyChainNode["type"]): MapItemType {
   }
 }
 
-function nodeToSupplyChainItem(
+function nodeToSupplyChainItems(
   node: SupplyChainNode,
   tree: DecompositionTree
-): MapSupplyChainItem | null {
-  const country = getTopCountry(node.geographic_concentration)
-  if (!country) return null
-
+): MapSupplyChainItem[] {
   const isPredicted = node.status === "inferred" || node.status === "searching"
-  const children: MapSupplyChainItem[] = []
+  const alternatives = getAllCountriesWithPercentages(node.geographic_concentration)
 
+  const children: MapSupplyChainItem[] = []
   for (const childId of node.children) {
     const child = tree.nodes[childId]
     if (!child) continue
-    const childItem = nodeToSupplyChainItem(child, tree)
-    if (childItem) children.push(childItem)
+    children.push(...nodeToSupplyChainItems(child, tree))
   }
 
-  return {
-    id: node.id,
+  // Verified or single-country: one item
+  if (!isPredicted || alternatives.length <= 1) {
+    const country = getTopCountry(node.geographic_concentration)
+    if (!country) return []
+    const item: MapSupplyChainItem = {
+      id: node.id,
+      name: node.name,
+      type: mapNodeType(node.type),
+      country,
+      riskPrediction: node.risk_score,
+      riskDirection: node.risk_score >= 50 ? "up" : "down",
+      children,
+      isPredicted: isPredicted || undefined,
+    }
+    if (isPredicted && alternatives.length > 1) {
+      item.countryAlternatives = alternatives
+    }
+    return [item]
+  }
+
+  // Predicted with multiple countries: expand to one item per country
+  return alternatives.map(({ country, percentage }) => ({
+    id: `${node.id}-${country}`,
     name: node.name,
     type: mapNodeType(node.type),
     country,
     riskPrediction: node.risk_score,
     riskDirection: node.risk_score >= 50 ? "up" : "down",
-    children,
-    isPredicted,
-  }
+    children: [], // expanded leaves have no children at each location
+    isPredicted: true,
+    countryPercentage: percentage,
+    countryAlternatives: alternatives,
+  }))
 }
 
 /**
@@ -131,8 +170,7 @@ export function storedProductToMapProduct(
   for (const childId of rootNode.children) {
     const child = tree.nodes[childId]
     if (!child) continue
-    const item = nodeToSupplyChainItem(child, tree)
-    if (item) components.push(item)
+    components.push(...nodeToSupplyChainItems(child, tree))
   }
 
   const isPredicted = tree.phase !== "verified"

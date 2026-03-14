@@ -23,11 +23,13 @@ export interface CountryRiskEvaluation {
     tariff: RiskFactorScore
     conflict: RiskFactorScore
     policy: RiskFactorScore
+    labor?: RiskFactorScore
   }
   exportFactors: {
     tariff: RiskFactorScore
     conflict: RiskFactorScore
     policy: RiskFactorScore
+    labor?: RiskFactorScore
   }
   importRisk: number
   exportRisk: number

@@ -60,6 +60,11 @@ export interface SupplyChainItem {
   riskDirection: "up" | "down"
   children: SupplyChainItem[]
   isExpanded?: boolean
+  isPredicted?: boolean
+  /** Percentage for this country when AI-predicted (0-100) */
+  countryPercentage?: number
+  /** All possible countries with percentages for AI-predicted items */
+  countryAlternatives?: { country: string; percentage: number }[]
 }
 
 interface Product {
@@ -71,6 +76,7 @@ interface Product {
   riskPrediction: number
   riskDirection: "up" | "down"
   components: SupplyChainItem[]
+  isPredicted?: boolean
 }
 
 export interface ProductRouteSegment {
@@ -95,6 +101,7 @@ export interface ProductSupplyRoute {
   pathNodes: string[]
   segments: ProductRouteSegment[]
   chokepoints: string[]
+  isPredicted?: boolean
 }
 
 interface SupplyChainMapProps {
@@ -192,6 +199,28 @@ const nodeCoordinates: Record<string, [number, number]> = {
   "Georgia": [43.36, 42.32],
   "Peru": [-75.02, -9.19],
   "Ethiopia": [40.49, 9.15],
+  "Congo": [21.76, -4.04],
+  "Czechia": [15.47, 49.82],
+  "Zambia": [28.32, -15.42],
+  "Zimbabwe": [29.15, -19.02],
+  "Morocco": [-7.09, 33.57],
+  "Kazakhstan": [67.3, 48.02],
+  "Mongolia": [106.92, 48.07],
+  "Tanzania": [35.74, -6.37],
+  "Kenya": [37.91, -0.02],
+  "Angola": [17.87, -12.29],
+  "Ghana": [-1.62, 7.95],
+  "Bolivia": [-64.99, -16.29],
+  "Colombia": [-74.08, 4.57],
+  "Namibia": [17.09, -22.56],
+  "New Zealand": [174.78, -40.9],
+  "Belgium": [4.47, 50.5],
+  "Sweden": [18.64, 60.13],
+  "Austria": [14.55, 47.52],
+  "Portugal": [-8.61, 39.4],
+  "Hungary": [19.5, 47.16],
+  "Myanmar": [96.0, 21.0],
+  "Sri Lanka": [80.77, 7.87],
 
   "Suez Canal": [32.35, 30.7],
   "Panama Canal": [-79.58, 9.08],
@@ -296,6 +325,7 @@ function extractProductRoutes(
     productColor: string,
     productId: string,
     productName: string,
+    isPredicted?: boolean,
   ) => {
     if (item.country !== parentCountry) {
       const pathNodes = findShortestPath(graph, item.country, parentCountry)
@@ -326,6 +356,7 @@ function extractProductRoutes(
         pathNodes,
         segments,
         chokepoints,
+        isPredicted: isPredicted ?? item.isPredicted,
       })
     }
 
@@ -336,12 +367,14 @@ function extractProductRoutes(
         item.name || item.type,
         productColor,
         productId,
-        productName
+        productName,
+        isPredicted ?? item.isPredicted,
       )
     })
   }
 
   products.forEach((product) => {
+    const isPredicted = product.isPredicted ?? false
     product.components.forEach((component) => {
       extractFromItem(
         component,
@@ -349,7 +382,8 @@ function extractProductRoutes(
         product.name || "Product",
         product.color,
         product.id,
-        product.name || "Unnamed Product"
+        product.name || "Unnamed Product",
+        isPredicted,
       )
     })
   })
@@ -616,29 +650,39 @@ export function SupplyChainMap({
   }, [productRoutes, selectedRouteId])
 
   const productCountryMarkers = useMemo(() => {
-    const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean }[] = []
-    const countryMap: globalThis.Map<string, { name: string; type: ItemType }[]> = new globalThis.Map()
+    type MarkerItem = { name: string; type: ItemType; percentage?: number; alternatives?: { country: string; percentage: number }[] }
+    const markers: { country: string; items: MarkerItem[]; isDangerous: boolean; hasPredictedItems: boolean }[] = []
+    const countryMap = new globalThis.Map<string, { items: MarkerItem[]; hasPredictedItems: boolean }>()
 
-    const collectFromItem = (item: SupplyChainItem) => {
-      const existing = countryMap.get(item.country) || []
-      existing.push({ name: item.name || item.type, type: item.type })
+    const collectFromItem = (item: SupplyChainItem, isPredicted: boolean) => {
+      const existing = countryMap.get(item.country) || { items: [], hasPredictedItems: false }
+      existing.items.push({
+        name: item.name || item.type,
+        type: item.type,
+        ...(item.countryPercentage != null && { percentage: item.countryPercentage }),
+        ...(item.countryAlternatives && item.countryAlternatives.length > 0 && { alternatives: item.countryAlternatives }),
+      })
+      existing.hasPredictedItems = existing.hasPredictedItems || isPredicted || !!item.isPredicted
       countryMap.set(item.country, existing)
-      item.children.forEach(collectFromItem)
+      item.children.forEach((child) => collectFromItem(child, isPredicted || !!item.isPredicted))
     }
 
     products.forEach((product) => {
-      const existing = countryMap.get(product.country) || []
-      existing.push({ name: product.name || "Product", type: "product" })
+      const isPredicted = product.isPredicted ?? false
+      const existing = countryMap.get(product.country) || { items: [], hasPredictedItems: false }
+      existing.items.push({ name: product.name || "Product", type: "product" })
+      existing.hasPredictedItems = existing.hasPredictedItems || isPredicted
       countryMap.set(product.country, existing)
-      product.components.forEach(collectFromItem)
+      product.components.forEach((component) => collectFromItem(component, isPredicted))
     })
 
-    countryMap.forEach((items: { name: string; type: ItemType }[], country: string) => {
+    countryMap.forEach(({ items, hasPredictedItems }, country: string) => {
       const countryRisk = countryRisks.find((c) => c.name === country)
       markers.push({
         country,
         items,
         isDangerous: (countryRisk?.overallRisk || 0) >= RISK_HIGH,
+        hasPredictedItems,
       })
     })
 
@@ -652,6 +696,7 @@ export function SupplyChainMap({
     productRoutes.forEach((route) => {
       const isSelected = selectedRouteId === route.id
       const isDimmed = !!selectedRouteId && !isSelected
+      const isPredicted = route.isPredicted ?? false
 
       route.segments.forEach((segment) => {
         const fromCoords = nodeCoordinates[segment.fromNode]
@@ -659,6 +704,8 @@ export function SupplyChainMap({
         if (!fromCoords || !toCoords) return
 
         const segmentIsDangerous = segment.riskScore >= RISK_HIGH
+        const baseOpacity = isPredicted ? 0.45 : (segmentIsDangerous ? 1 : 0.9)
+        const opacity = isDimmed ? 0.22 : baseOpacity
 
         features.push({
           type: "Feature" as const,
@@ -668,9 +715,10 @@ export function SupplyChainMap({
             isDangerous: segmentIsDangerous,
             isSelected,
             isDimmed,
+            isPredicted,
             color: segmentIsDangerous ? "#dc2626" : route.productColor,
             width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
-            opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
+            opacity,
           },
           geometry: {
             type: "LineString" as const,
@@ -1007,6 +1055,7 @@ export function SupplyChainMap({
                           width: 28,
                           height: 28,
                           backgroundColor: markerColor,
+                          opacity: marker.hasPredictedItems ? 0.65 : 1,
                         }}
                       >
                         {marker.items.length > 1 && (
@@ -1020,18 +1069,37 @@ export function SupplyChainMap({
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-foreground">{marker.country}</p>
+                      {marker.hasPredictedItems && (
+                        <p className="text-xs font-medium text-amber-400">AI-predicted supply chain</p>
+                      )}
                       {marker.isDangerous && (
                         <p className="text-xs font-medium text-red-400">High Risk Location</p>
                       )}
                       <div className="space-y-1">
                         {marker.items.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-xs">
-                            <div
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: markerColor }}
-                            />
-                            <span className="capitalize text-muted-foreground">{item.type}:</span>
-                            <span className="text-foreground">{item.name}</span>
+                          <div key={idx} className="space-y-0.5">
+                            <div className="flex items-center gap-2 text-xs">
+                              <div
+                                className="h-2 w-2 rounded-full shrink-0"
+                                style={{ backgroundColor: markerColor }}
+                              />
+                              <span className="capitalize text-muted-foreground">{item.type}:</span>
+                              <span className="text-foreground">{item.name}</span>
+                              {item.percentage != null && (
+                                <span className="text-amber-400 font-medium">({item.percentage}%)</span>
+                              )}
+                            </div>
+                            {item.alternatives && item.alternatives.length > 1 && (
+                              <div className="ml-4 space-y-0.5 text-[10px] text-muted-foreground">
+                                <span className="font-medium text-amber-400/90">Possible sources:</span>
+                                {item.alternatives.map((alt, i) => (
+                                  <div key={i} className="flex justify-between gap-4">
+                                    <span>{alt.country}</span>
+                                    <span>{alt.percentage}%</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
