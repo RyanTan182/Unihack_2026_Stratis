@@ -179,11 +179,11 @@ export function RelocationPanel({
   if (!isOpen) return null
 
   return (
-    <>
+    <div className="h-screen min-h-0">
       {/* Main Panel */}
-      <div className="h-full">
+      <div className="h-4/5">
       <div className="h-full glass-panel shadow-2xl">
-        <div className="h-1/2 overflow-y-auto">
+        <div className="h-full overflow-y-auto">
           {/* Show form when no results, or show both */}
           <div className="p-4 space-y-4">
             {/* Error State */}
@@ -273,6 +273,6 @@ export function RelocationPanel({
         industryType={industryType}
         countryName={getCountryName}
       />
-    </>
+    </div>
   )
 }
