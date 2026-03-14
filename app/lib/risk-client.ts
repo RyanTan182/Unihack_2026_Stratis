@@ -35,6 +35,7 @@ export interface CountryRiskEvaluation {
   summary: string
   assumptions: string[]
   computedAt: string
+  articles: Article[]
 }
 
 export async function fetchCountryNews(country: string) {
@@ -80,7 +81,19 @@ export async function evaluateCountryRiskBatch(
   }
 
   const data = await res.json()
-  return data.results as CountryRiskEvaluation[]
+
+  const articlesByNodeId = new Map(
+    countriesWithNews.map((country) => [country.nodeId, country.articles])
+  )
+
+  const mergedResults: CountryRiskEvaluation[] = data.results.map(
+    (result: Omit<CountryRiskEvaluation, "articles">) => ({
+      ...result,
+      articles: articlesByNodeId.get(result.nodeId) ?? [],
+    })
+  )
+
+  return mergedResults
 }
 
 export async function evaluateAllCountriesInChunks(params: {

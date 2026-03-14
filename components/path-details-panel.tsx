@@ -39,8 +39,8 @@ export function PathDetailsPanel({ route, onClose }: PathDetailsPanelProps) {
   const riskLevel = getRiskLevel(route.riskScore)
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 w-96 animate-in slide-in-from-bottom-4">
-      <Card className="glass-panel border-primary/20 shadow-2xl overflow-hidden">
+    <div className="absolute bottom-56 left-4 z-10 w-80 animate-in slide-in-from-bottom-4">
+      <Card className="glass-panel border-primary/20 shadow-2xl overflow-hidden max-h-[calc(50vh)] overflow-y-auto">
         <CardHeader className="pb-3 border-b border-border/30">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
