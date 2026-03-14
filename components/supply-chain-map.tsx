@@ -11,6 +11,7 @@ import {
 } from "react-simple-maps"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
+import { extractChokepointsFromPath } from "@/lib/utils"
 
 const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json"
 
@@ -318,9 +319,7 @@ function extractProductRoutes(
     if (item.country !== parentCountry) {
       const pathNodes = findShortestPath(graph, item.country, parentCountry)
       const segments = buildRouteSegmentsFromPath(pathNodes, countryRisks)
-      const chokepoints = pathNodes.filter(
-        (nodeId) => nodeMap.get(nodeId)?.type === "chokepoint"
-      )
+      const chokepoints = extractChokepointsFromPath(pathNodes, nodeMap)
 
       const segmentRiskScores = segments.map((s) => s.riskScore)
       const avgRisk =
