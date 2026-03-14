@@ -1,0 +1,120 @@
+<h2>Map Markers — Interaction Model</h2>
+<p class="subtitle">How decomposition data renders on the world map</p>
+
+<div class="split">
+  <!-- Default state: dots on highest concentration -->
+  <div class="mockup">
+    <div class="mockup-header">Default — Tree loaded, no node selected</div>
+    <div class="mockup-body" style="padding: 20px; background: #0a0a12; position: relative; min-height: 280px;">
+      <!-- Simplified world map outline -->
+      <svg viewBox="0 0 500 260" style="width: 100%; opacity: 0.15;">
+        <!-- Rough continent shapes -->
+        <path d="M100,60 L140,55 L150,70 L160,80 L140,120 L120,130 L100,110 L90,80Z" fill="#888"/>
+        <path d="M160,100 L200,90 L210,130 L190,160 L170,150 L155,120Z" fill="#888"/>
+        <path d="M240,50 L320,40 L340,60 L350,80 L330,100 L300,110 L270,100 L250,80Z" fill="#888"/>
+        <path d="M300,110 L350,100 L370,120 L360,150 L340,160 L310,140Z" fill="#888"/>
+        <path d="M350,60 L420,50 L450,70 L440,100 L420,110 L390,100 L370,80Z" fill="#888"/>
+        <path d="M380,110 L420,100 L440,120 L430,150 L410,160 L390,140Z" fill="#888"/>
+      </svg>
+
+      <!-- Dots overlaid -->
+      <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+        <!-- Chile (Lithium - big dot) -->
+        <div style="position: absolute; top: 68%; left: 24%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 18px; height: 18px; border-radius: 50%; background: #7c3aed; opacity: 0.8; box-shadow: 0 0 8px #7c3aed88;"></div>
+        </div>
+        <!-- Congo (Cobalt) -->
+        <div style="position: absolute; top: 52%; left: 42%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #7c3aed; opacity: 0.8; box-shadow: 0 0 8px #7c3aed88;"></div>
+        </div>
+        <!-- China (multiple) -->
+        <div style="position: absolute; top: 36%; left: 72%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #7c3aed; opacity: 0.8; box-shadow: 0 0 8px #7c3aed88;"></div>
+        </div>
+        <!-- Japan (Panasonic) -->
+        <div style="position: absolute; top: 32%; left: 82%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 14px; height: 14px; border-radius: 50%; background: #7c3aed; opacity: 0.8; box-shadow: 0 0 8px #7c3aed88;"></div>
+        </div>
+        <!-- Australia -->
+        <div style="position: absolute; top: 72%; left: 80%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #7c3aed; opacity: 0.8; box-shadow: 0 0 8px #7c3aed88;"></div>
+        </div>
+        <!-- South Korea -->
+        <div style="position: absolute; top: 34%; left: 78%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: #7c3aed; opacity: 0.8; box-shadow: 0 0 8px #7c3aed88;"></div>
+        </div>
+      </div>
+
+      <div style="position: absolute; bottom: 10px; left: 16px; font-size: 11px; color: #666; font-family: system-ui;">
+        Each dot = highest concentration country for a leaf node. Size ∝ concentration %.
+      </div>
+    </div>
+  </div>
+
+  <!-- Node selected state -->
+  <div class="mockup">
+    <div class="mockup-header">Node Selected — "Lithium" clicked</div>
+    <div class="mockup-body" style="padding: 20px; background: #0a0a12; position: relative; min-height: 280px;">
+      <!-- Simplified world map outline -->
+      <svg viewBox="0 0 500 260" style="width: 100%; opacity: 0.15;">
+        <path d="M100,60 L140,55 L150,70 L160,80 L140,120 L120,130 L100,110 L90,80Z" fill="#888"/>
+        <path d="M160,100 L200,90 L210,130 L190,160 L170,150 L155,120Z" fill="#888"/>
+        <path d="M240,50 L320,40 L340,60 L350,80 L330,100 L300,110 L270,100 L250,80Z" fill="#888"/>
+        <path d="M300,110 L350,100 L370,120 L360,150 L340,160 L310,140Z" fill="#888"/>
+        <path d="M350,60 L420,50 L450,70 L440,100 L420,110 L390,100 L370,80Z" fill="#888"/>
+        <path d="M380,110 L420,100 L440,120 L430,150 L410,160 L390,140Z" fill="#888"/>
+      </svg>
+
+      <!-- Lithium-specific dots with labels -->
+      <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+        <!-- Chile 52% (biggest) -->
+        <div style="position: absolute; top: 65%; left: 24%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background: #3b82f6; opacity: 0.9; box-shadow: 0 0 12px #3b82f688;"></div>
+          <div style="font-size: 10px; color: #60a5fa; margin-top: 3px; font-family: system-ui; white-space: nowrap;">Chile 52%</div>
+        </div>
+        <!-- Australia 25% -->
+        <div style="position: absolute; top: 70%; left: 80%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #f59e0b; opacity: 0.9; box-shadow: 0 0 10px #f59e0b88;"></div>
+          <div style="font-size: 10px; color: #fbbf24; margin-top: 3px; font-family: system-ui; white-space: nowrap;">Australia 25%</div>
+        </div>
+        <!-- China 15% -->
+        <div style="position: absolute; top: 34%; left: 72%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 16px; height: 16px; border-radius: 50%; background: #10b981; opacity: 0.9; box-shadow: 0 0 8px #10b98188;"></div>
+          <div style="font-size: 10px; color: #34d399; margin-top: 3px; font-family: system-ui; white-space: nowrap;">China 15%</div>
+        </div>
+        <!-- Argentina 8% -->
+        <div style="position: absolute; top: 72%; left: 22%; display: flex; flex-direction: column; align-items: center;">
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: #8b5cf6; opacity: 0.9; box-shadow: 0 0 6px #8b5cf688;"></div>
+          <div style="font-size: 10px; color: #a78bfa; margin-top: 3px; font-family: system-ui; white-space: nowrap;">Argentina 8%</div>
+        </div>
+      </div>
+
+      <!-- Selected node indicator -->
+      <div style="position: absolute; top: 10px; left: 16px; background: #7c3aed33; border: 1px solid #7c3aed88; border-radius: 6px; padding: 5px 12px; font-size: 12px; color: #a78bfa; font-family: system-ui;">
+        🔍 Lithium — 4 source countries
+      </div>
+
+      <div style="position: absolute; bottom: 10px; left: 16px; font-size: 11px; color: #666; font-family: system-ui;">
+        Clicking a node shows all its source countries. Dot color matches concentration bar. Labels visible.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 20px; padding: 16px; background: #1a1a2e; border-radius: 8px; border: 1px solid #333;">
+  <h3 style="margin-top: 0; font-size: 14px;">Interaction Summary</h3>
+  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+    <tr style="border-bottom: 1px solid #333;">
+      <td style="padding: 8px; color: #888; width: 30%;">Tree loaded, nothing selected</td>
+      <td style="padding: 8px; color: #ccc;">Purple dots on highest-concentration country per leaf node. No labels. Size = concentration %.</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #333;">
+      <td style="padding: 8px; color: #888;">Node clicked in tree</td>
+      <td style="padding: 8px; color: #ccc;">All other dots fade out. Selected node's countries appear with colored dots + percentage labels. Colors match the concentration bar in the detail panel.</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; color: #888;">Click away / deselect</td>
+      <td style="padding: 8px; color: #ccc;">Returns to default state (all leaf nodes, single dots).</td>
+    </tr>
+  </table>
+</div>

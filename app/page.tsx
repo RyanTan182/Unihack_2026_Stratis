@@ -7,6 +7,7 @@ import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
+import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
@@ -699,7 +700,9 @@ export default function SupplyChainCrisisDetector() {
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
   const [showRiskZones, setShowRiskZones] = useState(false)
   const [isRelocationOpen, setIsRelocationOpen] = useState(false)
-  const [inventoryProducts, setInventoryProducts] = useState<Product[]>([])
+  const [storedProducts, setStoredProducts] = useState<StoredProduct[]>([])
+  const [activeTree, setActiveTree] = useState<DecompositionTree | null>(null)
+  const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
   const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
@@ -837,35 +840,24 @@ export default function SupplyChainCrisisDetector() {
     setIsRouteBuilderOpen(false)
   }
 
+  const handleProductAdd = (product: StoredProduct) => {
+    setStoredProducts((prev) => [...prev, product])
+  }
+
+  const handleTreeChange = (tree: DecompositionTree | null) => {
+    setActiveTree(tree)
+  }
+
+  const handleNodeSelect = (nodeId: string | null) => {
+    setSelectedDecompNodeId(nodeId)
+  }
+
   const handleAddToInventory = (product: Product) => {
-    if (inventoryProducts.some((p) => p.id === product.id)) return
-    setInventoryProducts((prev) => [...prev, { ...product }])
     setIsInventorySidebarOpen(true)
   }
 
   const handleToggleInventory = () => {
     setIsInventorySidebarOpen((prev) => !prev)
-  }
-
-  const handleInventoryProductsChange = (updated: Product[]) => {
-    setInventoryProducts(updated)
-
-    // Keep core products list in sync with any changes made in Inventory
-    setProducts((prev) => {
-      if (prev.length === 0) return prev
-      const updatedById = new Map(updated.map((p) => [p.id, p]))
-      let changed = false
-
-      const next = prev.map((p) => {
-        const candidate = updatedById.get(p.id)
-        if (!candidate) return p
-        if (candidate === p) return p
-        changed = true
-        return candidate
-      })
-
-      return changed ? next : prev
-    })
   }
 
   return (
@@ -881,11 +873,10 @@ export default function SupplyChainCrisisDetector() {
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
       {isInventorySidebarOpen ? (
         <InventorySidebar
-          isOpen={true}
-          onClose={() => setIsInventorySidebarOpen(false)}
-          countryRisks={resolvedCountryRisks}
-          inventoryProducts={inventoryProducts}
-          onInventoryProductsChange={handleInventoryProductsChange}
+          products={storedProducts}
+          onProductAdd={handleProductAdd}
+          onTreeChange={handleTreeChange}
+          onNodeSelect={handleNodeSelect}
         />
       ) : (
         <RiskSidebar
@@ -1013,7 +1004,7 @@ export default function SupplyChainCrisisDetector() {
           products={products}
           onProductsChange={setProducts}
           onAddToInventory={handleAddToInventory}
-          inventoryProductIds={inventoryProducts.map((p) => p.id)}
+          inventoryProductIds={storedProducts.map((p) => p.id)}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}

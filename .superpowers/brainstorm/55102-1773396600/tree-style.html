@@ -1,0 +1,141 @@
+<h2>Tree Display Style</h2>
+<p class="subtitle">How should the decomposition tree render in the panel?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 16px; background: #0a0a12; font-family: system-ui; font-size: 13px; min-height: 260px;">
+        <!-- Tiered indented list -->
+        <div style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; background: #1a1a2e; border-radius: 4px; margin-bottom: 2px;">
+          <span style="color: #666; font-size: 11px;">▼</span>
+          <span style="color: #e2e8f0; font-weight: 600;">Tesla Model 3</span>
+        </div>
+        <div style="margin-left: 16px;">
+          <div style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; background: #1a1a2e; border-radius: 4px; margin-bottom: 2px;">
+            <span style="color: #666; font-size: 11px;">▼</span>
+            <span style="color: #e2e8f0;">Battery Pack</span>
+            <span style="color: #ef4444; font-size: 10px; margin-left: auto;">78</span>
+          </div>
+          <div style="margin-left: 16px;">
+            <div style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+              <span style="color: #666; font-size: 11px;">▼</span>
+              <span style="color: #ccc;">Lithium-ion Cells</span>
+            </div>
+            <div style="margin-left: 16px;">
+              <div style="padding: 4px 8px; display: flex; align-items: center; gap: 6px; margin-bottom: 1px;">
+                <span style="color: #666; font-size: 11px;">●</span>
+                <span style="color: #999;">Lithium</span>
+                <span style="color: #ef4444; font-size: 10px; margin-left: auto;">78</span>
+              </div>
+              <div style="padding: 4px 8px; display: flex; align-items: center; gap: 6px; margin-bottom: 1px;">
+                <span style="color: #666; font-size: 11px;">●</span>
+                <span style="color: #999;">Cobalt</span>
+                <span style="color: #ef4444; font-size: 10px; margin-left: auto;">85</span>
+              </div>
+              <div style="padding: 4px 8px; display: flex; align-items: center; gap: 6px; margin-bottom: 1px;">
+                <span style="color: #666; font-size: 11px;">●</span>
+                <span style="color: #999;">Nickel</span>
+              </div>
+            </div>
+            <div style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
+              <span style="color: #666; font-size: 11px;">▸</span>
+              <span style="color: #ccc;">Battery Mgmt System</span>
+            </div>
+          </div>
+          <div style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; background: #1a1a2e; border-radius: 4px; margin-bottom: 2px;">
+            <span style="color: #666; font-size: 11px;">▸</span>
+            <span style="color: #e2e8f0;">Electric Motor</span>
+          </div>
+          <div style="padding: 5px 8px; display: flex; align-items: center; gap: 6px; background: #1a1a2e; border-radius: 4px; margin-bottom: 2px;">
+            <span style="color: #666; font-size: 11px;">▸</span>
+            <span style="color: #e2e8f0;">Body & Chassis</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Indented List (current mockup)</h3>
+      <p>Collapsible tree with indentation showing hierarchy. Clean, compact, fits well in a narrow panel. Like a file explorer.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 16px; background: #0a0a12; font-family: system-ui; font-size: 12px; min-height: 260px; overflow-x: auto;">
+        <!-- Visual tree with lines -->
+        <svg viewBox="0 0 400 240" style="width: 100%; min-width: 360px;">
+          <!-- Root -->
+          <rect x="140" y="5" width="120" height="28" rx="6" fill="#1a1a2e" stroke="#7c3aed" stroke-width="1"/>
+          <text x="200" y="23" text-anchor="middle" fill="#e2e8f0" font-size="11" font-family="system-ui">Tesla Model 3</text>
+
+          <!-- Lines from root -->
+          <line x1="170" y1="33" x2="60" y2="60" stroke="#333" stroke-width="1"/>
+          <line x1="200" y1="33" x2="200" y2="60" stroke="#333" stroke-width="1"/>
+          <line x1="230" y1="33" x2="340" y2="60" stroke="#333" stroke-width="1"/>
+
+          <!-- Tier 1 nodes -->
+          <rect x="10" y="60" width="100" height="26" rx="5" fill="#1a1a2e" stroke="#ef444488" stroke-width="1"/>
+          <text x="60" y="77" text-anchor="middle" fill="#fca5a5" font-size="10" font-family="system-ui">Battery Pack</text>
+
+          <rect x="150" y="60" width="100" height="26" rx="5" fill="#1a1a2e" stroke="#33333388" stroke-width="1"/>
+          <text x="200" y="77" text-anchor="middle" fill="#ccc" font-size="10" font-family="system-ui">Electric Motor</text>
+
+          <rect x="290" y="60" width="100" height="26" rx="5" fill="#1a1a2e" stroke="#33333388" stroke-width="1"/>
+          <text x="340" y="77" text-anchor="middle" fill="#ccc" font-size="10" font-family="system-ui">Body & Chassis</text>
+
+          <!-- Lines from Battery Pack -->
+          <line x1="40" y1="86" x2="30" y2="115" stroke="#333" stroke-width="1"/>
+          <line x1="70" y1="86" x2="90" y2="115" stroke="#333" stroke-width="1"/>
+
+          <!-- Tier 2 -->
+          <rect x="0" y="115" width="75" height="24" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="37" y="130" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">Li-ion Cells</text>
+
+          <rect x="55" y="115" width="75" height="24" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="92" y="130" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">BMS</text>
+
+          <!-- Lines from Li-ion Cells -->
+          <line x1="20" y1="139" x2="10" y2="165" stroke="#333" stroke-width="1"/>
+          <line x1="37" y1="139" x2="55" y2="165" stroke="#333" stroke-width="1"/>
+          <line x1="50" y1="139" x2="100" y2="165" stroke="#333" stroke-width="1"/>
+
+          <!-- Tier 3 materials -->
+          <rect x="0" y="165" width="50" height="22" rx="4" fill="#ef444422" stroke="#ef444444" stroke-width="1"/>
+          <text x="25" y="179" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="system-ui">Lithium</text>
+          <text x="25" y="198" text-anchor="middle" fill="#ef4444" font-size="8" font-family="system-ui">Risk 78</text>
+
+          <rect x="40" y="165" width="50" height="22" rx="4" fill="#ef444422" stroke="#ef444444" stroke-width="1"/>
+          <text x="65" y="179" text-anchor="middle" fill="#fca5a5" font-size="9" font-family="system-ui">Cobalt</text>
+          <text x="65" y="198" text-anchor="middle" fill="#ef4444" font-size="8" font-family="system-ui">Risk 85</text>
+
+          <rect x="85" y="165" width="50" height="22" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="110" y="179" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">Nickel</text>
+
+          <!-- Lines from Electric Motor -->
+          <line x1="185" y1="86" x2="170" y2="115" stroke="#333" stroke-width="1"/>
+          <line x1="215" y1="86" x2="230" y2="115" stroke="#333" stroke-width="1"/>
+
+          <rect x="140" y="115" width="75" height="24" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="177" y="130" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">Rotor</text>
+
+          <rect x="200" y="115" width="75" height="24" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="237" y="130" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">Stator</text>
+
+          <!-- Lines from Body -->
+          <line x1="325" y1="86" x2="310" y2="115" stroke="#333" stroke-width="1"/>
+          <line x1="355" y1="86" x2="370" y2="115" stroke="#333" stroke-width="1"/>
+
+          <rect x="280" y="115" width="75" height="24" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="317" y="130" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">Steel Frame</text>
+
+          <rect x="340" y="115" width="75" height="24" rx="4" fill="#0d0d1a" stroke="#33333366" stroke-width="1"/>
+          <text x="377" y="130" text-anchor="middle" fill="#999" font-size="9" font-family="system-ui">Aluminum</text>
+        </svg>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Visual Graph Tree</h3>
+      <p>Actual node-and-edge graph layout. More visual/impressive, shows the full structure at a glance. Needs horizontal scrolling for deep trees. More hackathon-demo worthy.</p>
+    </div>
+  </div>
+</div>

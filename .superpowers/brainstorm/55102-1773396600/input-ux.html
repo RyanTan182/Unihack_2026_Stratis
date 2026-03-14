@@ -1,0 +1,74 @@
+<h2>Product Decomposition — Input UX</h2>
+<p class="subtitle">How should the user enter their product and suppliers?</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 20px; background: #1a1a2e; border-radius: 8px; font-family: monospace;">
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px;">PRODUCT NAME</div>
+          <div style="background: #0d0d1a; border: 1px solid #333; border-radius: 6px; padding: 10px 14px; color: #ccc;">Tesla Model 3</div>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px;">FIRST-TIER SUPPLIERS</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+            <span style="background: #7c3aed33; border: 1px solid #7c3aed; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #a78bfa;">Panasonic ×</span>
+            <span style="background: #7c3aed33; border: 1px solid #7c3aed; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #a78bfa;">CATL ×</span>
+            <span style="background: #7c3aed33; border: 1px solid #7c3aed; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #a78bfa;">LG Energy ×</span>
+          </div>
+          <div style="background: #0d0d1a; border: 1px solid #333; border-radius: 6px; padding: 10px 14px; color: #666; font-size: 13px;">Add supplier...</div>
+        </div>
+        <div style="background: #7c3aed; border-radius: 6px; padding: 10px; text-align: center; color: white; font-weight: 600; font-size: 14px;">⚡ Decompose Supply Chain</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Structured Form</h3>
+      <p>Separate fields for product name and tag-style supplier input. Clean, explicit.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 20px; background: #1a1a2e; border-radius: 8px; font-family: monospace;">
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #888; margin-bottom: 4px;">DESCRIBE YOUR PRODUCT</div>
+          <div style="background: #0d0d1a; border: 1px solid #333; border-radius: 6px; padding: 14px; color: #ccc; min-height: 60px; font-size: 13px; line-height: 1.5;">
+            Tesla Model 3 — suppliers: Panasonic, CATL, LG Energy, Bosch, Continental AG
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="flex:1; background: #7c3aed; border-radius: 6px; padding: 10px; text-align: center; color: white; font-weight: 600; font-size: 14px;">⚡ Decompose</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Prompt-Style</h3>
+      <p>Single text area, natural language. Fast to type, AI parses the structure.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 20px; background: #1a1a2e; border-radius: 8px; font-family: monospace;">
+        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+          <div style="flex:1; text-align: center; padding: 6px; border-bottom: 2px solid #444; color: #666; font-size: 12px;">1. Product</div>
+          <div style="flex:1; text-align: center; padding: 6px; border-bottom: 2px solid #7c3aed; color: #a78bfa; font-size: 12px; font-weight: 600;">2. Suppliers</div>
+          <div style="flex:1; text-align: center; padding: 6px; border-bottom: 2px solid #444; color: #666; font-size: 12px;">3. Decompose</div>
+        </div>
+        <div style="margin-bottom: 10px; color: #ccc; font-size: 13px;">Add known suppliers for <strong style="color:#a78bfa">Tesla Model 3</strong>:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;">
+          <span style="background: #7c3aed33; border: 1px solid #7c3aed; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #a78bfa;">Panasonic ×</span>
+          <span style="background: #7c3aed33; border: 1px solid #7c3aed; border-radius: 12px; padding: 3px 10px; font-size: 12px; color: #a78bfa;">CATL ×</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div style="flex:1; background: #333; border-radius: 6px; padding: 8px; text-align: center; color: #aaa; font-size: 13px;">← Back</div>
+          <div style="flex:1; background: #7c3aed; border-radius: 6px; padding: 8px; text-align: center; color: white; font-size: 13px; font-weight: 600;">Next →</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Multi-Step Wizard</h3>
+      <p>Guided steps: name → suppliers → decompose. More structured, more clicks.</p>
+    </div>
+  </div>
+</div>
