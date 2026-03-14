@@ -1443,6 +1443,7 @@ export default function SupplyChainCrisisDetector() {
         {/* Path Details Panel - shows when a route is clicked */}
         <PathDetailsPanel
           route={selectedRoute}
+          countryRisks={resolvedCountryRisks}
           onClose={() => setSelectedRoute(null)}
         />
 

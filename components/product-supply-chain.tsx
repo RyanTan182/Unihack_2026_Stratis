@@ -329,14 +329,24 @@ function SupplyChainItemRow({
             <Icon className="h-5 w-5 text-white" />
           </div>
 
-          {/* Name */}
+          {/* Name + Risk */}
           <div className="min-w-0 flex-1">
             <Input
               value={item.name}
               onChange={(e) => onUpdate({ ...item, name: e.target.value })}
-              className="h-8 border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-0"
+              className="h-auto border-0 bg-transparent p-0 text-sm font-medium shadow-none focus-visible:ring-0 whitespace-normal break-words"
               placeholder={`${config.label} name...`}
             />
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={cn(
+                "text-[10px] font-semibold",
+                item.riskPrediction >= 70 ? "text-red-400" :
+                item.riskPrediction >= 40 ? "text-yellow-400" : "text-emerald-400"
+              )}>
+                {item.riskPrediction}% risk
+              </span>
+              <span className="text-[10px] text-muted-foreground">{item.country}</span>
+            </div>
           </div>
 
           {/* Location + Risk Badge */}
@@ -507,7 +517,7 @@ function MapPreviewItem({
           className="h-2.5 w-2.5 rounded-full shrink-0"
           style={{ backgroundColor: productColor }}
         />
-        <span className="text-xs font-medium text-foreground truncate flex-1">{item.name}</span>
+        <span className="text-xs font-medium text-foreground flex-1 break-words">{item.name}</span>
         <span className="text-[10px] text-muted-foreground">{item.country}</span>
         <span className={cn("text-[10px] font-semibold", riskColor)}>
           {item.riskPrediction}%
