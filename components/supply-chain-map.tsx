@@ -1238,7 +1238,7 @@ export function SupplyChainMap({
         `}</style>
 
         {/* Unified Legend Panel */}
-        <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-border/50 bg-card/95 p-4 shadow-2xl backdrop-blur-xl max-w-xs">
+        <div className="absolute bottom-4 left-4 z-10 rounded-xl border border-border/50 bg-card/60 p-4 shadow-2xl backdrop-blur-xl max-w-xs">
           <p className="mb-3 text-xs font-semibold text-foreground">
             {showRiskZones ? "Risk Zones View" : "Map Legend"}
           </p>

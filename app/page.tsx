@@ -1227,7 +1227,7 @@ export default function SupplyChainCrisisDetector() {
     }
   }
 
-  const [currentMethod, setCurrentMethod] = useState<string>("safe route");
+  const [currentMethod, setCurrentMethod] = useState<string>("Relocation");
   const methodOptions = ["Safe Routes", "Relocation"];
 
   const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization">("risk")
@@ -1499,6 +1499,7 @@ export default function SupplyChainCrisisDetector() {
             Risk Zones
           </Button>
 
+          {/*
           <Button
             variant="secondary"
             size="sm"
@@ -1511,6 +1512,7 @@ export default function SupplyChainCrisisDetector() {
             <Layers className="h-4 w-4" />
             Clear
           </Button>
+          */}
 
           {/* Route Summary Button */}
           {products.length > 0 && (
