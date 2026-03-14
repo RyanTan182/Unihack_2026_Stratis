@@ -1,0 +1,2100 @@
+{
+  "China": {
+    "nodeId": "China",
+    "nodeName": "China",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "Recent US legislation aims to restrict trade with China, particularly related to military and war efforts.",
+        "evidence": [
+          "US bills targeting China-linked firms for military cargo contracts."
+        ]
+      },
+      "conflict": {
+        "score": 80,
+        "confidence": 0.8,
+        "rationale": "Geopolitical tensions between US and China suggest high conflict risks affecting supply chains.",
+        "evidence": [
+          "US legislative and diplomatic actions to restrict China-related military trade."
+        ]
+      },
+      "policy": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "US policy moves to restrict Chinese firms from military contracts and tighter trade controls.",
+        "evidence": [
+          "US bills requiring proof of no China ties for military cargo carriers."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.6,
+        "rationale": "Potential tariffs and sanctions on exports from China linked to US-China tensions.",
+        "evidence": [
+          "US legislation targeting China-linked firms could impact exports."
+        ]
+      },
+      "conflict": {
+        "score": 75,
+        "confidence": 0.8,
+        "rationale": "Rising geopolitical tensions and defense-related restrictions suggest high conflict risk.",
+        "evidence": [
+          "US measures aimed at China in the context of military and geopolitical tension."
+        ]
+      },
+      "policy": {
+        "score": 75,
+        "confidence": 0.8,
+        "rationale": "China faces international scrutiny and policy restrictions that may impact exports.",
+        "evidence": [
+          "US legislative focus on Chinese firms and military-related trade restrictions."
+        ]
+      }
+    },
+    "summary": "High geopolitical and policy risks affecting both import and export supply chains, driven by US-China tensions and military-related restrictions.",
+    "assumptions": [
+      "US-China tensions will persist or escalate.",
+      "Trade restrictions will be enforced effectively."
+    ],
+    "importRisk": 57,
+    "exportRisk": 58,
+    "overallRisk": 58,
+    "computedAt": "2026-03-14T05:54:02.635Z"
+  },
+  "Russia": {
+    "nodeId": "Russia",
+    "nodeName": "Russia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.8,
+        "rationale": "US easing some Russian oil sanctions suggests a moderate reduction in trade barriers related to imports.",
+        "evidence": [
+          "US eases Russian oil sanctions"
+        ]
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.9,
+        "rationale": "Ongoing geopolitical tensions and sanctions imply heightened conflict risk.",
+        "evidence": [
+          "US eases sanctions but crude prices stay high"
+        ]
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.8,
+        "rationale": "Sanctions and geopolitical pressures indicate a moderate to high policy risk.",
+        "evidence": [
+          "Sanction adjustments and geopolitical tensions"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "General sanctions may impose tariffs or duties affecting exports.",
+        "evidence": [
+          "Sanctions impacting Russian exports"
+        ]
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.9,
+        "rationale": "Military conflicts and geopolitical tensions suggest high conflict risk for exports.",
+        "evidence": [
+          "Ukraine war and conflicts in the region"
+        ]
+      },
+      "policy": {
+        "score": 60,
+        "confidence": 0.8,
+        "rationale": "Continued sanctions and international policies affect export policies.",
+        "evidence": [
+          "Sanctions and geopolitical tensions"
+        ]
+      }
+    },
+    "summary": "Russia faces elevated trade and conflict risks, especially on the export front due to ongoing geopolitical tensions and sanctions.",
+    "assumptions": [
+      "Sanctions and geopolitical tensions impact trade.",
+      "Sanctions are partially eased but tensions remain high."
+    ],
+    "importRisk": 49,
+    "exportRisk": 50,
+    "overallRisk": 50,
+    "computedAt": "2026-03-14T05:54:10.812Z"
+  },
+  "Ukraine": {
+    "nodeId": "Ukraine",
+    "nodeName": "Ukraine",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.3,
+        "rationale": "No recent news indicating change in tariff policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 80,
+        "confidence": 0.9,
+        "rationale": "Ongoing conflict with Russia, with significant security instability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Conflict impacts local and regional policy stability and trade regulations.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.3,
+        "rationale": "Limited information on tariffs, current war impacts exports heavily.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 85,
+        "confidence": 0.9,
+        "rationale": "Active conflict severely hampers export capacity.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 75,
+        "confidence": 0.9,
+        "rationale": "War and conflict lead to unstable export policies.",
+        "evidence": []
+      }
+    },
+    "summary": "High conflict risk impacting both import and export stability, with significant security and policy risks.",
+    "assumptions": [
+      "Active conflict continues",
+      "Trade disruptions persist"
+    ],
+    "importRisk": 53,
+    "exportRisk": 58,
+    "overallRisk": 56,
+    "computedAt": "2026-03-14T05:48:33.771Z"
+  },
+  "Taiwan": {
+    "nodeId": "Taiwan",
+    "nodeName": "Taiwan",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.3,
+        "rationale": "No recent relevant news affecting tariffs.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 60,
+        "confidence": 0.7,
+        "rationale": "Regional tensions in East Asia contribute to conflict risk.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.6,
+        "rationale": "Regional geopolitical tensions influence policy environment.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.3,
+        "rationale": "No recent changes in tariffs are reported.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 65,
+        "confidence": 0.7,
+        "rationale": "Regional tensions affect export security and logistics.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.6,
+        "rationale": "Policy environment influenced by regional geopolitical tensions.",
+        "evidence": []
+      }
+    },
+    "summary": "Moderate conflict and policy risks, some influence from regional tensions.",
+    "assumptions": [
+      "Regional geopolitical tensions persist"
+    ],
+    "importRisk": 44,
+    "exportRisk": 49,
+    "overallRisk": 47,
+    "computedAt": "2026-03-14T05:48:33.771Z"
+  },
+  "Saudi Arabia": {
+    "nodeId": "Saudi Arabia",
+    "nodeName": "Saudi Arabia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.4,
+        "rationale": "No recent change in tariffs affecting imports.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Drones intercepted and military strikes indicate conflict and security risks.",
+        "evidence": [
+          "West Asia War : Drones intercepted in UAE and Saudi Arabia",
+          "US refuelling planes struck by Iran"
+        ]
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Conflict may impact policy stability and government decisions.",
+        "evidence": [
+          "Military tensions and strikes"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.4,
+        "rationale": "No indication of tariff changes for exports.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 75,
+        "confidence": 0.8,
+        "rationale": "Ongoing conflict and military tensions deeply affect export logistics and security.",
+        "evidence": [
+          "Military strikes and drone interceptions"
+        ]
+      },
+      "policy": {
+        "score": 60,
+        "confidence": 0.75,
+        "rationale": "Conflict influences export policies and security measures.",
+        "evidence": [
+          "Military conflict impacts"
+        ]
+      }
+    },
+    "summary": "High conflict risk with significant security and policy impacts on supply chains.",
+    "assumptions": [
+      "Conflict persists and escalates"
+    ],
+    "importRisk": 49,
+    "exportRisk": 54,
+    "overallRisk": 52,
+    "computedAt": "2026-03-14T05:48:33.771Z"
+  },
+  "Thailand": {
+    "nodeId": "Thailand",
+    "nodeName": "Thailand",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.4,
+        "rationale": "No specific recent changes reported for tariffs.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 50,
+        "confidence": 0.7,
+        "rationale": "Regional Middle East conflicts raise some supply risk concerns.",
+        "evidence": [
+          "Thailand Weighs Russian Crude Oil"
+        ]
+      },
+      "policy": {
+        "score": 45,
+        "confidence": 0.6,
+        "rationale": "Policy decisions influenced by regional supply risks.",
+        "evidence": [
+          "Thailand weighs Russian crude oil"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.4,
+        "rationale": "No recent significant tariff changes.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Regional conflicts may affect export logistics.",
+        "evidence": [
+          "Middle East conflicts raising supply risks"
+        ]
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.6,
+        "rationale": "Regional conflicts influence export policies.",
+        "evidence": [
+          "Thailand's weighing of Russian crude"
+        ]
+      }
+    },
+    "summary": "Moderate risks influenced by regional conflicts affecting supply.",
+    "assumptions": [
+      "Regional conflicts impact supply chain decisions."
+    ],
+    "importRisk": 42,
+    "exportRisk": 47,
+    "overallRisk": 45,
+    "computedAt": "2026-03-14T05:48:33.771Z"
+  },
+  "United Kingdom": {
+    "nodeId": "United Kingdom",
+    "nodeName": "United Kingdom",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "The UK has low tariff risks due to recent trade agreements; no significant recent tariffs or sanctions reported.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "The UK is currently not experiencing significant conflict or geopolitical tensions affecting trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Stable trade policies with minimal recent intervention or regulation changes.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Low tariff barriers for exports, consistent trade policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No active conflicts affecting export routes or security.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Exports not significantly affected by recent policy changes.",
+        "evidence": []
+      }
+    },
+    "summary": "Low overall supply chain risks in the UK, due to stable trade environment and minimal conflicts.",
+    "assumptions": [
+      "Stable political and economic environment."
+    ],
+    "importRisk": 19,
+    "exportRisk": 19,
+    "overallRisk": 19,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "France": {
+    "nodeId": "France",
+    "nodeName": "France",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Recent trade agreements mitigate tariff risks.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No active conflicts impacting trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies are stable, with no recent disruptions.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Export tariffs are low and stable.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflicts affecting export routes.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies are stable.",
+        "evidence": []
+      }
+    },
+    "summary": "France maintains low supply chain risks with stable tariffs and no conflict impacts.",
+    "assumptions": [
+      "Continuity in trade policies."
+    ],
+    "importRisk": 19,
+    "exportRisk": 19,
+    "overallRisk": 19,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Italy": {
+    "nodeId": "Italy",
+    "nodeName": "Italy",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Trade agreements maintain low tariff exposure.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Lack of recent conflict signs or tensions.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies remain stable with no significant recent changes.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Exports are subject to standard tariffs, with no recent increase.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflicts affecting trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies stable.",
+        "evidence": []
+      }
+    },
+    "summary": "Italy's supply chain risks are low, with stable trade policies and conflict absence.",
+    "assumptions": [
+      "Stable political climate."
+    ],
+    "importRisk": 19,
+    "exportRisk": 19,
+    "overallRisk": 19,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Spain": {
+    "nodeId": "Spain",
+    "nodeName": "Spain",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Stable trade agreements keep tariffs low.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No recent conflicts impact trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies are consistent and stable.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Export tariffs remain low and consistent.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflict-related disruptions.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies stable and predictable.",
+        "evidence": []
+      }
+    },
+    "summary": "Spain exhibits low supply chain risks with stable tariffs and no conflict issues.",
+    "assumptions": [
+      "No major policy shifts."
+    ],
+    "importRisk": 19,
+    "exportRisk": 19,
+    "overallRisk": 19,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Australia": {
+    "nodeId": "Australia",
+    "nodeName": "Australia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Moderate tariff environment; recent trade negotiations may alter tariffs.",
+        "evidence": [
+          "Trade negotiations ongoing"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Australia is not involved in recent conflicts impacting trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.6,
+        "rationale": "Trade policies may be subject to change due to negotiations or political factors.",
+        "evidence": [
+          "Recent discussions on trade restrictions"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Export tariffs are moderate; negotiations could increase risks.",
+        "evidence": [
+          "Trade policy adjustments"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflicts influencing export stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.6,
+        "rationale": "Potential policy changes in export regulations due to negotiations.",
+        "evidence": [
+          "Trade negotiations underway"
+        ]
+      }
+    },
+    "summary": "Moderate supply chain risks for Australia, with some policy and tariff uncertainty potential.",
+    "assumptions": [
+      "Trade negotiations will conclude positively."
+    ],
+    "importRisk": 23,
+    "exportRisk": 23,
+    "overallRisk": 23,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Canada": {
+    "nodeId": "Canada",
+    "nodeName": "Canada",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Trade agreements maintain low tariffs.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Canada currently not involved in conflicts affecting trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies are stable, with no recent disruptions.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Low and stable export tariffs.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflicts impacting export trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies remain consistent.",
+        "evidence": []
+      }
+    },
+    "summary": "Canada exhibits low supply chain risks with stable tariffs and policies.",
+    "assumptions": [
+      "No significant policy shifts."
+    ],
+    "importRisk": 19,
+    "exportRisk": 19,
+    "overallRisk": 19,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Egypt": {
+    "nodeId": "Egypt",
+    "nodeName": "Egypt",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 40,
+        "confidence": 0.5,
+        "rationale": "Potential for regulation changes and trade barriers due to political and economic instability.",
+        "evidence": [
+          "Economic instability reports"
+        ]
+      },
+      "conflict": {
+        "score": 60,
+        "confidence": 0.4,
+        "rationale": "Regional conflicts and political instability pose significant risks.",
+        "evidence": [
+          "Regional conflicts"
+        ]
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.5,
+        "rationale": "Likely policy disruptions due to instability, potential for restrictive trade measures.",
+        "evidence": [
+          "Political turmoil"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 40,
+        "confidence": 0.5,
+        "rationale": "Export environment affected by instability; tariffs may fluctuate.",
+        "evidence": [
+          "Economic and political unrest"
+        ]
+      },
+      "conflict": {
+        "score": 60,
+        "confidence": 0.4,
+        "rationale": "Involvement in regional conflicts increases risks.",
+        "evidence": [
+          "Regional conflicts"
+        ]
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.5,
+        "rationale": "Exports likely affected by policy instability and restrictions.",
+        "evidence": [
+          "Political upheaval"
+        ]
+      }
+    },
+    "summary": "High supply chain risks for Egypt, mainly due to political instability and conflict.",
+    "assumptions": [
+      "Current instability persists."
+    ],
+    "importRisk": 51,
+    "exportRisk": 51,
+    "overallRisk": 51,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Nigeria": {
+    "nodeId": "Nigeria",
+    "nodeName": "Nigeria",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 45,
+        "confidence": 0.5,
+        "rationale": "Economic instability and policy uncertainty lead to moderate tariff risks.",
+        "evidence": [
+          "Economic reports"
+        ]
+      },
+      "conflict": {
+        "score": 65,
+        "confidence": 0.4,
+        "rationale": "Ongoing conflicts and securityissues pose significant risks.",
+        "evidence": [
+          "Security reports"
+        ]
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.5,
+        "rationale": "Uncertain policy environment with frequent regulatory changes.",
+        "evidence": [
+          "Policy instability"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 45,
+        "confidence": 0.5,
+        "rationale": "Tariffs affected by economic and political conditions.",
+        "evidence": [
+          "Trade policy reports"
+        ]
+      },
+      "conflict": {
+        "score": 65,
+        "confidence": 0.4,
+        "rationale": "Security concerns impact export stability.",
+        "evidence": [
+          "Conflict zones"
+        ]
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.5,
+        "rationale": "Export policies are unstable due to ongoing instability.",
+        "evidence": [
+          "Regulatory uncertainty"
+        ]
+      }
+    },
+    "summary": "Nigeria faces high supply chain risks across the board, driven by conflict and policy instability.",
+    "assumptions": [
+      "Persistent conflict and instability."
+    ],
+    "importRisk": 56,
+    "exportRisk": 56,
+    "overallRisk": 56,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Argentina": {
+    "nodeId": "Argentina",
+    "nodeName": "Argentina",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.6,
+        "rationale": "Economic conditions influence tariffs, which are moderate.",
+        "evidence": [
+          "Economic reports"
+        ]
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.6,
+        "rationale": "Internal economic issues may influence trade tensions.",
+        "evidence": [
+          "Economic crises"
+        ]
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.6,
+        "rationale": "Policy environment uncertain, with recent economic reforms.",
+        "evidence": [
+          "Recent policy reforms"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.6,
+        "rationale": "Export tariffs affected by economic conditions.",
+        "evidence": [
+          "Trade policies"
+        ]
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.6,
+        "rationale": "Internal economic challenges could impact exports.",
+        "evidence": [
+          "Economic instability"
+        ]
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.6,
+        "rationale": "Export policy changes reflect economic uncertainties.",
+        "evidence": [
+          "Policy reforms"
+        ]
+      }
+    },
+    "summary": "Moderate supply chain risks with some volatility due to economic instability.",
+    "assumptions": [
+      "Economic stability will improve."
+    ],
+    "importRisk": 34,
+    "exportRisk": 34,
+    "overallRisk": 34,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Chile": {
+    "nodeId": "Chile",
+    "nodeName": "Chile",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Trade policies are stable with low tariffs.",
+        "evidence": [
+          "Trade agreement updates"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflicts impacting trade.",
+        "evidence": [
+          "Peaceful regional relations"
+        ]
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Stable trade policies.",
+        "evidence": [
+          "Consistent regulations"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Export tariffs are low and stable.",
+        "evidence": [
+          "Trade agreements"
+        ]
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "No conflicts affecting exports.",
+        "evidence": [
+          "Stable regional relations"
+        ]
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies are stable.",
+        "evidence": [
+          "Trade policies"
+        ]
+      }
+    },
+    "summary": "Chile presents low supply chain risks, with stable tariffs and no conflict risks.",
+    "assumptions": [
+      "Stable political environment."
+    ],
+    "importRisk": 20,
+    "exportRisk": 20,
+    "overallRisk": 20,
+    "computedAt": "2026-03-14T05:47:11.956Z"
+  },
+  "Poland": {
+    "nodeId": "Poland",
+    "nodeName": "Poland",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Poland is part of the EU which generally maintains low tariff levels, although recent trade tensions can affect specific sectors.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.6,
+        "rationale": "No recent conflicts involving Poland; it is geopolitically stable.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.7,
+        "rationale": "EU trade policies are stable but can change; overall moderate risk.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "EU export policies tend to be consistent, with low tariffs on most goods.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.6,
+        "rationale": "No direct conflict impacting Poland's exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.7,
+        "rationale": "Stable export regulations within the EU framework.",
+        "evidence": []
+      }
+    },
+    "summary": "Poland faces low import and export risks overall, primarily from EU trade policy stability.",
+    "assumptions": [
+      "Assuming EU trade policies remain stable.",
+      "No sudden geopolitical conflicts involving Poland."
+    ],
+    "importRisk": 15,
+    "exportRisk": 15,
+    "overallRisk": 15,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Bangladesh": {
+    "nodeId": "Bangladesh",
+    "nodeName": "Bangladesh",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Bangladesh exports to major markets, facing tariff barriers; some recent trade tensions noted.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 5,
+        "confidence": 0.5,
+        "rationale": "Bangladesh is not involved in major conflicts.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 35,
+        "confidence": 0.6,
+        "rationale": "Trade policies are generally stable but can be affected by regional policies.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Export sectors face tariffs in some key markets; policy changes could affect exports.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 5,
+        "confidence": 0.5,
+        "rationale": "Minimal conflict impact.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.6,
+        "rationale": "Export regulations are relatively stable.",
+        "evidence": []
+      }
+    },
+    "summary": "Moderate import and export risks mainly due to tariffs and regional trade policies.",
+    "assumptions": [
+      "Assuming regional trade policies remain unchanged.",
+      "No significant conflicts affecting Bangladesh."
+    ],
+    "importRisk": 21,
+    "exportRisk": 24,
+    "overallRisk": 23,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Pakistan": {
+    "nodeId": "Pakistan",
+    "nodeName": "Pakistan",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "High tariffs and trade barriers are present, with potential for escalation.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 50,
+        "confidence": 0.8,
+        "rationale": "Ongoing regional tensions and conflicts significantly impact security and trade risks.",
+        "evidence": [
+          "Border tensions",
+          "Regional conflicts"
+        ]
+      },
+      "policy": {
+        "score": 45,
+        "confidence": 0.75,
+        "rationale": "Trade and import policies are affected by conflict and political instability.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Export tariffs are moderate but can increase during political instability.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 55,
+        "confidence": 0.8,
+        "rationale": "Export risks are high due to ongoing conflicts and security issues.",
+        "evidence": [
+          "Regional conflicts",
+          "Political instability"
+        ]
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.75,
+        "rationale": "Export policy stability is compromised by conflict.",
+        "evidence": []
+      }
+    },
+    "summary": "High risks on both import and export sides mainly due to conflict, instability, and tariffs.",
+    "assumptions": [
+      "High conflict levels persist.",
+      "Trade policies may fluctuate with political situation."
+    ],
+    "importRisk": 45,
+    "exportRisk": 47,
+    "overallRisk": 46,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Philippines": {
+    "nodeId": "Philippines",
+    "nodeName": "Philippines",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Low tariffs in general, but some sector-specific trade barriers exist.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "Regional security issues exist but are less impactful on trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "Trade policies are stable with minor adjustments.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Export tariffs are generally low; some sectors face barriers.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "Regional conflicts pose some risk but are not widespread.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "Export policies are stable with regular updates.",
+        "evidence": []
+      }
+    },
+    "summary": "Relatively low risks for import and export, with regional security issues being minor.",
+    "assumptions": [
+      "Stable regional security.",
+      "No major policy shifts."
+    ],
+    "importRisk": 22,
+    "exportRisk": 22,
+    "overallRisk": 22,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Iran": {
+    "nodeId": "Iran",
+    "nodeName": "Iran",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.9,
+        "rationale": "Heavy sanctions and trade restrictions significantly impact tariffs and import costs.",
+        "evidence": [
+          "Sanctions",
+          "Trade restrictions"
+        ]
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.9,
+        "rationale": "Regional conflicts and internal instability heighten conflict risks.",
+        "evidence": [
+          "Regional tensions",
+          "Internal unrest"
+        ]
+      },
+      "policy": {
+        "score": 65,
+        "confidence": 0.85,
+        "rationale": "Export and import policies are heavily influenced by sanctions and political decisions.",
+        "evidence": [
+          "Sanctions",
+          "Policy changes"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 65,
+        "confidence": 0.9,
+        "rationale": "Export tariffs are affected by international sanctions and embargoes.",
+        "evidence": [
+          "Sanctions",
+          "Export controls"
+        ]
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.9,
+        "rationale": "High conflict risk due to regional tensions and internal issues.",
+        "evidence": [
+          "Regional conflicts",
+          "Internal unrest"
+        ]
+      },
+      "policy": {
+        "score": 70,
+        "confidence": 0.85,
+        "rationale": "Export policies are subject to change due to sanctions and geopolitical factors.",
+        "evidence": [
+          "Sanctions",
+          "Policy adjustments"
+        ]
+      }
+    },
+    "summary": "High import and export risks driven by sanctions, conflict, and restrictive policies.",
+    "assumptions": [
+      "Sanctions remain in place.",
+      "Regional conflicts persist."
+    ],
+    "importRisk": 65,
+    "exportRisk": 68,
+    "overallRisk": 67,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Panama": {
+    "nodeId": "Panama",
+    "nodeName": "Panama",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Low tariffs with stable trade relationships.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 5,
+        "confidence": 0.6,
+        "rationale": "Minimal conflict or geopolitical tension.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Stable trade and export policies.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Low tariffs on exports, stable outside of global trade shifts.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 5,
+        "confidence": 0.6,
+        "rationale": "No significant conflicts.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Export policies are stable.",
+        "evidence": []
+      }
+    },
+    "summary": "Low risks for Panama on both import and export sides, given stability and low tariffs.",
+    "assumptions": [
+      "Assuming global trade remains stable.",
+      "No regional conflicts affecting Panama."
+    ],
+    "importRisk": 11,
+    "exportRisk": 11,
+    "overallRisk": 11,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "United Arab Emirates": {
+    "nodeId": "United Arab Emirates",
+    "nodeName": "United Arab Emirates",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Part of the Gulf Cooperation Council, generally low tariffs.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "Recent drone intercepts and regional tensions indicate high conflict risk.",
+        "evidence": [
+          "Drones intercepted in UAE and Saudi Arabia"
+        ]
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.7,
+        "rationale": "Trade policies are likely stable but regional tensions could influence regulations.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Low tariffs for exports, consistent with regional trade policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.8,
+        "rationale": "High conflict risk due to regional tensions and recent security incidents.",
+        "evidence": [
+          "Recent drone interceptions"
+        ]
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.7,
+        "rationale": "Export policies may be influenced by regional conflicts.",
+        "evidence": [
+          "Regional Tensions"
+        ]
+      }
+    },
+    "summary": "Significant conflict risks due to regional tensions and recent security incidents, affecting both import and export risks.",
+    "assumptions": [
+      "Regional tensions persist.",
+      "Security incidents could escalate."
+    ],
+    "importRisk": 48,
+    "exportRisk": 48,
+    "overallRisk": 48,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Oman": {
+    "nodeId": "Oman",
+    "nodeName": "Oman",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Low tariffs and stable trade policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.6,
+        "rationale": "Minimal regional conflicts, generally stable.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Stable trade and import policies.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Low tariffs and consistent trade policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.6,
+        "rationale": "Minimal conflicts affecting trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Stable export policies.",
+        "evidence": []
+      }
+    },
+    "summary": "Low risks on both import and export sides, with stable regional and domestic conditions.",
+    "assumptions": [
+      "No significant regional conflicts.",
+      "Trade policies remain stable."
+    ],
+    "importRisk": 13,
+    "exportRisk": 13,
+    "overallRisk": 13,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Qatar": {
+    "nodeId": "Qatar",
+    "nodeName": "Qatar",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Part of GCC, with low tariffs and stable trade relations.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.6,
+        "rationale": "No recent conflicts involving Qatar.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Stable trade and import policies.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Low tariffs on exports, consistent with regional policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.6,
+        "rationale": "No significant conflicts impacting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Stable export policies.",
+        "evidence": []
+      }
+    },
+    "summary": "Low import and export risks due to regional stability and low tariffs.",
+    "assumptions": [
+      "Assuming regional stability continues.",
+      "Trade policies remain unchanged."
+    ],
+    "importRisk": 13,
+    "exportRisk": 13,
+    "overallRisk": 13,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Yemen": {
+    "nodeId": "Yemen",
+    "nodeName": "Yemen",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 70,
+        "confidence": 0.9,
+        "rationale": "Heavy sanctions and ongoing conflict result in high import risks.",
+        "evidence": [
+          "Sanctions",
+          "Conflict"
+        ]
+      },
+      "conflict": {
+        "score": 80,
+        "confidence": 0.9,
+        "rationale": "Major conflict zone with ongoing civil war and instability.",
+        "evidence": [
+          "Civil war",
+          "Regional instability"
+        ]
+      },
+      "policy": {
+        "score": 75,
+        "confidence": 0.85,
+        "rationale": "Trade policies are heavily restricted due to conflict and sanctions.",
+        "evidence": [
+          "Sanctions",
+          "Restricted trade policies"
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 75,
+        "confidence": 0.9,
+        "rationale": "Exports are severely restricted by conflict and sanctions.",
+        "evidence": [
+          "Sanctions",
+          "Export controls"
+        ]
+      },
+      "conflict": {
+        "score": 80,
+        "confidence": 0.9,
+        "rationale": "Ongoing conflict severely impacts export capacity.",
+        "evidence": [
+          "Civil war",
+          "Regional instability"
+        ]
+      },
+      "policy": {
+        "score": 75,
+        "confidence": 0.85,
+        "rationale": "Export policies are restrictive due to conflict and sanctions.",
+        "evidence": [
+          "Sanctions",
+          "Trade restrictions"
+        ]
+      }
+    },
+    "summary": "Extremely high risks on both import and export sides due to ongoing conflict, sanctions, and instability.",
+    "assumptions": [
+      "Conflict persists or worsens.",
+      "Sanctions remain in effect."
+    ],
+    "importRisk": 75,
+    "exportRisk": 77,
+    "overallRisk": 76,
+    "computedAt": "2026-03-14T05:47:37.015Z"
+  },
+  "Djibouti": {
+    "nodeId": "Djibouti",
+    "nodeName": "Djibouti",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Minimal recent changes in tariffs or trade barriers reported; stable trade policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "No significant geopolitical conflicts affecting trade observed.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Consistent trade policies with no recent restrictive measures noted.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Trade policies remain consistent; no recent tariffs increases.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Stable geopolitical landscape with no major exports disruptions.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Export policies stable, with no new restrictions.",
+        "evidence": []
+      }
+    },
+    "summary": "Djibouti currently faces low supply-chain risks across import and export dimensions.",
+    "assumptions": [
+      "Stable geopolitical environment",
+      "Consistent trade policies"
+    ],
+    "importRisk": 15,
+    "exportRisk": 15,
+    "overallRisk": 15,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Greece": {
+    "nodeId": "Greece",
+    "nodeName": "Greece",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Some tensions in trade negotiations and tariff discussions noted.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Limited regional tensions could influence trade security.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Recent policy adjustments in trade regulations observed.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export tariffs and trade barriers remain somewhat fluid.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Potential regional conflicts may impact export stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Export policies are periodically updated, which could influence stability.",
+        "evidence": []
+      }
+    },
+    "summary": "Greece faces moderate supply-chain risks related to tariffs, conflict, and policy changes.",
+    "assumptions": [
+      "Regional tensions influence trade dynamics",
+      "Trade policy adjustments ongoing"
+    ],
+    "importRisk": 29,
+    "exportRisk": 29,
+    "overallRisk": 29,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Romania": {
+    "nodeId": "Romania",
+    "nodeName": "Romania",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Trade policies generally stable with minor tariff discussions.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "No significant conflict impacting trade routes.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Trade policies are consistent; no recent restrictive measures.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Export tariffs remain stable, with no major recent changes.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Border security and regional stability maintained.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Export policies are steady, with no reported restrictions.",
+        "evidence": []
+      }
+    },
+    "summary": "Romania currently encounters low to moderate supply-chain risks, with stable trade environment.",
+    "assumptions": [
+      "Stable geopolitical climate",
+      "Consistent trade policies"
+    ],
+    "importRisk": 23,
+    "exportRisk": 23,
+    "overallRisk": 23,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Bulgaria": {
+    "nodeId": "Bulgaria",
+    "nodeName": "Bulgaria",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade tensions and tariff negotiations have been reported.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "No significant conflicts impacting trade networks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies have seen recent modifications, posing moderate risks.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export tariffs fluctuate with policy updates.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "Export routes are stable, with limited conflict influence.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export regulations are subject to periodic review and adjustment.",
+        "evidence": []
+      }
+    },
+    "summary": "Bulgaria faces moderate supply-chain risks, influenced by tariff and policy dynamics.",
+    "assumptions": [
+      "Ongoing policy reviews",
+      "Regional trade negotiations"
+    ],
+    "importRisk": 26,
+    "exportRisk": 26,
+    "overallRisk": 26,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Georgia": {
+    "nodeId": "Georgia",
+    "nodeName": "Georgia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Trade policies are generally stable with minor fluctuations.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.8,
+        "rationale": "Ongoing regional conflicts and tensions may affect trade security.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Trade and import policies are stable but sensitive to regional security issues.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Export tariffs are generally predictable, with some regional concerns.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.8,
+        "rationale": "Geopolitical tensions increase risks to export stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.8,
+        "rationale": "Export policies could be influenced by regional conflicts.",
+        "evidence": []
+      }
+    },
+    "summary": "Georgia faces elevated supply-chain risks, especially from geopolitical conflict and regional instability.",
+    "assumptions": [
+      "Regional conflicts impact trade stability",
+      "Trade policies may adapt to security situation"
+    ],
+    "importRisk": 29,
+    "exportRisk": 29,
+    "overallRisk": 29,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Peru": {
+    "nodeId": "Peru",
+    "nodeName": "Peru",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Recent trade negotiations indicate potential tariff adjustments.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 15,
+        "confidence": 0.7,
+        "rationale": "No significant conflict affecting trade routes.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies are subject to revisions, but stable overall.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Export tariffs are under review but currently stable.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 15,
+        "confidence": 0.7,
+        "rationale": "No major security threats impacting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies are generally predictable.",
+        "evidence": []
+      }
+    },
+    "summary": "Peru faces moderate risks, primarily related to tariff policy adjustments, with generally stable conflict levels.",
+    "assumptions": [
+      "Trade negotiations ongoing",
+      "Stable regional security"
+    ],
+    "importRisk": 26,
+    "exportRisk": 26,
+    "overallRisk": 26,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Ethiopia": {
+    "nodeId": "Ethiopia",
+    "nodeName": "Ethiopia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 50,
+        "confidence": 0.6,
+        "rationale": "Recent conflict and civil instability have impacted tariffs and import policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 80,
+        "confidence": 0.6,
+        "rationale": "Ongoing internal conflicts significantly elevate geopolitical and security risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.6,
+        "rationale": "Policy environment is unstable, with frequent regulatory changes due to conflict.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 50,
+        "confidence": 0.6,
+        "rationale": "Conflict has disrupted export logistics and tariff stability.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 80,
+        "confidence": 0.6,
+        "rationale": "High internal conflict and regional tensions severely impact trade.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.6,
+        "rationale": "Export policies are volatile amid ongoing conflicts.",
+        "evidence": []
+      }
+    },
+    "summary": "Ethiopia currently faces high supply-chain risks across import and export dimensions, driven by internal conflict and instability.",
+    "assumptions": [
+      "Ongoing internal conflict",
+      "Regional tensions influence trade disruptions"
+    ],
+    "importRisk": 63,
+    "exportRisk": 63,
+    "overallRisk": 63,
+    "computedAt": "2026-03-14T05:47:53.119Z"
+  },
+  "Mexico": {
+    "nodeId": "Mexico",
+    "nodeName": "Mexico",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No notable tariff risks discussed.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.6,
+        "rationale": "Recent cartel-related violence and safety concerns may impact supply chain logistics.",
+        "evidence": [
+          "Travel agency warnings about cartel attacks affecting travel and logistics."
+        ]
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.5,
+        "rationale": "Limited policy risk information, primarily safety-related concerns.",
+        "evidence": [
+          "Cartel violence impacts on safety and logistics rather than formal policies."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "Tariff risks are not indicated.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 45,
+        "confidence": 0.6,
+        "rationale": "Violence from cartels presents conflict risks affecting supply chains.",
+        "evidence": [
+          "Recent cartel-related incidents impact safety for logistics."
+        ]
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.5,
+        "rationale": "Limited policy risks, more focus on law enforcement and security.",
+        "evidence": [
+          "Safety warnings due to cartel activity."
+        ]
+      }
+    },
+    "summary": "Moderate conflict risk driven by security concerns from cartel violence, affecting supply chain logistics.",
+    "assumptions": [
+      "Security situation could impact logistics and supply chains."
+    ],
+    "importRisk": 25,
+    "exportRisk": 25,
+    "overallRisk": 25,
+    "computedAt": "2026-03-14T05:54:02.635Z"
+  },
+  "United States": {
+    "nodeId": "United States",
+    "nodeName": "United States",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.7,
+        "rationale": "Potential for increased tariffs and sanctions related to international conflicts, notably with Iran.",
+        "evidence": [
+          "US's ongoing conflict with Iran and related military and economic actions."
+        ]
+      },
+      "conflict": {
+        "score": 60,
+        "confidence": 0.8,
+        "rationale": "US military engagements and geopolitical tensions pose moderate conflict risks.",
+        "evidence": [
+          "US military strikes and Iran-threats increase conflict risks."
+        ]
+      },
+      "policy": {
+        "score": 70,
+        "confidence": 0.7,
+        "rationale": "US policies in the Middle East and trade policies can impact import supply chains.",
+        "evidence": [
+          "US legislative and military policies in conflict zones."
+        ]
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 55,
+        "confidence": 0.7,
+        "rationale": "Trade restrictions and sanctions related to Iran and other geopolitical issues.",
+        "evidence": [
+          "US sanctions and policy restrictions impacting exports."
+        ]
+      },
+      "conflict": {
+        "score": 65,
+        "confidence": 0.8,
+        "rationale": "Military tensions and conflicts in the Middle East influence export risks.",
+        "evidence": [
+          "US-Iran conflicts and regional military activities."
+        ]
+      },
+      "policy": {
+        "score": 75,
+        "confidence": 0.8,
+        "rationale": "Export controls and sanctions are actively employed, affecting supply chains.",
+        "evidence": [
+          "US policies concerning Iran and regional conflicts."
+        ]
+      }
+    },
+    "summary": "Moderate to high supply chain risks on both import and export sides driven by ongoing geopolitical conflicts and US policies.",
+    "assumptions": [
+      "Geopolitical conflicts will continue or escalate.",
+      "Trade and military policies will remain restrictive."
+    ],
+    "importRisk": 63,
+    "exportRisk": 64,
+    "overallRisk": 64,
+    "computedAt": "2026-03-14T05:54:02.635Z"
+  },
+  "India": {
+    "nodeId": "India",
+    "nodeName": "India",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.6,
+        "rationale": "No immediate tariff threats indicated by recent news.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "No direct conflict or geopolitical risks discussed affecting imports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.6,
+        "rationale": "Policy risks are generally moderate, though regional conflicts could influence.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.6,
+        "rationale": "No significant tariff risks mentioned.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.5,
+        "rationale": "Limited conflict or geopolitical threats affecting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.6,
+        "rationale": "Moderate policy risk, with recent mention of adjustments in visa and safety procedures.",
+        "evidence": [
+          "India's policy adjustments in response to Middle East conflict.",
+          "Slight regional security concerns, such as the evacuation of sailors."
+        ]
+      }
+    },
+    "summary": "Low to moderate risks with some regional policy adjustments; geopolitical tensions are not immediate major risk factors.",
+    "assumptions": [
+      "Regional conflicts may slightly increase policy adjustments.",
+      "Trade disruptions are currently limited."
+    ],
+    "importRisk": 19,
+    "exportRisk": 16,
+    "overallRisk": 18,
+    "computedAt": "2026-03-14T05:54:02.635Z"
+  }
+}
