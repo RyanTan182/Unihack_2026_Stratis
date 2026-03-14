@@ -32,17 +32,6 @@ export interface CountryRisk {
   newsHighlights: string[]
 }
 
-interface NodeConnection {
-  id: string
-  from: string
-  to: string
-  fromCoords: [number, number]
-  toCoords: [number, number]
-  avgRisk: number
-  fromType: "country" | "chokepoint"
-  toType: "country" | "chokepoint"
-}
-
 interface CustomRouteWaypoint {
   id: string
   country: {
@@ -214,40 +203,6 @@ const nodeCoordinates: Record<string, [number, number]> = {
   "Bosphorus": [29.1, 41.1],
   "Pacific Ocean 1": [-180, 0],
   "Pacific Ocean 2": [180, 0],
-}
-
-function extractNodeConnections(nodes: CountryRisk[]): NodeConnection[] {
-  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(nodes.map((node) => [node.id, node]))
-  const edges: NodeConnection[] = []
-  const seen = new Set<string>()
-
-  for (const node of nodes) {
-    const fromCoords = nodeCoordinates[node.id]
-    if (!fromCoords) continue
-
-    for (const connectedId of node.connections || []) {
-      const connectedNode = nodeMap.get(connectedId)
-      const toCoords = nodeCoordinates[connectedId]
-      if (!connectedNode || !toCoords) continue
-
-      const pairKey = [node.id, connectedId].sort().join("__")
-      if (seen.has(pairKey)) continue
-      seen.add(pairKey)
-
-      edges.push({
-        id: `edge-${node.id}-to-${connectedId}`,
-        from: node.id,
-        to: connectedId,
-        fromCoords,
-        toCoords,
-        avgRisk: Math.round((node.overallRisk + connectedNode.overallRisk) / 2),
-        fromType: node.type,
-        toType: connectedNode.type,
-      })
-    }
-  }
-
-  return edges
 }
 
 function buildAdjacencyMap(nodes: CountryRisk[]): globalThis.Map<string, string[]> {
@@ -574,6 +529,7 @@ function extractProductRoutes(
 const ARC_SEGMENTS = 100
 const ARC_ELEVATION_FACTOR = 0.15
 const ARC_ELEVATION_CAP = 15
+const ARC_ELEVATION_VERTICAL_SCALE = 0.5
 const DATE_LINE = 180
 
 // Generate GeoJSON for route arcs. When the path crosses the Pacific (|lon delta| > 180°),
@@ -609,7 +565,7 @@ function generateArcLine(
 
     const elev = Math.sin(t * Math.PI) * elevation
     // Don't normalize lon: values outside [-180, 180] render on adjacent world copies
-    points.push([lon, lat + elev * 0.5])
+    points.push([lon, lat + elev * ARC_ELEVATION_VERTICAL_SCALE])
   }
 
   return points
@@ -817,10 +773,6 @@ export function SupplyChainMap({
 
   const chokepointNodes = useMemo(() => {
     return countryRisks.filter((node) => node.type === "chokepoint")
-  }, [countryRisks])
-
-  const nodeConnections = useMemo(() => {
-    return extractNodeConnections(countryRisks)
   }, [countryRisks])
 
   const productRoutes = useMemo(() => {
@@ -1089,28 +1041,6 @@ export function SupplyChainMap({
           maxZoom={MAP_MAX_ZOOM}
           interactiveLayerIds={['product-routes', 'countries-fill']}
         >
-          {/* Network connections layer */}
-          <Source
-            id="network"
-            type="geojson"
-            data={networkGeoJSON}
-          >
-            <Layer
-              id="network-lines"
-              type="line"
-              paint={{
-                "line-color": ["get", "color"],
-                "line-width": ["get", "width"],
-                "line-opacity": ["get", "opacity"],
-                "line-dasharray": ["case",
-                  ["get", "isChokepoint"],
-                  ["literal", [4, 3]],
-                  ["literal", [2, 4]]
-                ],
-              }}
-            />
-          </Source>
-
           {/* Risk Zones layer - colors countries by risk level */}
           {showRiskZones && (
             <Source
@@ -1327,13 +1257,6 @@ export function SupplyChainMap({
 
             const isSelected = selectedCountry === node.id
             const isActive = activeProductChokepoints.has(node.id)
-            const activeColor = isSelected
-              ? "#7c3aed"
-              : productRoutes.find(r =>
-                  selectedRouteId
-                    ? r.id === selectedRouteId && r.chokepoints.includes(node.id)
-                    : r.chokepoints.includes(node.id)
-                )?.productColor ?? "#7c3aed"
 
             return (
               <Marker
@@ -1345,35 +1268,18 @@ export function SupplyChainMap({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
-                      className="group relative cursor-pointer"
+                      className="group cursor-pointer transition-transform duration-200 hover:scale-125"
                       onClick={() => onCountrySelect(selectedCountry === node.id ? null : node.id)}
-                      style={{ opacity: isActive ? 1 : 0.5 }}
+                      style={{ opacity: isActive ? 1 : 0.6 }}
                     >
-                      {isActive && (
-                        <div
-                          className="absolute animate-pulse rounded-lg"
-                          style={{
-                            width: 44,
-                            height: 44,
-                            margin: -6,
-                            border: `2px solid ${activeColor}`,
-                            borderRadius: 10,
-                            opacity: 0.6,
-                          }}
-                        />
-                      )}
                       <div
-                        className="flex items-center justify-center rounded-md border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        className="rounded-full border-2 border-white shadow-md"
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: 16,
+                          height: 16,
                           backgroundColor: getRiskColor(node.overallRisk),
-                          borderColor: isSelected ? "#111827" : "#fff",
-                          borderWidth: isSelected ? 2.5 : 2,
                         }}
-                      >
-                        <div className="h-2 w-2 rounded-full bg-white" />
-                      </div>
+                      />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
