@@ -1270,7 +1270,7 @@ export default function SupplyChainCrisisDetector() {
   ]
 
   return (
-    <div className="grid h-screen w-full grid-cols-[320px_1fr] overflow-hidden bg-background">
+    <div className="grid h-screen w-full grid-cols-[320px_1fr] overflow-hidden bg-background animate-page-load">
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
       <div className="flex flex-col h-full">
         <div className="border-b border-sidebar-border px-5 py-4">
@@ -1310,7 +1310,7 @@ export default function SupplyChainCrisisDetector() {
             </button>
           ))}
         </div>
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden animate-in fade-in-0 slide-in-from-left-2 duration-500">
         {activeTab == "inventory" && (
         <InventorySidebar
           products={storedProducts}
@@ -1407,7 +1407,7 @@ export default function SupplyChainCrisisDetector() {
       </div>
 
       {/* Main Map Area */}
-      <div className="relative h-full w-full overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden animate-map-in">
         {/* Alert Banner - positioned below action buttons */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
@@ -1435,7 +1435,7 @@ export default function SupplyChainCrisisDetector() {
         />
 
         {/* Action Buttons */}
-        <div className="absolute left-4 top-4 z-10 flex gap-2">
+        <div className="absolute left-4 top-4 z-10 flex gap-2 stagger-children-delayed">
           {/*
           <Button
             variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}

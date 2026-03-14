@@ -2964,5 +2964,656 @@
         "source": "zimbabwestar.com"
       }
     ]
+  },
+  "Germany": {
+    "nodeId": "Germany",
+    "nodeName": "Germany",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Germany, as part of the EU, has stable trade policies with low tariff risks.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 5,
+        "confidence": 0.8,
+        "rationale": "Germany currently faces low geopolitical conflicts, contributing to low conflict risk.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "EU trade policies remain stable with minimal restrictions or changes.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Germany maintains stable export policies with low tariff exposure.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 5,
+        "confidence": 0.8,
+        "rationale": "No significant conflict risks affecting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Export regulations are steady with no recent policy upheavals.",
+        "evidence": []
+      }
+    },
+    "summary": "Germany currently exhibits low supply-chain risks across import and export facets.",
+    "assumptions": [
+      "Stable EU policies and geopolitical environment"
+    ],
+    "importRisk": 9,
+    "exportRisk": 9,
+    "overallRisk": 9,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Vietnam": {
+    "nodeId": "Vietnam",
+    "nodeName": "Vietnam",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 55,
+        "confidence": 0.6,
+        "rationale": "Recent trade negotiations and tariffs on certain goods pose moderate risk.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Regional tensions and some domestic unrest may impact stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 45,
+        "confidence": 0.6,
+        "rationale": "Potential policy shifts or tariffs could be introduced due to trade disputes.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 60,
+        "confidence": 0.6,
+        "rationale": "Trade barriers influenced by tariffs and policies are present.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Regional geopolitical tensions exist, affecting stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.6,
+        "rationale": "Industrial and export policy risks are moderate due to ongoing negotiations.",
+        "evidence": []
+      }
+    },
+    "summary": "Vietnam faces moderate supply-chain risks on both import and export sides due to tariffs, conflict, and policy changes.",
+    "assumptions": [
+      "Regional geopolitical tensions and ongoing trade negotiations"
+    ],
+    "importRisk": 43,
+    "exportRisk": 50,
+    "overallRisk": 47,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Brazil": {
+    "nodeId": "Brazil",
+    "nodeName": "Brazil",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Recent adjustments in tariffs and import policies suggest moderate risk.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Limited regional conflicts, mostly domestic political stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Trade and import policies are relatively stable but subject to change.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 45,
+        "confidence": 0.7,
+        "rationale": "Trade policies for exports are fairly stable with some recent adjustments.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Export-related conflicts are minimal, though domestic tensions exist.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Export policy risks are moderate with potential regulatory adjustments.",
+        "evidence": []
+      }
+    },
+    "summary": "Brazil exhibits moderate supply-chain risks predominantly due to tariff and policy considerations.",
+    "assumptions": [
+      "Stability in regional conflicts and domestic policies"
+    ],
+    "importRisk": 33,
+    "exportRisk": 36,
+    "overallRisk": 35,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Indonesia": {
+    "nodeId": "Indonesia",
+    "nodeName": "Indonesia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 50,
+        "confidence": 0.65,
+        "rationale": "Trade tariffs and import duties have recently fluctuated, indicating moderate risk.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 35,
+        "confidence": 0.65,
+        "rationale": "Regional tensions and internal conflicts influence risk levels.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 45,
+        "confidence": 0.65,
+        "rationale": "Policy environment is somewhat fluid, with potential for changes affecting imports.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 55,
+        "confidence": 0.65,
+        "rationale": "Export tariffs are variable, reflecting ongoing policy adjustments.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.65,
+        "rationale": "Internal conflicts and regional tensions pose moderate conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 50,
+        "confidence": 0.65,
+        "rationale": "Export policies are possibly subject to change with governmental shifts.",
+        "evidence": []
+      }
+    },
+    "summary": "Indonesia faces moderate supply-chain risks on both sides driven by tariffs, conflicts, and policy fluidity.",
+    "assumptions": [
+      "Ongoing regional tensions and policy fluctuations"
+    ],
+    "importRisk": 43,
+    "exportRisk": 48,
+    "overallRisk": 46,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Japan": {
+    "nodeId": "Japan",
+    "nodeName": "Japan",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Japan benefits from low tariffs and stable trade agreements.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.9,
+        "rationale": "Japan is geopolitically stable with minimal conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Trade policies are consistent with few policy uncertainties.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Export tariffs are low, with a stable trade environment.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.9,
+        "rationale": "No significant conflict affecting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Export policies are stable with no major policy disruptions.",
+        "evidence": []
+      }
+    },
+    "summary": "Japan has very low supply-chain risks across import and export activities.",
+    "assumptions": [
+      "Stable geopolitical environment and consistent trade policies"
+    ],
+    "importRisk": 13,
+    "exportRisk": 13,
+    "overallRisk": 13,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "South Korea": {
+    "nodeId": "South Korea",
+    "nodeName": "South Korea",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "South Korea maintains low tariffs and strong trade agreements.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 20,
+        "confidence": 0.75,
+        "rationale": "Tensions with neighboring countries pose some conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Trade and import policies are stable, with minimal recent changes.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Export tariffs are low, supporting stable export activities.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 25,
+        "confidence": 0.75,
+        "rationale": "Regional tensions influence conflict risk but are not severe.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 20,
+        "confidence": 0.8,
+        "rationale": "Exports are subject to stable policies, with no major recent disruptions.",
+        "evidence": []
+      }
+    },
+    "summary": "South Korea faces low to moderate supply-chain risks, primarily due to regional tensions affecting conflict and policy stability.",
+    "assumptions": [
+      "Ongoing regional tensions but overall stable trade environment"
+    ],
+    "importRisk": 20,
+    "exportRisk": 22,
+    "overallRisk": 21,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Taiwan": {
+    "nodeId": "Taiwan",
+    "nodeName": "Taiwan",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Trade tariffs and import restrictions are relatively stable but involve some political considerations.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.5,
+        "rationale": "High geopolitical tensions with China significantly elevate conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Trade policies are affected by geopolitical concerns, introducing some risk.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Export restrictions are relatively low but influenced by geopolitical tensions.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 70,
+        "confidence": 0.5,
+        "rationale": "High geopolitical tension with China poses significant conflict risks impacting exports.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export policies are sensitive to geopolitical developments.",
+        "evidence": []
+      }
+    },
+    "summary": "Taiwan faces high geopolitical conflict risks that substantially impact import and export supply chains.",
+    "assumptions": [
+      "Significant geopolitical tensions with China"
+    ],
+    "importRisk": 44,
+    "exportRisk": 44,
+    "overallRisk": 44,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "South Africa": {
+    "nodeId": "South Africa",
+    "nodeName": "South Africa",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 45,
+        "confidence": 0.7,
+        "rationale": "Tariff policies are moderately restrictive with recent adjustments.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.65,
+        "rationale": "Internal political tensions and regional issues contribute to conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Trade and import policies are moderately risky due to recent changes and internal dynamics.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 50,
+        "confidence": 0.7,
+        "rationale": "Export tariffs and policies are moderately restrictive and subject to change.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 40,
+        "confidence": 0.65,
+        "rationale": "Internal social and political tensions influence conflict risk.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Export policies show moderate risk due to internal and regional issues.",
+        "evidence": []
+      }
+    },
+    "summary": "South Africa faces moderate supply-chain risks with impacts from internal conflict and policy adjustments.",
+    "assumptions": [
+      "Internal political tensions and regional issues"
+    ],
+    "importRisk": 41,
+    "exportRisk": 42,
+    "overallRisk": 42,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Turkey": {
+    "nodeId": "Turkey",
+    "nodeName": "Turkey",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 50,
+        "confidence": 0.65,
+        "rationale": "Recent tariff changes and trade restrictions pose moderate risks.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 60,
+        "confidence": 0.6,
+        "rationale": "Geopolitical conflicts and regional tensions elevate conflict risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.6,
+        "rationale": "Trade policies may be subject to change due to regional conflicts and internal policies.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 55,
+        "confidence": 0.65,
+        "rationale": "Export tariffs and restrictions are moderately risky with potential for escalation.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 60,
+        "confidence": 0.6,
+        "rationale": "Ongoing regional tensions significantly impact export conflict risk.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 55,
+        "confidence": 0.6,
+        "rationale": "Export policies are influenced by geopolitical conflicts and regional tensions.",
+        "evidence": []
+      }
+    },
+    "summary": "Turkey faces elevated supply-chain risks driven by regional conflicts and policy uncertainties.",
+    "assumptions": [
+      "Regional conflicts and geopolitical tensions"
+    ],
+    "importRisk": 55,
+    "exportRisk": 57,
+    "overallRisk": 56,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Malaysia": {
+    "nodeId": "Malaysia",
+    "nodeName": "Malaysia",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Trade tariffs are moderate with some recent adjustments.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Regional stability supports low conflict risk, but domestic issues can influence stability.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Trade and import policies are somewhat stable but can be affected by political shifts.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 35,
+        "confidence": 0.7,
+        "rationale": "Export tariffs are moderate, with no recent major policy shifts.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 30,
+        "confidence": 0.7,
+        "rationale": "Export-related conflicts are minimal, but regional tensions can influence risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 40,
+        "confidence": 0.7,
+        "rationale": "Export policies are generally stable but sensitive to political changes.",
+        "evidence": []
+      }
+    },
+    "summary": "Malaysia exhibits moderate supply-chain risks with some susceptibility to regional and domestic political factors.",
+    "assumptions": [
+      "Stable regional environment but some domestic political sensitivity"
+    ],
+    "importRisk": 34,
+    "exportRisk": 34,
+    "overallRisk": 34,
+    "computedAt": "2026-03-14T10:45:16.872Z",
+    "articles": []
+  },
+  "Singapore": {
+    "nodeId": "Singapore",
+    "nodeName": "Singapore",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Singapore generally maintains a stable trade environment with low tariffs.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Singapore is politically stable with no recent conflict indicators.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Singapore's trade policies are stable, with consistent enforcement and no major policy shifts affecting trade.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 12,
+        "confidence": 0.8,
+        "rationale": "Low tariffs on exports due to trade agreements and economic policies.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Stable political environment reduces conflict-related export risks.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 15,
+        "confidence": 0.8,
+        "rationale": "Consistent export policies with no recent restrictive regulations.",
+        "evidence": []
+      }
+    },
+    "summary": "Singapore presents low import and export risks related to tariffs, conflict, and policy stability.",
+    "assumptions": [
+      "No recent geopolitical conflicts involving Singapore.",
+      "Trade policies remain stable."
+    ],
+    "importRisk": 11,
+    "exportRisk": 12,
+    "overallRisk": 12,
+    "computedAt": "2026-03-14T10:45:20.621Z",
+    "articles": []
+  },
+  "Netherlands": {
+    "nodeId": "Netherlands",
+    "nodeName": "Netherlands",
+    "nodeType": "country",
+    "importFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "Member of the EU, subject to EU trade policies which generally maintain low tariffs but can be affected by EU-wide policy changes.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "The Netherlands is politically stable with no recent conflicts.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "EU policy changes and regulatory shifts can impact the Netherlands' trade environment.",
+        "evidence": []
+      }
+    },
+    "exportFactors": {
+      "tariff": {
+        "score": 20,
+        "confidence": 0.7,
+        "rationale": "Exports are subject to EU trade policies, generally allowing smooth trade but susceptible to EU policy shifts.",
+        "evidence": []
+      },
+      "conflict": {
+        "score": 10,
+        "confidence": 0.8,
+        "rationale": "Stable political environment with no recent conflicts.",
+        "evidence": []
+      },
+      "policy": {
+        "score": 25,
+        "confidence": 0.7,
+        "rationale": "Exports may be affected by EU-wide regulation and policy changes.",
+        "evidence": []
+      }
+    },
+    "summary": "Netherlands faces moderate risks on policy and tariffs due to its EU membership, but remains stable overall.",
+    "assumptions": [
+      "No significant recent geopolitical conflicts.",
+      "EU policy stability continues."
+    ],
+    "importRisk": 17,
+    "exportRisk": 17,
+    "overallRisk": 17,
+    "computedAt": "2026-03-14T10:45:20.621Z",
+    "articles": []
+>>>>>>> 6bd9d08 (ui: added animations)
   }
 }
