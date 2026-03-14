@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import MapGL, {
   Marker,
   Popup,
@@ -78,6 +78,7 @@ interface Product {
   name: string
   type: "product"
   country: string
+  destinationCountry?: string // User-specified destination for route calculations
   color: string
   riskPrediction: number
   riskDirection: "up" | "down"
@@ -120,6 +121,14 @@ interface SupplyChainMapProps {
   onAddItemAtCountry?: (country: string, itemType: ItemType) => void
   foundRoutes?: FoundRoute[]
   selectedFoundRouteId?: string | null
+}
+
+// Interface for exposed methods via forwardRef
+export interface SupplyChainMapRef {
+  flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => void
+  animateRoutes: (duration?: number, onProgress?: (progress: number) => void, onComplete?: () => void) => void
+  isAnimating: boolean
+  getMap: () => mapboxgl.Map | undefined
 }
 
 const getRiskColor = (risk: number): string => {
@@ -377,10 +386,12 @@ function extractProductRoutes(
   }
 
   products.forEach((product) => {
+    // Use destinationCountry if available, otherwise fall back to product.country
+    const targetCountry = product.destinationCountry || product.country
     product.components.forEach((component) => {
       extractFromItem(
         component,
-        product.country,
+        targetCountry,
         product.name || "Product",
         product.color,
         product.id,
@@ -485,7 +496,7 @@ const mapStyle: mapboxgl.Style = {
   glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
 }
 
-export function SupplyChainMap({
+export const SupplyChainMap = React.forwardRef<SupplyChainMapRef, SupplyChainMapProps>(function SupplyChainMap({
   countryRisks,
   onCountrySelect,
   selectedCountry,
@@ -497,7 +508,7 @@ export function SupplyChainMap({
   onAddItemAtCountry,
   foundRoutes = [],
   selectedFoundRouteId,
-}: SupplyChainMapProps) {
+}, ref) {
   const [mounted, setMounted] = useState(false)
   const [viewState, setViewState] = useState({
     longitude: 20,
@@ -515,9 +526,105 @@ export function SupplyChainMap({
   const dragStartRef = useRef<{ x: number; y: number } | null>(null)
   const DRAG_THRESHOLD = 5
 
+  // Animation state for route drawing
+  const [animationProgress, setAnimationProgress] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const animationRef = useRef<number | null>(null)
+  const previousProductsLengthRef = useRef<number>(0)
+
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Animate routes function using requestAnimationFrame
+  const animateRoutes = useCallback((
+    duration: number = 2500,
+    onProgress?: (progress: number) => void,
+    onComplete?: () => void
+  ) => {
+    // Cancel any existing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+    }
+
+    setIsAnimating(true)
+    setAnimationProgress(0)
+
+    const startTime = performance.now()
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+
+      // Use ease-out-cubic for smooth deceleration
+      const easedProgress = 1 - Math.pow(1 - progress, 3)
+      setAnimationProgress(easedProgress)
+
+      if (onProgress) {
+        onProgress(easedProgress)
+      }
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate)
+      } else {
+        setIsAnimating(false)
+        if (onComplete) {
+          onComplete()
+        }
+      }
+    }
+
+    animationRef.current = requestAnimationFrame(animate)
+  }, [])
+
+  // Animate routes when products are added
+  useEffect(() => {
+    const currentLength = products.length
+    const previousLength = previousProductsLengthRef.current
+
+    // Start animation when products are added
+    if (currentLength > previousLength && currentLength > 0) {
+      animateRoutes(2500)
+    }
+
+    // Reset animation when all products are removed
+    if (currentLength === 0 && previousLength > 0) {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+      setAnimationProgress(0)
+      setIsAnimating(false)
+    }
+
+    previousProductsLengthRef.current = currentLength
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [products.length, animateRoutes])
+
+  // Expose methods via ref
+  React.useImperativeHandle(ref, () => ({
+    flyTo: (options: { center: [number, number]; zoom?: number; duration?: number }) => {
+      const map = mapRef.current?.getMap()
+      if (map) {
+        map.flyTo({
+          center: options.center,
+          zoom: options.zoom ?? 4,
+          duration: options.duration ?? 2000,
+        })
+      }
+    },
+    animateRoutes: (duration?: number, onProgress?: (progress: number) => void, onComplete?: () => void) => {
+      animateRoutes(duration, onProgress, onComplete)
+    },
+    get isAnimating() {
+      return isAnimating
+    },
+    getMap: () => mapRef.current?.getMap(),
+  }), [animateRoutes, isAnimating])
 
   // Handle map resize when container size changes
   useEffect(() => {
@@ -653,6 +760,13 @@ export function SupplyChainMap({
       existing.push({ name: product.name || "Product", type: "product" })
       countryMap.set(product.country, existing)
       product.components.forEach(collectFromItem)
+
+      // Also add destination country as a marker if different from product country
+      if (product.destinationCountry && product.destinationCountry !== product.country) {
+        const destExisting = countryMap.get(product.destinationCountry) || []
+        destExisting.push({ name: `${product.name || "Product"} (Destination)`, type: "product" })
+        countryMap.set(product.destinationCountry, destExisting)
+      }
     })
 
     countryMap.forEach((items: { name: string; type: ItemType }[], country: string) => {
@@ -695,38 +809,70 @@ export function SupplyChainMap({
     }
   }, [nodeConnections])
 
-  // Generate GeoJSON for product routes
+  // Generate GeoJSON for product routes with animation support
   const productRoutesGeoJSON = useMemo(() => {
     const features: any[] = []
 
-    productRoutes.forEach((route) => {
+    productRoutes.forEach((route, routeIndex) => {
       const isSelected = selectedRouteId === route.id
       const isDimmed = !!selectedRouteId && !isSelected
 
-      route.segments.forEach((segment) => {
+      route.segments.forEach((segment, segmentIndex) => {
         const fromCoords = nodeCoordinates[segment.fromNode]
         const toCoords = nodeCoordinates[segment.toNode]
         if (!fromCoords || !toCoords) return
 
         const segmentIsDangerous = segment.riskScore >= 60
+        const isPulsing = segment.riskScore >= 70 // High-risk pulsing threshold
 
-        features.push({
-          type: "Feature" as const,
-          properties: {
-            routeId: route.id,
-            riskScore: segment.riskScore,
-            isDangerous: segmentIsDangerous,
-            isSelected,
-            isDimmed,
-            color: segmentIsDangerous ? "#dc2626" : route.productColor,
-            width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
-            opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
-          },
-          geometry: {
-            type: "LineString" as const,
-            coordinates: generateArcLine(fromCoords, toCoords),
-          },
-        })
+        // Generate full arc line
+        const fullCoordinates = generateArcLine(fromCoords, toCoords)
+
+        // Calculate animated coordinates based on progress
+        let animatedCoordinates = fullCoordinates
+        if (isAnimating || animationProgress < 1) {
+          // Stagger animation: each route segment starts slightly after the previous
+          const totalSegments = productRoutes.reduce((sum, r) => sum + r.segments.length, 0)
+          const segmentProgressDelay = (routeIndex * route.segments.length + segmentIndex) / totalSegments * 0.3
+
+          // Calculate this segment's progress
+          const segmentProgress = Math.max(0, Math.min(1, (animationProgress - segmentProgressDelay) / (1 - segmentProgressDelay * 2)))
+
+          // Interpolate coordinates
+          const pointCount = Math.floor(fullCoordinates.length * segmentProgress)
+          if (pointCount >= 2) {
+            animatedCoordinates = fullCoordinates.slice(0, pointCount)
+          } else if (pointCount === 1) {
+            // Need at least 2 points for a line
+            animatedCoordinates = [fullCoordinates[0], fullCoordinates[0]]
+          } else {
+            // Start with a tiny line at origin
+            animatedCoordinates = [fullCoordinates[0], fullCoordinates[0]]
+          }
+        }
+
+        // Only add feature if we have at least 2 points
+        if (animatedCoordinates.length >= 2) {
+          features.push({
+            type: "Feature" as const,
+            properties: {
+              routeId: route.id,
+              riskScore: segment.riskScore,
+              isDangerous: segmentIsDangerous,
+              isPulsing,
+              isSelected,
+              isDimmed,
+              isAnimating: isAnimating || animationProgress < 1,
+              color: segmentIsDangerous ? "#dc2626" : route.productColor,
+              width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
+              opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
+            },
+            geometry: {
+              type: "LineString" as const,
+              coordinates: animatedCoordinates,
+            },
+          })
+        }
       })
     })
 
@@ -734,7 +880,7 @@ export function SupplyChainMap({
       type: "FeatureCollection" as const,
       features,
     }
-  }, [productRoutes, selectedRouteId])
+  }, [productRoutes, selectedRouteId, animationProgress, isAnimating])
 
   // Generate GeoJSON for custom route
   const customRouteGeoJSON = useMemo(() => {
@@ -952,7 +1098,42 @@ export function SupplyChainMap({
                   "line-color": ["get", "color"],
                   "line-width": ["get", "width"],
                   "line-opacity": ["get", "opacity"],
+                  // Add dasharray for animated look during animation
+                  "line-dasharray": [
+                    "case",
+                    ["get", "isAnimating"],
+                    ["literal", [2, 1]],
+                    ["case",
+                      ["get", "isPulsing"],
+                      ["literal", [1, 1]],
+                      ["literal", [1, 0]] // Solid line when not animating
+                    ]
+                  ],
                 }}
+              />
+              {/* Pulsing glow layer for high-risk segments (risk >= 70) */}
+              <Layer
+                id="product-routes-pulse"
+                type="line"
+                paint={{
+                  "line-color": ["case",
+                    ["get", "isPulsing"],
+                    ["get", "color"],
+                    "transparent"
+                  ],
+                  "line-width": ["case",
+                    ["get", "isPulsing"],
+                    ["+", ["get", "width"], 3],
+                    0
+                  ],
+                  "line-opacity": ["case",
+                    ["get", "isPulsing"],
+                    0.4,
+                    0
+                  ],
+                  "line-blur": 2,
+                }}
+                beforeId="product-routes"
               />
             </Source>
           )}
@@ -1328,4 +1509,4 @@ export function SupplyChainMap({
       </div>
     </TooltipProvider>
   )
-}
+})

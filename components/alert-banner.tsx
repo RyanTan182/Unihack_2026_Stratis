@@ -151,9 +151,18 @@ export function AlertBanner({
     return () => clearInterval(interval)
   }, [alerts.length])
 
+  // Reset index if it goes out of bounds (e.g., after dismissal)
+  useEffect(() => {
+    if (alerts.length > 0 && currentAlertIndex >= alerts.length) {
+      setCurrentAlertIndex(0)
+    }
+  }, [alerts.length, currentAlertIndex])
+
   if (alerts.length === 0) return null
 
-  const currentAlert = alerts[currentAlertIndex]
+  // Ensure currentAlertIndex is within bounds
+  const safeIndex = Math.min(currentAlertIndex, alerts.length - 1)
+  const currentAlert = alerts[safeIndex]
   const hasMultipleAlerts = alerts.length > 1
 
   const severityConfig = {

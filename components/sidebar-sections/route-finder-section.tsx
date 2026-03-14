@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import {
-  Route,
   Search,
   AlertTriangle,
   Loader2,
@@ -24,13 +23,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { findRoutes } from "@/lib/route-finder"
-import type { FoundRoute, FindOptions } from "@/lib/route-types"
-import type { CountryRiskData } from "@/lib/route-types"
-import { SidePanel } from "@/components/side-panel"
+import type { FoundRoute, FindOptions, CountryRiskData } from "@/lib/route-types"
 
-interface RouteFinderPanelProps {
-  isOpen: boolean
-  onClose: () => void
+interface RouteFinderSectionProps {
   countryRisks: CountryRiskData[]
   onRouteFound?: (routes: FoundRoute[]) => void
   preselectedOrigin?: string
@@ -48,16 +43,14 @@ const CHOKEPOINTS = [
   { id: "Bosphorus", name: "Bosphorus", risk: 57 },
 ]
 
-export function RouteFinderPanel({
-  isOpen,
-  onClose,
+export function RouteFinderSection({
   countryRisks,
   onRouteFound,
   preselectedOrigin,
   preselectedDestination,
   routeContext,
   onApplyRoute,
-}: RouteFinderPanelProps) {
+}: RouteFinderSectionProps) {
   const [origin, setOrigin] = useState<string>("")
   const [destination, setDestination] = useState<string>("")
   const [excludedChokepoints, setExcludedChokepoints] = useState<string[]>([])
@@ -128,13 +121,8 @@ export function RouteFinderPanel({
   }
 
   return (
-    <SidePanel
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Safe Routes"
-      icon={<Navigation className="h-5 w-5" />}
-    >
-      {/* Simple Input Section */}
+    <div className="space-y-3">
+      {/* Origin/Destination Selects */}
       <div className="space-y-2">
         <Select value={origin} onValueChange={setOrigin}>
           <SelectTrigger className="h-9 text-sm">
@@ -163,12 +151,12 @@ export function RouteFinderPanel({
         </Select>
       </div>
 
-      {/* Find Button - Primary CTA */}
+      {/* Find Button */}
       <Button
         onClick={handleFindRoutes}
         disabled={!origin || !destination || isSearching}
         className={cn(
-          "w-full h-10 font-medium mt-3 cursor-pointer",
+          "w-full h-10 font-medium cursor-pointer",
           origin && destination && !isSearching
             ? "bg-primary hover:bg-primary/90"
             : "bg-muted"
@@ -189,16 +177,16 @@ export function RouteFinderPanel({
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 rounded-lg p-2 mt-3">
+        <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 rounded-lg p-2">
           <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Results - Simplified */}
+      {/* Results */}
       {foundRoutes.length > 0 && (
-        <div className="space-y-2 pt-3">
-          {/* Recommended Route - Hero Style */}
+        <div className="space-y-2 pt-2">
+          {/* Recommended Route */}
           {foundRoutes.filter((r) => r.isRecommended).map((route) => (
             <div
               key={route.id}
@@ -237,13 +225,13 @@ export function RouteFinderPanel({
             </div>
           ))}
 
-          {/* Alternative Routes - Compact */}
+          {/* Alternative Routes */}
           {foundRoutes.filter((r) => !r.isRecommended).length > 0 && (
             <div className="space-y-1.5">
               <div className="text-xs text-muted-foreground">Alternatives</div>
               {foundRoutes
                 .filter((r) => !r.isRecommended)
-                .map((route, i) => (
+                .map((route) => (
                   <div
                     key={route.id}
                     className="rounded-lg border border-border/50 bg-muted/30 p-2 text-xs"
@@ -277,10 +265,10 @@ export function RouteFinderPanel({
         </div>
       )}
 
-      {/* Advanced Options - Collapsible */}
+      {/* Advanced Options */}
       <button
         onClick={() => setShowAdvanced(!showAdvanced)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center py-2 mt-2 cursor-pointer"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors w-full justify-center py-1 cursor-pointer"
       >
         {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         Avoid chokepoints
@@ -303,6 +291,6 @@ export function RouteFinderPanel({
           ))}
         </div>
       )}
-    </SidePanel>
+    </div>
   )
 }
