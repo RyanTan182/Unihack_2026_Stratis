@@ -760,24 +760,50 @@ export default function SupplyChainCrisisDetector() {
   // resolvedCountryRisks must be defined before insights
   const resolvedCountryRisks = useMemo(() => {
     return countryRisks.map((node) => {
-      if (node.type !== "country") return node
+      if (node.type === "country") {
+        const snapshot = riskSnapshots[node.id]
+        if (!snapshot) return node
 
-      const snapshot = riskSnapshots[node.id]
-      if (!snapshot) return node
+        return {
+          ...node,
+          importRisk: snapshot.importRisk,
+          exportRisk: snapshot.exportRisk,
+          overallRisk: snapshot.overallRisk,
+          newsHighlights: [
+            snapshot.summary,
+            `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
+            `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+          ],
+        }
+      }
+
+      const relatedCountries = chokeToCountriesMap[node.id] ?? []
+      if (relatedCountries.length === 0) return node
+
+      const availableSnapshots = relatedCountries
+        .map((countryName: string) => riskSnapshots[countryName])
+        .filter(Boolean)
+
+      if (availableSnapshots.length === 0) {
+        return node
+      }
+
+      const totalImport = availableSnapshots.reduce((sum: number, s: CountryRiskEvaluation) => sum + s.importRisk, 0)
+      const totalExport = availableSnapshots.reduce((sum: number, s: CountryRiskEvaluation) => sum + s.exportRisk, 0)
+      const totalOverall = availableSnapshots.reduce((sum: number, s: CountryRiskEvaluation) => sum + s.overallRisk, 0)
 
       return {
         ...node,
-        importRisk: snapshot.importRisk,
-        exportRisk: snapshot.exportRisk,
-        overallRisk: snapshot.overallRisk,
+        importRisk: totalImport / availableSnapshots.length,
+        exportRisk: totalExport / availableSnapshots.length,
+        overallRisk: totalOverall / availableSnapshots.length,
         newsHighlights: [
-          snapshot.summary,
-          `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}`,
-          `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}`,
+          ...node.newsHighlights,
+          `Derived from ${availableSnapshots.length} neighboring countries`,
         ],
       }
     })
-  }, [countryRisks, riskSnapshots])
+  }, [riskSnapshots])
 
   // Calculate insights from products
   const insights = useMemo(() => {
@@ -829,7 +855,7 @@ export default function SupplyChainCrisisDetector() {
     }
 
     save()
-  }, [riskSnapshots])
+  }, [hasLoadedSnapshots, hasCompleteSnapshots,riskSnapshots])
 
   useEffect(() => {
     if (!hasLoadedSnapshots) return
@@ -901,7 +927,7 @@ export default function SupplyChainCrisisDetector() {
     return () => {
       cancelled = true
     }
-  }, [countryRisks])
+  }, [hasLoadedSnapshots, hasCompleteSnapshots, riskSnapshots, countryRisks])
 
   // Initialize route graph with country risks data
   useEffect(() => {
