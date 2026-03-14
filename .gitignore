@@ -12,7 +12,14 @@ node_modules/
 
 # Local planning/tooling
 .Planning/
-.superpowers/
 .playwright-mcp/
+
+.superpowers/
+decomposition-demo/
+
 docs/
 decomposition-demo/
+.claude/
+.ttadk/
+specs/
+
