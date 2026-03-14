@@ -124,20 +124,30 @@ interface SupplyChainMapProps {
   routeMode?: RouteMode
 }
 
+// Risk level thresholds (0-100 scale)
+const RISK_CRITICAL = 80
+const RISK_HIGH = 60
+const RISK_MEDIUM = 40
+const RISK_LOW = 20
+
+// Map zoom limits
+const MAP_MIN_ZOOM = 1
+const MAP_MAX_ZOOM = 8
+
 const getRiskColor = (risk: number): string => {
-  if (risk >= 80) return "#dc2626"
-  if (risk >= 60) return "#ea580c"
-  if (risk >= 40) return "#eab308"
-  if (risk >= 20) return "#22c55e"
+  if (risk >= RISK_CRITICAL) return "#dc2626"
+  if (risk >= RISK_HIGH) return "#ea580c"
+  if (risk >= RISK_MEDIUM) return "#eab308"
+  if (risk >= RISK_LOW) return "#22c55e"
   return "#0ea5e9"
 }
 
 const getCountryColor = (risk: number | undefined): string => {
   if (risk === undefined) return "#1e293b"
-  if (risk >= 80) return "#7c3aed"
-  if (risk >= 60) return "#a78bfa"
-  if (risk >= 40) return "#c4b5fd"
-  if (risk >= 20) return "#ddd6fe"
+  if (risk >= RISK_CRITICAL) return "#7c3aed"
+  if (risk >= RISK_HIGH) return "#a78bfa"
+  if (risk >= RISK_MEDIUM) return "#c4b5fd"
+  if (risk >= RISK_LOW) return "#ddd6fe"
   return "#ede9fe"
 }
 
@@ -474,11 +484,9 @@ function extractProductRoutes(
   routeMode: RouteMode = "shortest"
 ): ProductSupplyRoute[] {
   const routes: ProductSupplyRoute[] = []
-  const DANGER_THRESHOLD = 60
-  const graph = buildChokepointOnlyAdjacencyMap(countryRisks)
-  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(
-    countryRisks.map((n) => [n.id, n])
-  )
+  const DANGER_THRESHOLD = RISK_HIGH
+  const graph = buildAdjacencyMap(countryRisks)
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(countryRisks.map((n) => [n.id, n]))
 
   const getNodeRisk = (nodeId: string): number => {
     return nodeMap.get(nodeId)?.overallRisk ?? 30
@@ -562,29 +570,45 @@ function extractProductRoutes(
   return routes
 }
 
-// Generate GeoJSON for route arcs
+// Map constants for route arc generation
+const ARC_SEGMENTS = 100
+const ARC_ELEVATION_FACTOR = 0.15
+const ARC_ELEVATION_CAP = 15
+const DATE_LINE = 180
+
+// Generate GeoJSON for route arcs. When the path crosses the Pacific (|lon delta| > 180°),
+// outputs coordinates that extend beyond [-180, 180] so the line flows onto the next world copy.
 function generateArcLine(
   from: [number, number],
   to: [number, number]
 ): [number, number][] {
   const points: [number, number][] = []
-  const segments = 100
 
-  // Calculate midpoint with elevation
-  const midLon = (from[0] + to[0]) / 2
-  const midLat = (from[1] + to[1]) / 2
+  let fromLon = from[0]
+  let toLon = to[0]
+  const lonDelta = toLon - fromLon
+
+  // Pacific crossing: use the path that extends into the next world copy
+  if (lonDelta > DATE_LINE) {
+    toLon = fromLon + lonDelta - 360 // go west, extend past -180
+  } else if (lonDelta < -DATE_LINE) {
+    toLon = fromLon + lonDelta + 360 // go east (Pacific), extend past 180
+  }
+
+  const effectiveLonDelta = toLon - fromLon
+  const latDelta = to[1] - from[1]
   const distance = Math.sqrt(
-    Math.pow(to[0] - from[0], 2) + Math.pow(to[1] - from[1], 2)
+    Math.pow(effectiveLonDelta, 2) + Math.pow(latDelta, 2)
   )
-  const elevation = Math.min(distance * 0.15, 15) // Cap elevation
+  const elevation = Math.min(distance * ARC_ELEVATION_FACTOR, ARC_ELEVATION_CAP)
 
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments
-    const lon = from[0] + (to[0] - from[0]) * t
-    const lat = from[1] + (to[1] - from[1]) * t
+  for (let i = 0; i <= ARC_SEGMENTS; i++) {
+    const t = i / ARC_SEGMENTS
+    const lon = fromLon + effectiveLonDelta * t
+    const lat = from[1] + latDelta * t
 
-    // Add elevation using a parabolic curve
     const elev = Math.sin(t * Math.PI) * elevation
+    // Don't normalize lon: values outside [-180, 180] render on adjacent world copies
     points.push([lon, lat + elev * 0.5])
   }
 
@@ -838,7 +862,7 @@ export function SupplyChainMap({
       markers.push({
         country,
         items,
-        isDangerous: (countryRisk?.overallRisk || 0) >= 60,
+        isDangerous: (countryRisk?.overallRisk || 0) >= RISK_HIGH,
       })
     })
 
@@ -889,7 +913,7 @@ export function SupplyChainMap({
 
         if ((segment.fromNode == "Pacific Ocean 1" && segment.toNode == "Pacific Ocean 2") || (segment.toNode == "Pacific Ocean 1" && segment.fromNode == "Pacific Ocean 2")) return
 
-        const segmentIsDangerous = segment.riskScore >= 60
+        const segmentIsDangerous = segment.riskScore >= RISK_HIGH
         const isHighRisk = segmentIsDangerous || route.isDangerous
 
         features.push({
@@ -1061,9 +1085,8 @@ export function SupplyChainMap({
           mapStyle={mapStyle}
           mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
           renderWorldCopies={true}
-          maxBounds={[[-180, -85], [180, 85]]}
-          minZoom={1}
-          maxZoom={8}
+          minZoom={MAP_MIN_ZOOM}
+          maxZoom={MAP_MAX_ZOOM}
           interactiveLayerIds={['product-routes', 'countries-fill']}
         >
           {/* Network connections layer */}
