@@ -323,7 +323,7 @@ services:
     environment:
       - LLM_API_KEY=${OPENROUTER_API_KEY}
       - LLM_BASE_URL=https://openrouter.ai/api/v1
-      - LLM_MODEL_NAME=anthropic/claude-sonnet-4-20250514
+      - LLM_MODEL_NAME=moonshotai/kimi-k2.5
       - ZEP_API_KEY=${ZEP_API_KEY}
     volumes:
       - mirofish-data:/app/data
