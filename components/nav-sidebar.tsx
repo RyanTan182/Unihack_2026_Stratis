@@ -40,8 +40,10 @@ export function NavSidebar({
   onLocationClick,
   isLocationActive,
 }: NavSidebarProps) {
-  const navItems: NavItem[] = []
-  
+  const navItems: NavItem[] = [
+    { icon: Home, label: "Risk & Locations", active: isLocationActive, onClick: onLocationClick },
+    { icon: Package, label: "Inventory", active: isInventoryOpen, onClick: onInventoryClick },
+  ]
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex h-full w-full flex-col items-center border-r border-sidebar-border bg-sidebar py-4">
