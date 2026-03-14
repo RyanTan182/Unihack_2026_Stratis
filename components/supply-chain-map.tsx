@@ -21,7 +21,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { extractChokepointsFromPath } from "@/lib/utils"
 import { Package, Boxes, Box, Fuel } from "lucide-react"
 
-interface CountryRisk {
+export interface CountryRisk {
   id: string
   name: string
   type: "country" | "chokepoint"
@@ -62,7 +62,7 @@ interface CustomRoute {
 
 type ItemType = "product" | "component" | "material" | "resource"
 
-interface SupplyChainItem {
+export interface SupplyChainItem {
   id: string
   name: string
   type: ItemType
@@ -553,6 +553,8 @@ export function SupplyChainMap({
     content: React.ReactNode
   } | null>(null)
   const mapRef = useRef<MapRef>(null)
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
+  const DRAG_THRESHOLD = 5
 
   useEffect(() => {
     setMounted(true)
@@ -814,11 +816,51 @@ export function SupplyChainMap({
     }
   }, [customRoute])
 
-  const handleMapClick = useCallback((event: MapMouseEvent) => {
-    // Close popup and context menu when clicking on map
-    setPopupInfo(null)
-    setMapContextMenu(null)
+  const handleMouseDown = useCallback((event: MapMouseEvent) => {
+    dragStartRef.current = { x: event.point.x, y: event.point.y }
   }, [])
+
+  const handleMapClick = useCallback((event: MapMouseEvent) => {
+    if (dragStartRef.current) {
+      const dx = Math.abs(event.point.x - dragStartRef.current.x)
+      const dy = Math.abs(event.point.y - dragStartRef.current.y)
+      dragStartRef.current = null
+      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+        setPopupInfo(null)
+        return
+      }
+    }
+
+    const map = mapRef.current?.getMap()
+    if (!map) return
+
+    if (map.getLayer('product-routes')) {
+      const routeFeatures = map.queryRenderedFeatures(event.point, {
+        layers: ['product-routes']
+      })
+      if (routeFeatures.length > 0) return
+    }
+
+    const queryLayers: string[] = []
+    if (map.getLayer('countries-fill')) queryLayers.push('countries-fill')
+    if (map.getLayer('risk-zones-fill')) queryLayers.push('risk-zones-fill')
+
+    if (queryLayers.length > 0) {
+      const features = map.queryRenderedFeatures(event.point, {
+        layers: queryLayers
+      })
+
+      if (features.length > 0) {
+        const countryName = features[0].properties?.name
+        if (countryName) {
+          onCountrySelect(selectedCountry === countryName ? null : countryName)
+          return
+        }
+      }
+    }
+
+    setPopupInfo(null)
+  }, [onCountrySelect, selectedCountry])
 
   const handleMapContextMenu = useCallback(
     (event: React.MouseEvent) => {
@@ -883,15 +925,21 @@ export function SupplyChainMap({
     }
 
     map.on('click', 'product-routes', handleRouteLayerClick)
-    map.on('mouseenter', 'product-routes', () => {
-      map.getCanvas().style.cursor = 'pointer'
-    })
-    map.on('mouseleave', 'product-routes', () => {
-      map.getCanvas().style.cursor = ''
-    })
+
+    const setPointer = () => { map.getCanvas().style.cursor = 'pointer' }
+    const clearPointer = () => { map.getCanvas().style.cursor = '' }
+
+    map.on('mouseenter', 'product-routes', setPointer)
+    map.on('mouseleave', 'product-routes', clearPointer)
+    map.on('mouseenter', 'countries-fill', setPointer)
+    map.on('mouseleave', 'countries-fill', clearPointer)
 
     return () => {
       map.off('click', 'product-routes', handleRouteLayerClick)
+      map.off('mouseenter', 'product-routes', setPointer)
+      map.off('mouseleave', 'product-routes', clearPointer)
+      map.off('mouseenter', 'countries-fill', setPointer)
+      map.off('mouseleave', 'countries-fill', clearPointer)
     }
   }, [productRoutes, onRouteClick])
 
@@ -916,17 +964,16 @@ export function SupplyChainMap({
           ref={mapRef}
           {...viewState}
           onMove={(evt: ViewStateChangeEvent) => setViewState(evt.viewState)}
+          onMouseDown={handleMouseDown}
           onClick={handleMapClick}
           style={{ width: "100%", height: "100%" }}
           mapStyle={mapStyle}
           mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
-          // Enable infinite horizontal scroll (world wrapping)
           renderWorldCopies={true}
-          // Zoom constraints
+          maxBounds={[[-180, -85], [180, 85]]}
           minZoom={1}
           maxZoom={8}
-          // Interactive
-          interactiveLayerIds={['product-routes']}
+          interactiveLayerIds={['product-routes', 'countries-fill']}
         >
           {/* Network connections layer */}
           <Source
