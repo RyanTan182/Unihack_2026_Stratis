@@ -114,6 +114,13 @@ interface SupplyChainMapProps {
   selectedRouteId?: string | null
   onRouteClick?: (route: ProductSupplyRoute) => void
   showRiskZones?: boolean
+  highestRiskPath?: {
+    path: string[]
+    maxRisk: number
+    pathDetails?: Array<{ id: string; name: string; type: string; overallRisk: number }>
+    chokepoints?: string[]
+    pathLength?: number
+  } | null
 }
 
 const getRiskColor = (risk: number): string => {
@@ -488,6 +495,7 @@ export function SupplyChainMap({
   selectedRouteId,
   onRouteClick,
   showRiskZones = false,
+  highestRiskPath,
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
   const [viewState, setViewState] = useState({
@@ -760,6 +768,41 @@ export function SupplyChainMap({
     }
   }, [customRoute])
 
+  // Generate GeoJSON for critical (highest risk) path
+  const criticalPathGeoJSON = useMemo(() => {
+    if (!highestRiskPath || highestRiskPath.path.length < 2) return null
+
+    const features: any[] = []
+
+    // Generate line segments between consecutive nodes in the path
+    highestRiskPath.path.slice(0, -1).forEach((nodeId, index) => {
+      const nextNodeId = highestRiskPath.path[index + 1]
+      const fromCoords = nodeCoordinates[nodeId]
+      const toCoords = nodeCoordinates[nextNodeId]
+
+      if (!fromCoords || !toCoords) return
+
+      features.push({
+        type: "Feature" as const,
+        properties: {
+          isChokepoint: highestRiskPath.chokepoints?.includes(nodeId) || highestRiskPath.chokepoints?.includes(nextNodeId),
+          order: index,
+          color: "#7c3aed",
+          width: 4,
+        },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: generateArcLine(fromCoords, toCoords),
+        },
+      })
+    })
+
+    return {
+      type: "FeatureCollection" as const,
+      features,
+    }
+  }, [highestRiskPath])
+
   const handleMouseDown = useCallback((event: MapMouseEvent) => {
     dragStartRef.current = { x: event.point.x, y: event.point.y }
   }, [])
@@ -962,6 +1005,30 @@ export function SupplyChainMap({
                   "line-color": ["get", "color"],
                   "line-width": 3,
                   "line-opacity": 0.9,
+                }}
+              />
+            </Source>
+          )}
+
+          {/* Critical (highest risk) path layer */}
+          {criticalPathGeoJSON && (
+            <Source
+              id="critical-path-source"
+              type="geojson"
+              data={criticalPathGeoJSON}
+            >
+              <Layer
+                id="critical-path-lines"
+                type="line"
+                paint={{
+                  "line-color": "#7c3aed",
+                  "line-width": 4,
+                  "line-opacity": 0.95,
+                  "line-dasharray": ["case",
+                    ["get", "isChokepoint"],
+                    ["literal", [2, 2]],
+                    ["literal", []]
+                  ],
                 }}
               />
             </Source>
@@ -1173,6 +1240,125 @@ export function SupplyChainMap({
                         <p className="text-xs font-medium text-primary">
                           Active in route
                         </p>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </Marker>
+            )
+          })}
+
+          {/* Critical path node markers */}
+          {highestRiskPath && highestRiskPath.path.length > 0 && highestRiskPath.path.map((nodeId, index) => {
+            const coords = nodeCoordinates[nodeId]
+            if (!coords) {
+              console.warn(`Missing coordinates for critical path node: ${nodeId}`)
+              return null
+            }
+
+            // Match against pathDetails array - API returns { id, name, type, overallRisk }
+            const nodeDetail = highestRiskPath.pathDetails?.find(d => d.id === nodeId || d.name === nodeId)
+            const nodeName = nodeDetail?.name || nodeId
+            const riskLevel = nodeDetail?.overallRisk || 0
+            const isChokepoint = highestRiskPath.chokepoints?.includes(nodeId) || nodeDetail?.type === "chokepoint"
+            const isStart = index === 0
+            const isEnd = index === highestRiskPath.path.length - 1
+            const isIntermediate = !isStart && !isEnd
+
+            // Styling varies by node type and position
+            const nodeColor = isChokepoint ? "#f59e0b" : "#7c3aed"
+            const nodeSize = isChokepoint ? 38 : 32
+            const borderStyle = isChokepoint ? "2px dashed" : "2px solid"
+
+            return (
+              <Marker
+                key={`critical-path-${nodeId}-${index}`}
+                longitude={coords[0]}
+                latitude={coords[1]}
+                anchor="center"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="group relative cursor-pointer">
+                      {/* Pulse effects for critical nodes */}
+                      {isStart && (
+                        <div
+                          className="absolute inset-0 animate-pulse rounded-full opacity-70"
+                          style={{
+                            width: 56,
+                            height: 56,
+                            margin: -2,
+                            border: "2px solid #22c55e",
+                          }}
+                        />
+                      )}
+                      {isEnd && (
+                        <div
+                          className="absolute inset-0 animate-pulse rounded-full opacity-70"
+                          style={{
+                            width: 56,
+                            height: 56,
+                            margin: -2,
+                            border: "2px solid #dc2626",
+                          }}
+                        />
+                      )}
+                      {isChokepoint && isIntermediate && (
+                        <div
+                          className="absolute inset-0 animate-pulse rounded-full opacity-50"
+                          style={{
+                            width: 52,
+                            height: 52,
+                            margin: -1,
+                            border: "2px solid #f59e0b",
+                          }}
+                        />
+                      )}
+
+                      {/* Main node marker */}
+                      <div
+                        className="flex items-center justify-center border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        style={{
+                          width: nodeSize,
+                          height: nodeSize,
+                          backgroundColor: nodeColor,
+                          borderStyle,
+                          borderColor: "white",
+                          borderRadius: isChokepoint ? "4px" : "50%",
+                        }}
+                      >
+                        <span className="text-[10px] font-bold text-white">{index + 1}</span>
+                      </div>
+
+                      {/* Chokepoint badge */}
+                      {isChokepoint && (
+                        <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-amber-500 text-[7px] font-bold text-white">
+                          ⚠
+                        </div>
+                      )}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground">{nodeName}</p>
+                        {isChokepoint && <span className="text-xs text-amber-400">★</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Risk:</span>
+                        <span className="text-xs font-medium text-purple-400">{Math.round(riskLevel)}%</span>
+                      </div>
+                      {isChokepoint && (
+                        <p className="text-xs font-medium text-amber-400">⚠️ Critical Chokepoint</p>
+                      )}
+                      {isStart && (
+                        <p className="text-xs font-medium text-green-400">▶ Start Point</p>
+                      )}
+                      {isEnd && (
+                        <p className="text-xs font-medium text-red-400">■ Highest Risk (End)</p>
+                      )}
+                      {isIntermediate && (
+                        <p className="text-xs font-medium text-blue-400">→ Transit Node</p>
                       )}
                     </div>
                   </TooltipContent>

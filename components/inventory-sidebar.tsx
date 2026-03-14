@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import {
   ChevronDown,
   ChevronRight,
@@ -137,19 +137,19 @@ function TreeNodeRow({
         onClick={() => onNodeClick(node.id)}
       >
         {hasChildren ? (
-          <button
+          <div
             onClick={(e) => {
               e.stopPropagation()
               setIsExpanded(!isExpanded)
             }}
-            className="shrink-0"
+            className="shrink-0 cursor-pointer"
           >
             {isExpanded ? (
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
             ) : (
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             )}
-          </button>
+          </div>
         ) : (
           <div className="w-3.5" />
         )}
@@ -431,23 +431,25 @@ export function InventorySidebar({
 
   // Handle decomposition completing — check if tree arrived
   const prevTreeRef = useRef<DecompositionTree | null>(null)
-  if (view === "form" && tree && !isLoading && tree !== prevTreeRef.current) {
-    prevTreeRef.current = tree
-    const newProduct: StoredProduct = {
-      id: crypto.randomUUID(),
-      name: productName.trim(),
-      suppliers,
-      tree,
-      durationMs: durationMs ?? 0,
-      createdAt: Date.now(),
+  useEffect(() => {
+    if (view === "form" && tree && !isLoading && tree !== prevTreeRef.current) {
+      prevTreeRef.current = tree
+      const newProduct: StoredProduct = {
+        id: crypto.randomUUID(),
+        name: productName.trim(),
+        suppliers,
+        tree,
+        durationMs: durationMs ?? 0,
+        createdAt: Date.now(),
+      }
+      onProductAdd(newProduct)
+      setActiveProductId(newProduct.id)
+      setView("tree")
+      onTreeChange(tree)
+      setProductName("")
+      setSuppliers([])
     }
-    onProductAdd(newProduct)
-    setActiveProductId(newProduct.id)
-    setView("tree")
-    onTreeChange(tree)
-    setProductName("")
-    setSuppliers([])
-  }
+  }, [view, tree, isLoading, productName, suppliers, durationMs, onProductAdd, onTreeChange])
 
   // Back navigation
   const goToList = useCallback(() => {

@@ -10,8 +10,10 @@ import { ProductSupplyChain, type Product } from "@/components/product-supply-ch
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
+import { HighestRiskPathViewer } from "@/components/highest-risk-path-viewer"
+import { useHighestRiskPath } from "@/hooks/use-highest-risk-path"
 import { Button } from "@/components/ui/button"
-import { Route, Package, Layers, Globe, Factory } from "lucide-react"
+import { Route, Package, Layers, Globe, Factory, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
@@ -713,6 +715,8 @@ export default function SupplyChainCrisisDetector() {
     completedChunks: 0,
     totalChunks: 0,
   })
+  const [isHighestRiskPathOpen, setIsHighestRiskPathOpen] = useState(false)
+  const { pathData, isLoading: isPathLoading, fetchHighestRiskPath } = useHighestRiskPath()
 
   useEffect(() => {
     if (!countryRisks.length) return
@@ -828,6 +832,24 @@ export default function SupplyChainCrisisDetector() {
     })
   }, [riskSnapshots])
 
+  // Auto-fetch highest risk path when stored products are ready
+  useEffect(() => {
+    console.log("🛍️ Stored Products Updated:", storedProducts)
+    if (storedProducts.length === 0 || resolvedCountryRisks.length === 0) return
+
+    const fetchPath = async () => {
+      try {
+        console.log("📊 Fetching highest risk path for:", storedProducts.length, "products")
+        await fetchHighestRiskPath(storedProducts, resolvedCountryRisks)
+        setIsHighestRiskPathOpen(true)
+      } catch (error) {
+        console.error("Auto-fetch highest risk path failed:", error)
+      }
+    }
+
+    fetchPath()
+  }, [storedProducts, resolvedCountryRisks, fetchHighestRiskPath])
+
   const handleReset = () => {
     setSelectedCountry(null)
     setCustomRoute(null)
@@ -858,6 +880,11 @@ export default function SupplyChainCrisisDetector() {
 
   const handleToggleInventory = () => {
     setIsInventorySidebarOpen((prev) => !prev)
+  }
+
+  const handleFindHighestRiskPath = async () => {
+    setIsHighestRiskPathOpen(true)
+    await fetchHighestRiskPath(storedProducts, resolvedCountryRisks)
   }
 
   return (
@@ -898,6 +925,7 @@ export default function SupplyChainCrisisDetector() {
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
+          highestRiskPath={pathData}
         />
 
         {/* Action Buttons */}
@@ -974,6 +1002,22 @@ export default function SupplyChainCrisisDetector() {
           </Button>
 
           <Button
+            variant={isHighestRiskPathOpen ? "default" : "secondary"}
+            size="sm"
+            disabled={storedProducts.length === 0}
+            className={cn(
+              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+              isHighestRiskPathOpen
+                ? "bg-orange-600 text-white glow-orange"
+                : "glass-panel border-orange-500/20 hover:border-orange-400/40 hover:bg-orange-500/10"
+            )}
+            onClick={handleFindHighestRiskPath}
+          >
+            <Zap className="h-4 w-4" />
+            Critical Path
+          </Button>
+
+          <Button
             variant="secondary"
             size="sm"
             className="gap-2 font-medium glass-panel border-primary/20 shadow-lg hover:border-primary/40 hover:bg-muted/50 sleek-button cursor-pointer"
@@ -1011,6 +1055,15 @@ export default function SupplyChainCrisisDetector() {
         <PathDetailsPanel
           route={selectedRoute}
           onClose={() => setSelectedRoute(null)}
+        />
+
+        {/* Highest Risk Path Viewer */}
+        <HighestRiskPathViewer
+          countryRisks={resolvedCountryRisks}
+          isOpen={isHighestRiskPathOpen}
+          onClose={() => setIsHighestRiskPathOpen(false)}
+          pathData={pathData}
+          isLoading={isPathLoading}
         />
 
         {/* Relocation Advisor Panel */}

@@ -94,10 +94,18 @@ export function extractChokepointsFromPath(
   path: string[],
   riskMap: Map<string, CountryRisk>
 ): string[] {
-  return path.filter((nodeId) => {
+  console.log("🔍 extractChokepointsFromPath called with path:", path)
+  console.log("🔍 riskMap has", riskMap.size, "entries")
+  
+  const chokepoints = path.filter((nodeId) => {
     const node = riskMap.get(nodeId)
-    return node?.type === "chokepoint"
+    const isChokepoint = node?.type === "chokepoint"
+    console.log(`  Checking ${nodeId}: found=${!!node}, type=${node?.type}, isChokepoint=${isChokepoint}`)
+    return isChokepoint
   })
+  
+  console.log("🔍 Chokepoints result:", chokepoints)
+  return chokepoints
 }
 
 export function traverseSupplyChainBFS(
