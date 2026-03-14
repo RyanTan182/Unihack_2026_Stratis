@@ -8,6 +8,7 @@ import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-cha
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import type { ItemType } from "@/components/product-supply-chain"
+import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { PathDetailsPanel } from "@/components/path-details-panel"
 import { RelocationPanel } from "@/components/relocation-panel"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,6 @@ import { Route, Package, Layers, Globe, Factory } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
-import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { storedProductToMapProduct } from "@/lib/decompose/to-map-product"
 
 // Type definition for country risks
@@ -808,17 +808,17 @@ export default function SupplyChainCrisisDetector() {
       const relatedCountries = chokeToCountriesMap[node.id] ?? []
       if (relatedCountries.length === 0) return node
 
-      const availableSnapshots = relatedCountries
+      const availableSnapshots: CountryRiskEvaluation[] = relatedCountries
         .map((countryName: string) => riskSnapshots[countryName])
-        .filter(Boolean)
+        .filter((s: CountryRiskEvaluation | undefined): s is CountryRiskEvaluation => Boolean(s))
 
       if (availableSnapshots.length === 0) {
         return node
       }
 
-      const totalImport = availableSnapshots.reduce((sum, s) => sum + s.importRisk, 0)
-      const totalExport = availableSnapshots.reduce((sum, s) => sum + s.exportRisk, 0)
-      const totalOverall = availableSnapshots.reduce((sum, s) => sum + s.overallRisk, 0)
+      const totalImport = availableSnapshots.reduce((sum: number, s) => sum + s.importRisk, 0)
+      const totalExport = availableSnapshots.reduce((sum: number, s) => sum + s.exportRisk, 0)
+      const totalOverall = availableSnapshots.reduce((sum: number, s) => sum + s.overallRisk, 0)
 
       return {
         ...node,
@@ -866,6 +866,10 @@ export default function SupplyChainCrisisDetector() {
 
   const handleNodeSelect = useCallback((nodeId: string | null) => {
     setSelectedDecompNodeId(nodeId)
+  }, [])
+
+  const handleAddToInventory = useCallback((_product: Product) => {
+    setIsInventorySidebarOpen(true)
   }, [])
 
   const mapProducts = useMemo(() => {
@@ -1023,6 +1027,10 @@ export default function SupplyChainCrisisDetector() {
           countryRisks={countryRisks}
           products={products}
           onProductsChange={setProducts}
+          onAddToInventory={handleAddToInventory}
+          inventoryProductIds={inventoryProducts.map((p) => p.id)}
+          mapAddRequest={mapAddRequest}
+          onMapAddRequestHandled={() => setMapAddRequest(null)}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}
