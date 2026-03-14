@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ToastContainer } from '@/components/ui/toast-notification'
+import { AuthGuard } from '@/components/auth-guard'
 import './globals.css'
 
 const geist = Geist({
@@ -45,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased`}>
-        {children}
+        <AuthGuard>{children}</AuthGuard>
         <Analytics />
         <ToastContainer />
       </body>

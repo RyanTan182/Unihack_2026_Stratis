@@ -14,9 +14,12 @@ import MapGL, {
 import type { LngLatLike } from "react-map-gl/mapbox"
 import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
 import { extractChokepointsFromPath } from "@/lib/utils"
+import { Package, Boxes, Box, Fuel } from "lucide-react"
 
 export interface CountryRisk {
   id: string
@@ -68,6 +71,7 @@ export interface SupplyChainItem {
   riskDirection: "up" | "down"
   children: SupplyChainItem[]
   isExpanded?: boolean
+  isPredicted?: boolean
 }
 
 interface Product {
@@ -79,6 +83,7 @@ interface Product {
   riskPrediction: number
   riskDirection: "up" | "down"
   components: SupplyChainItem[]
+  isPredicted?: boolean
 }
 
 export interface ProductRouteSegment {
@@ -103,6 +108,7 @@ export interface ProductSupplyRoute {
   pathNodes: string[]
   segments: ProductRouteSegment[]
   chokepoints: string[]
+  isPredicted?: boolean
 }
 
 interface SupplyChainMapProps {
@@ -114,6 +120,7 @@ interface SupplyChainMapProps {
   selectedRouteId?: string | null
   onRouteClick?: (route: ProductSupplyRoute) => void
   showRiskZones?: boolean
+  onAddItemAtCountry?: (country: string, itemType: ItemType) => void
 }
 
 const getRiskColor = (risk: number): string => {
@@ -121,7 +128,7 @@ const getRiskColor = (risk: number): string => {
   if (risk >= 60) return "#ea580c"
   if (risk >= 40) return "#eab308"
   if (risk >= 20) return "#22c55e"
-  return "#0ea5e9"
+  return "#a1a1aa"
 }
 
 const getCountryColor = (risk: number | undefined): string => {
@@ -137,6 +144,11 @@ const getCountryColor = (risk: number | undefined): string => {
 const geoJsonCountryNameMap: Record<string, string> = {
   "United States": "United States of America",
   // Most other names match directly
+}
+
+// Reverse: GeoJSON country names to app country names
+const appCountryNameMap: Record<string, string> = {
+  "United States of America": "United States",
 }
 
 const nodeCoordinates: Record<string, [number, number]> = {
@@ -325,6 +337,7 @@ function extractProductRoutes(
     productColor: string,
     productId: string,
     productName: string,
+    isPredicted?: boolean,
   ) => {
     if (item.country !== parentCountry) {
       const pathNodes = findShortestPath(graph, item.country, parentCountry)
@@ -355,6 +368,7 @@ function extractProductRoutes(
         pathNodes,
         segments,
         chokepoints,
+        isPredicted,
       })
     }
 
@@ -365,12 +379,14 @@ function extractProductRoutes(
         item.name || item.type,
         productColor,
         productId,
-        productName
+        productName,
+        isPredicted ?? item.isPredicted,
       )
     })
   }
 
   products.forEach((product) => {
+    const isPredicted = product.isPredicted ?? false
     product.components.forEach((component) => {
       extractFromItem(
         component,
@@ -378,7 +394,8 @@ function extractProductRoutes(
         product.name || "Product",
         product.color,
         product.id,
-        product.name || "Unnamed Product"
+        product.name || "Unnamed Product",
+        isPredicted,
       )
     })
   })
@@ -386,7 +403,9 @@ function extractProductRoutes(
   return routes
 }
 
-// Generate GeoJSON for route arcs
+// Generate GeoJSON for route arcs.
+// When the path crosses the Pacific (|lon delta| > 180°), outputs coordinates that extend
+// beyond [-180, 180] so the line flows onto the next world copy (Mapbox renderWorldCopies).
 function generateArcLine(
   from: [number, number],
   to: [number, number]
@@ -394,21 +413,32 @@ function generateArcLine(
   const points: [number, number][] = []
   const segments = 100
 
-  // Calculate midpoint with elevation
-  const midLon = (from[0] + to[0]) / 2
-  const midLat = (from[1] + to[1]) / 2
+  let fromLon = from[0]
+  let toLon = to[0]
+  const lonDelta = toLon - fromLon
+
+  // Pacific crossing: use the path that extends into the next world copy
+  if (lonDelta > 180) {
+    toLon = fromLon + lonDelta - 360 // go west, extend past -180
+  } else if (lonDelta < -180) {
+    toLon = fromLon + lonDelta + 360 // go east (Pacific), extend past 180
+  }
+
+  const effectiveLonDelta = toLon - fromLon
+  const latDelta = to[1] - from[1]
   const distance = Math.sqrt(
-    Math.pow(to[0] - from[0], 2) + Math.pow(to[1] - from[1], 2)
+    Math.pow(effectiveLonDelta, 2) + Math.pow(latDelta, 2)
   )
   const elevation = Math.min(distance * 0.15, 15) // Cap elevation
 
   for (let i = 0; i <= segments; i++) {
     const t = i / segments
-    const lon = from[0] + (to[0] - from[0]) * t
-    const lat = from[1] + (to[1] - from[1]) * t
+    const lon = fromLon + effectiveLonDelta * t
+    const lat = from[1] + latDelta * t
 
     // Add elevation using a parabolic curve
     const elev = Math.sin(t * Math.PI) * elevation
+    // Don't normalize lon: values outside [-180, 180] render on adjacent world copies
     points.push([lon, lat + elev * 0.5])
   }
 
@@ -437,8 +467,8 @@ const mapStyle: mapboxgl.Style = {
       id: "background",
       type: "background",
       paint: {
-        // Pure OLED black for oceans/background
-        "background-color": "#000000"
+        // Dark gray base
+        "background-color": "#1a1a1f"
       }
     },
     {
@@ -479,6 +509,20 @@ const mapStyle: mapboxgl.Style = {
   glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf"
 }
 
+const itemTypeLabels: Record<ItemType, string> = {
+  product: "Product",
+  component: "Component",
+  material: "Material",
+  resource: "Resource",
+}
+
+const itemTypeIcons: Record<ItemType, typeof Package> = {
+  product: Package,
+  component: Boxes,
+  material: Box,
+  resource: Fuel,
+}
+
 export function SupplyChainMap({
   countryRisks,
   onCountrySelect,
@@ -488,8 +532,14 @@ export function SupplyChainMap({
   selectedRouteId,
   onRouteClick,
   showRiskZones = false,
+  onAddItemAtCountry,
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
+  const [mapContextMenu, setMapContextMenu] = useState<{
+    x: number
+    y: number
+    country: string
+  } | null>(null)
   const [viewState, setViewState] = useState({
     longitude: 20,
     latitude: 20,
@@ -629,56 +679,57 @@ export function SupplyChainMap({
   }, [productRoutes, selectedRouteId])
 
   const productCountryMarkers = useMemo(() => {
-    const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean }[] = []
-    const countryMap: globalThis.Map<string, { name: string; type: ItemType }[]> = new globalThis.Map()
+    const markers: { country: string; items: { name: string; type: ItemType }[]; isDangerous: boolean; hasPredictedItems: boolean }[] = []
+    const countryMap = new globalThis.Map<string, { items: { name: string; type: ItemType }[]; hasPredictedItems: boolean }>()
 
-    const collectFromItem = (item: SupplyChainItem) => {
-      const existing = countryMap.get(item.country) || []
-      existing.push({ name: item.name || item.type, type: item.type })
+    const collectFromItem = (item: SupplyChainItem, isPredicted: boolean) => {
+      const existing = countryMap.get(item.country) || { items: [], hasPredictedItems: false }
+      existing.items.push({ name: item.name || item.type, type: item.type })
+      existing.hasPredictedItems = existing.hasPredictedItems || isPredicted || !!item.isPredicted
       countryMap.set(item.country, existing)
-      item.children.forEach(collectFromItem)
+      item.children.forEach((child) => collectFromItem(child, isPredicted || !!item.isPredicted))
     }
 
     products.forEach((product) => {
-      const existing = countryMap.get(product.country) || []
-      existing.push({ name: product.name || "Product", type: "product" })
+      const isPredicted = product.isPredicted ?? false
+      const existing = countryMap.get(product.country) || { items: [], hasPredictedItems: false }
+      existing.items.push({ name: product.name || "Product", type: "product" })
+      existing.hasPredictedItems = existing.hasPredictedItems || isPredicted
       countryMap.set(product.country, existing)
-      product.components.forEach(collectFromItem)
+      product.components.forEach((component) => collectFromItem(component, isPredicted))
     })
 
-    countryMap.forEach((items: { name: string; type: ItemType }[], country: string) => {
+    countryMap.forEach(({ items, hasPredictedItems }, country: string) => {
       const countryRisk = countryRisks.find((c) => c.name === country)
       markers.push({
         country,
         items,
         isDangerous: (countryRisk?.overallRisk || 0) >= 60,
+        hasPredictedItems,
       })
     })
 
     return markers
   }, [products, countryRisks])
 
-  // Generate GeoJSON for network connections
+  // Generate GeoJSON for network connections (country-to-country only; no chokepoint lines)
   const networkGeoJSON = useMemo(() => {
-    const features = nodeConnections.map((edge) => {
-      const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
-      return {
+    const features = nodeConnections
+      .filter((edge) => edge.fromType === "country" && edge.toType === "country")
+      .map((edge) => ({
         type: "Feature" as const,
         properties: {
           id: edge.id,
-          isChokepoint,
           avgRisk: edge.avgRisk,
-          // Use primary cyan for chokepoints, muted slate for regular connections
-          color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
-          width: isChokepoint ? 1.5 : 1,
-          opacity: isChokepoint ? 0.35 : 0.2,
+          color: "#475569",
+          width: 1,
+          opacity: 0.2,
         },
         geometry: {
           type: "LineString" as const,
           coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
         },
-      }
-    })
+      }))
 
     return {
       type: "FeatureCollection" as const,
@@ -693,6 +744,7 @@ export function SupplyChainMap({
     productRoutes.forEach((route) => {
       const isSelected = selectedRouteId === route.id
       const isDimmed = !!selectedRouteId && !isSelected
+      const isPredicted = route.isPredicted ?? false
 
       route.segments.forEach((segment) => {
         const fromCoords = nodeCoordinates[segment.fromNode]
@@ -700,6 +752,9 @@ export function SupplyChainMap({
         if (!fromCoords || !toCoords) return
 
         const segmentIsDangerous = segment.riskScore >= 60
+        // Predicted routes: lower opacity (0.4) vs verified (0.9)
+        const baseOpacity = isPredicted ? 0.4 : (segmentIsDangerous ? 1 : 0.9)
+        const opacity = isDimmed ? 0.22 : baseOpacity
 
         features.push({
           type: "Feature" as const,
@@ -709,9 +764,10 @@ export function SupplyChainMap({
             isDangerous: segmentIsDangerous,
             isSelected,
             isDimmed,
+            isPredicted,
             color: segmentIsDangerous ? "#dc2626" : route.productColor,
             width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
-            opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
+            opacity,
           },
           geometry: {
             type: "LineString" as const,
@@ -806,6 +862,47 @@ export function SupplyChainMap({
     setPopupInfo(null)
   }, [onCountrySelect, selectedCountry])
 
+  const handleMapContextMenu = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault()
+      if (!onAddItemAtCountry) return
+
+      const map = mapRef.current?.getMap()
+      if (!map || !map.getLayer("countries-fill")) return
+
+      const container = map.getContainer()
+      const rect = container.getBoundingClientRect()
+      const point: [number, number] = [
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      ]
+
+      const features = map.queryRenderedFeatures(point, {
+        layers: ["countries-fill", "risk-zones-fill"].filter((id) =>
+          map.getLayer(id)
+        ),
+      })
+
+      const feature = features[0]
+      if (!feature?.properties) return
+
+      const geoName =
+        feature.properties.name ??
+        feature.properties.ADMIN ??
+        feature.properties.admin
+      if (!geoName || typeof geoName !== "string") return
+
+      const country = appCountryNameMap[geoName] ?? geoName
+
+      setMapContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        country,
+      })
+    },
+    [onAddItemAtCountry]
+  )
+
   const handleRouteClick = useCallback((event: MapMouseEvent, route: ProductSupplyRoute) => {
     event.originalEvent.stopPropagation()
     onRouteClick?.(route)
@@ -859,7 +956,10 @@ export function SupplyChainMap({
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="relative h-full w-full overflow-hidden bg-background">
+      <div
+        className="relative h-full w-full overflow-hidden bg-background"
+        onContextMenu={handleMapContextMenu}
+      >
         <MapGL
           ref={mapRef}
           {...viewState}
@@ -888,11 +988,7 @@ export function SupplyChainMap({
                 "line-color": ["get", "color"],
                 "line-width": ["get", "width"],
                 "line-opacity": ["get", "opacity"],
-                "line-dasharray": ["case",
-                  ["get", "isChokepoint"],
-                  ["literal", [4, 3]],
-                  ["literal", [2, 4]]
-                ],
+                "line-dasharray": [2, 4],
               }}
             />
           </Source>
@@ -1002,15 +1098,13 @@ export function SupplyChainMap({
                         />
                       )}
                       <div
-                        className="flex items-center justify-center rounded-full border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        className="rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-125"
                         style={{
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           backgroundColor: getRiskColor(segmentRisk),
                         }}
-                      >
-                        <span className="text-[9px] font-bold text-white">{index + 1}</span>
-                      </div>
+                      />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
@@ -1065,10 +1159,11 @@ export function SupplyChainMap({
                           width: 28,
                           height: 28,
                           backgroundColor: markerColor,
+                          opacity: marker.hasPredictedItems ? 0.6 : 1,
                         }}
                       >
                         {marker.items.length > 1 && (
-                          <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-white bg-background text-[8px] font-bold text-foreground">
+                          <div className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-background text-[8px] font-bold text-foreground">
                             {marker.items.length}
                           </div>
                         )}
@@ -1078,6 +1173,9 @@ export function SupplyChainMap({
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-foreground">{marker.country}</p>
+                      {marker.hasPredictedItems && (
+                        <p className="text-xs font-medium text-amber-500">AI-predicted supply chain</p>
+                      )}
                       {marker.isDangerous && (
                         <p className="text-xs font-medium text-red-400">High Risk Location</p>
                       )}
@@ -1131,29 +1229,25 @@ export function SupplyChainMap({
                     >
                       {isActive && (
                         <div
-                          className="absolute animate-pulse rounded-lg"
+                          className="absolute animate-pulse rounded-full"
                           style={{
                             width: 44,
                             height: 44,
                             margin: -6,
                             border: `2px solid ${activeColor}`,
-                            borderRadius: 10,
                             opacity: 0.6,
                           }}
                         />
                       )}
                       <div
-                        className="flex items-center justify-center rounded-md border-2 border-white shadow-lg transition-all duration-200 group-hover:scale-125 group-hover:shadow-xl"
+                        className="rounded-full border-2 border-white shadow-md transition-all duration-200 group-hover:scale-125"
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: 20,
+                          height: 20,
                           backgroundColor: getRiskColor(node.overallRisk),
-                          borderColor: isSelected ? "#111827" : "#fff",
-                          borderWidth: isSelected ? 2.5 : 2,
+                          borderWidth: isSelected ? 3 : 2,
                         }}
-                      >
-                        <div className="h-2 w-2 rounded-full bg-white" />
-                      </div>
+                      />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className="rounded-lg border border-border/50 bg-card/95 px-3 py-2 shadow-xl backdrop-blur-xl">
@@ -1189,6 +1283,47 @@ export function SupplyChainMap({
           />
         </MapGL>
 
+        {/* Right-click context menu: Add item at country */}
+        {mapContextMenu && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              aria-hidden
+              onClick={() => setMapContextMenu(null)}
+            />
+            <div
+              className="fixed z-50 min-w-[200px] rounded-lg border border-border/50 bg-card/95 py-1 shadow-xl backdrop-blur-xl"
+              style={{
+                left: mapContextMenu.x,
+                top: mapContextMenu.y,
+              }}
+            >
+              <p className="px-3 py-2 text-xs font-medium text-muted-foreground">
+                Add to {mapContextMenu.country}
+              </p>
+              {(["product", "component", "material", "resource"] as ItemType[]).map(
+                (type) => {
+                  const Icon = itemTypeIcons[type]
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted/50"
+                      onClick={() => {
+                        onAddItemAtCountry?.(mapContextMenu.country, type)
+                        setMapContextMenu(null)
+                      }}
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      {itemTypeLabels[type]}
+                    </button>
+                  )
+                }
+              )}
+            </div>
+          </>
+        )}
+
         {/* Custom Mapbox Control Styles */}
         <style jsx global>{`
           .mapboxgl-ctrl-group {
@@ -1223,6 +1358,11 @@ export function SupplyChainMap({
           <p className="mb-3 text-xs font-semibold text-foreground">
             {showRiskZones ? "Risk Zones View" : "Map Legend"}
           </p>
+          {onAddItemAtCountry && (
+            <p className="mb-3 text-[10px] text-muted-foreground">
+              Right-click on a country to add products, components, or materials
+            </p>
+          )}
 
           {showRiskZones ? (
             /* Risk Zones Legend */
@@ -1236,7 +1376,7 @@ export function SupplyChainMap({
                   { color: "#ea580c", label: "High (60-79%)", range: "Significant risk" },
                   { color: "#eab308", label: "Medium (40-59%)", range: "Moderate risk" },
                   { color: "#22c55e", label: "Low (20-39%)", range: "Low risk" },
-                  { color: "#0ea5e9", label: "Minimal (0-19%)", range: "Safe" },
+                  { color: "#a1a1aa", label: "Minimal (0-19%)", range: "Safe" },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-3">
                     <div className="h-4 w-6 rounded" style={{ backgroundColor: item.color }} />
@@ -1262,7 +1402,7 @@ export function SupplyChainMap({
                     { color: "#ea580c", label: "High" },
                     { color: "#eab308", label: "Medium" },
                     { color: "#22c55e", label: "Low" },
-                    { color: "#06b6d4", label: "Minimal" },
+                    { color: "#a1a1aa", label: "Minimal" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-1.5">
                       <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />

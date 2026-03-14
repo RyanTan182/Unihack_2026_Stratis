@@ -108,7 +108,7 @@ const getRiskLevel = (score: number) => {
   if (score >= 60) return { label: "High", color: "bg-orange-500 text-white", textColor: "text-orange-400" }
   if (score >= 40) return { label: "Medium", color: "bg-yellow-500 text-foreground", textColor: "text-yellow-400" }
   if (score >= 20) return { label: "Low", color: "bg-emerald-500 text-white", textColor: "text-emerald-400" }
-  return { label: "Minimal", color: "bg-cyan-500 text-white", textColor: "text-cyan-400" }
+  return { label: "Minimal", color: "bg-zinc-500 text-white", textColor: "text-zinc-400" }
 }
 
 const calculateRouteRisk = (waypoints: RouteWaypoint[]): { totalRisk: number; segmentRisks: number[] } => {
@@ -265,7 +265,7 @@ export function RouteBuilder({
           <div className="space-y-2">
             <label className="text-xs font-medium text-foreground">Add Country</label>
             <Select onValueChange={addWaypoint}>
-              <SelectTrigger className="h-10 border-border/50 bg-muted/30 transition-colors focus:border-primary/50">
+              <SelectTrigger className="h-10 border-border/50 bg-transparent transition-colors focus:border-primary/50">
                 <SelectValue placeholder="Select a country..." />
               </SelectTrigger>
               <SelectContent className="glass-panel border-primary/20">
