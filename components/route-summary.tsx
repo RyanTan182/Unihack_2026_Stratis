@@ -7,11 +7,9 @@ import {
   ArrowRight,
   Ship,
   TrendingUp,
-  TrendingDown,
   ChevronUp,
   ChevronDown,
   AlertTriangle,
-  CheckCircle,
   Route,
   Loader2,
 } from "lucide-react"

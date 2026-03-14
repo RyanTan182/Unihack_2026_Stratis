@@ -24,7 +24,7 @@ export function calculateDistance(coord1: [number, number], coord2: [number, num
     Math.sin(dLon / 2) * Math.sin(dLon / 2)
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * 2 * c
+  return Math.round(R * c)
 }
 
 /**
