@@ -24,12 +24,6 @@ interface TraversalResult {
   uniqueChokepoints: string[]
 }
 
-/**
- * Extract chokepoints from a path of nodes
- * @param path - Array of node IDs representing the path
- * @param riskMap - Map of node IDs to their CountryRisk data
- * @returns Array of chokepoint IDs found in the path
- */
 export function extractChokepointsFromPath(
   path: string[],
   riskMap: Map<string, CountryRiskForTraversal>
@@ -40,14 +34,6 @@ export function extractChokepointsFromPath(
   })
 }
 
-/**
- * Traverse a SupplyChainItem graph using BFS to collect unique countries and chokepoints
- * that are passed through when traveling between countries in the supply chain
- * @param rootItem - The starting SupplyChainItem
- * @param rootCountry - The country of the root/parent item
- * @param countryRisks - Array of all country and chokepoint nodes
- * @returns Object containing unique countries and unique chokepoints on the paths
- */
 export function traverseSupplyChainBFS(
   rootItem: SupplyChainItemForTraversal,
   rootCountry: string,
@@ -56,10 +42,8 @@ export function traverseSupplyChainBFS(
   const uniqueCountries = new Set<string>()
   const uniqueChokepoints = new Set<string>()
 
-  // Create a map for quick lookup of country/chokepoint risk data
   const riskMap = new Map(countryRisks.map((r) => [r.id, r]))
 
-  // Build adjacency map for pathfinding
   const graph = new Map<string, string[]>()
   countryRisks.forEach((node) => {
     if (!graph.has(node.id)) graph.set(node.id, [])
@@ -70,14 +54,12 @@ export function traverseSupplyChainBFS(
     })
   })
 
-  // Remove duplicates from connections
   graph.forEach((connections) => {
     const unique = Array.from(new Set(connections))
     connections.length = 0
     connections.push(...unique)
   })
 
-  // BFS to find shortest path between two nodes
   const findShortestPath = (start: string, end: string): string[] => {
     if (start === end) return [start]
     if (!graph.has(start) || !graph.has(end)) return [start, end]
@@ -104,7 +86,6 @@ export function traverseSupplyChainBFS(
     return [start, end]
   }
 
-  // BFS traversal of supply chain tree
   const queue: Array<{ item: SupplyChainItemForTraversal; parentCountry: string }> = [
     { item: rootItem, parentCountry: rootCountry },
   ]
@@ -120,11 +101,9 @@ export function traverseSupplyChainBFS(
     uniqueCountries.add(item.country)
     uniqueCountries.add(parentCountry)
 
-    // Find path between item country and parent country
     if (item.country !== parentCountry) {
       const path = findShortestPath(item.country, parentCountry)
       
-      // Add all nodes in path to countries
       path.forEach((nodeId) => {
         const node = riskMap.get(nodeId)
         if (node?.type === "country") {
@@ -132,12 +111,10 @@ export function traverseSupplyChainBFS(
         }
       })
 
-      // Extract and add chokepoints from path
       const chokepoints = extractChokepointsFromPath(path, riskMap)
       chokepoints.forEach((cp) => uniqueChokepoints.add(cp))
     }
 
-    // Add children to queue, with current item's country as their parent
     item.children.forEach((child) => {
       queue.push({ item: child, parentCountry: item.country })
     })
