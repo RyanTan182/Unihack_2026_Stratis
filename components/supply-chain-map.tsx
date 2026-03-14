@@ -18,6 +18,7 @@ import "mapbox-gl/dist/mapbox-gl.css"
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
+import { extractChokepointsFromPath } from "@/lib/utils"
 
 interface CountryRisk {
   id: string
@@ -330,9 +331,7 @@ function extractProductRoutes(
     if (item.country !== parentCountry) {
       const pathNodes = findShortestPath(graph, item.country, parentCountry)
       const segments = buildRouteSegmentsFromPath(pathNodes, countryRisks)
-      const chokepoints = pathNodes.filter(
-        (nodeId) => nodeMap.get(nodeId)?.type === "chokepoint"
-      )
+      const chokepoints = extractChokepointsFromPath(pathNodes, nodeMap)
 
       const segmentRiskScores = segments.map((s) => s.riskScore)
       const avgRisk =
