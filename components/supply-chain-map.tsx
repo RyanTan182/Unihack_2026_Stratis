@@ -710,27 +710,24 @@ export function SupplyChainMap({
     return markers
   }, [products, countryRisks])
 
-  // Generate GeoJSON for network connections
+  // Generate GeoJSON for network connections (country-to-country only; no chokepoint lines)
   const networkGeoJSON = useMemo(() => {
-    const features = nodeConnections.map((edge) => {
-      const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
-      return {
+    const features = nodeConnections
+      .filter((edge) => edge.fromType === "country" && edge.toType === "country")
+      .map((edge) => ({
         type: "Feature" as const,
         properties: {
           id: edge.id,
-          isChokepoint,
           avgRisk: edge.avgRisk,
-          // Use primary for chokepoints, muted slate for regular connections
-          color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
-          width: isChokepoint ? 1.5 : 1,
-          opacity: isChokepoint ? 0.35 : 0.2,
+          color: "#475569",
+          width: 1,
+          opacity: 0.2,
         },
         geometry: {
           type: "LineString" as const,
           coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
         },
-      }
-    })
+      }))
 
     return {
       type: "FeatureCollection" as const,
@@ -944,11 +941,7 @@ export function SupplyChainMap({
                 "line-color": ["get", "color"],
                 "line-width": ["get", "width"],
                 "line-opacity": ["get", "opacity"],
-                "line-dasharray": ["case",
-                  ["get", "isChokepoint"],
-                  ["literal", [4, 3]],
-                  ["literal", [2, 4]]
-                ],
+                "line-dasharray": [2, 4],
               }}
             />
           </Source>
