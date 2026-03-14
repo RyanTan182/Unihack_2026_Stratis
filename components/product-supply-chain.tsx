@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   ChevronLeft,
   ChevronDown,
@@ -61,7 +61,7 @@ export interface CountryRisk {
   newsHighlights: string[]
 }
 
-type ItemType = "product" | "component" | "material" | "resource"
+export type ItemType = "product" | "component" | "material" | "resource"
 
 interface SupplyChainItem {
   id: string
@@ -93,18 +93,21 @@ interface ProductSupplyChainProps {
   onProductsChange: (products: Product[]) => void
   onAddToInventory?: (product: Product) => void
   inventoryProductIds?: string[]
+  /** When set, add an item of this type in this country (from map right-click) */
+  mapAddRequest?: { country: string; itemType: ItemType } | null
+  onMapAddRequestHandled?: () => void
 }
 
-// Modern product palette with glow effects
+// Muted grayscale product palette
 const PRODUCT_COLORS = [
-  "#06b6d4", // Cyan
-  "#22c55e", // Green
-  "#f59e0b", // Amber
-  "#8b5cf6", // Violet
-  "#ec4899", // Pink
-  "#14b8a6", // Teal
-  "#f97316", // Orange
-  "#ef4444", // Red
+  "#a1a1aa", // Zinc 400
+  "#71717a", // Zinc 500
+  "#52525b", // Zinc 600
+  "#d4d4d8", // Zinc 300
+  "#a8a29e", // Stone 400
+  "#78716c", // Stone 500
+  "#94a3b8", // Slate 400
+  "#64748b", // Slate 500
 ]
 
 const itemTypeConfig: Record<ItemType, { icon: typeof Package; color: string; label: string }> = {
@@ -564,6 +567,8 @@ export function ProductSupplyChain({
   onProductsChange,
   onAddToInventory,
   inventoryProductIds = [],
+  mapAddRequest,
+  onMapAddRequestHandled,
 }: ProductSupplyChainProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [view, setView] = useState<"list" | "detail">("list")
@@ -572,6 +577,58 @@ export function ProductSupplyChain({
   const [aiLoading, setAiLoading] = useState(false)
 
   const selectedProduct = products.find((p) => p.id === selectedProductId)
+
+  // Handle map right-click add request
+  useEffect(() => {
+    if (!mapAddRequest || !onMapAddRequestHandled) return
+
+    const { country, itemType } = mapAddRequest
+    const prediction = generatePrediction(45)
+
+    if (itemType === "product") {
+      const color = PRODUCT_COLORS[products.length % PRODUCT_COLORS.length]
+      const newProduct: Product = {
+        id: `product-${Date.now()}`,
+        name: "",
+        type: "product",
+        country,
+        color,
+        riskPrediction: prediction.value,
+        riskDirection: prediction.direction,
+        components: [],
+      }
+      onProductsChange([...products, newProduct])
+      setSelectedProductId(newProduct.id)
+      setView("detail")
+    } else {
+      const targetProduct = selectedProduct ?? products[0]
+      if (!targetProduct) return
+
+      const newItem: SupplyChainItem = {
+        id: `${itemType}-${Date.now()}`,
+        name: "",
+        type: itemType,
+        country,
+        riskPrediction: prediction.value,
+        riskDirection: prediction.direction,
+        children: [],
+        isExpanded: true,
+      }
+
+      onProductsChange(
+        products.map((p) =>
+          p.id === targetProduct.id
+            ? { ...p, components: [...p.components, newItem] }
+            : p
+        )
+      )
+      setSelectedProductId(targetProduct.id)
+      setView("detail")
+    }
+
+    onMapAddRequestHandled()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when mapAddRequest is set
+  }, [mapAddRequest])
 
   const handleAiOptimize = () => {
     if (!selectedProduct) return

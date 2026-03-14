@@ -68,7 +68,7 @@ const getRiskLevel = (score: number) => {
   if (score >= 60) return { label: "High", color: "text-orange-400" }
   if (score >= 40) return { label: "Medium", color: "text-yellow-400" }
   if (score >= 20) return { label: "Low", color: "text-emerald-400" }
-  return { label: "Minimal", color: "text-cyan-400" }
+  return { label: "Minimal", color: "text-zinc-400" }
 }
 
 export function RelocationForm({ onSubmit, isLoading, countryOptions }: RelocationFormProps) {
@@ -136,7 +136,7 @@ export function RelocationForm({ onSubmit, isLoading, countryOptions }: Relocati
             Current Factory Location
           </label>
           <Select value={currentCountry} onValueChange={setCurrentCountry}>
-            <SelectTrigger className="w-full border-border/50 bg-muted/30">
+            <SelectTrigger className="w-full border-border/50 bg-transparent">
               <SelectValue placeholder="Select current country..." />
             </SelectTrigger>
             <SelectContent className="glass-panel border-primary/20">
@@ -163,7 +163,7 @@ export function RelocationForm({ onSubmit, isLoading, countryOptions }: Relocati
             Industry Type
           </label>
           <Select value={industryType} onValueChange={(v) => setIndustryType(v as IndustryType)}>
-            <SelectTrigger className="w-full border-border/50 bg-muted/30">
+            <SelectTrigger className="w-full border-border/50 bg-transparent">
               <SelectValue placeholder="Select industry..." />
             </SelectTrigger>
             <SelectContent className="glass-panel border-primary/20">

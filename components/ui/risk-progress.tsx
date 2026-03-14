@@ -19,7 +19,7 @@ export function RiskProgress({ value, className, size = "md", showLabel = false,
     if (score >= 60) return "#f97316" // Orange
     if (score >= 40) return "#eab308" // Yellow
     if (score >= 20) return "#22c55e" // Green
-    return "#06b6d4" // Cyan
+    return "#a1a1aa" // Muted gray
   }
 
   const sizeClasses = {
@@ -69,7 +69,7 @@ export function RiskBar({
     if (score >= 60) return "#f97316"
     if (score >= 40) return "#eab308"
     if (score >= 20) return "#22c55e"
-    return "#06b6d4"
+    return "#a1a1aa"
   }
 
   const getTextColor = (score: number): string => {
@@ -77,7 +77,7 @@ export function RiskBar({
     if (score >= 60) return "text-orange-400"
     if (score >= 40) return "text-yellow-400"
     if (score >= 20) return "text-emerald-400"
-    return "text-cyan-400"
+    return "text-zinc-400"
   }
 
   return (

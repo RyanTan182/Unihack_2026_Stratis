@@ -127,7 +127,7 @@ const getRiskColor = (risk: number): string => {
   if (risk >= 60) return "text-orange-400"
   if (risk >= 40) return "text-yellow-400"
   if (risk >= 20) return "text-emerald-400"
-  return "text-cyan-400"
+  return "text-zinc-400"
 }
 
 const NEWS_CACHE_TTL_MS = 5 * 60 * 1000 // change to 30 * 1000 for 30s
@@ -335,7 +335,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4">
           {activeTab === "risk" && (
-            <div className="space-y-4">
+            <div className="space-y-4 stagger-children animate-in fade-in-0 slide-in-from-top-2 duration-200">
               {/* Risk Beta Notice */}
               <div className="rounded-xl border border-border/50 bg-card/30 p-3">
                 <div className="flex items-start gap-2.5">
@@ -446,14 +446,15 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                   >
                     <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-2.5 text-left transition-colors hover:bg-muted/50">
                       <div className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-md border transition-colors",
+                        "flex h-6 w-6 items-center justify-center rounded-md border transition-all duration-200",
                         metric.isActive ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-muted-foreground group-hover:border-primary/50"
                       )}>
-                        {expandedMetrics.includes(metric.id) ? (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        )}
+                        <ChevronRight
+                          className={cn(
+                            "h-3.5 w-3.5 transition-transform duration-200",
+                            expandedMetrics.includes(metric.id) && "rotate-90"
+                          )}
+                        />
                       </div>
                       <span className="flex-1 text-xs font-medium text-foreground">{metric.name}</span>
                       {metric.isActive && (
@@ -489,7 +490,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                     { color: "bg-orange-500", textColor: "text-orange-400", label: "High", range: "60-79" },
                     { color: "bg-yellow-500", textColor: "text-yellow-400", label: "Medium", range: "40-59" },
                     { color: "bg-emerald-500", textColor: "text-emerald-400", label: "Low", range: "20-39" },
-                    { color: "bg-cyan-500", textColor: "text-cyan-400", label: "Minimal", range: "0-19" },
+                    { color: "bg-zinc-500", textColor: "text-zinc-400", label: "Minimal", range: "0-19" },
                   ].map((item) => (
                     <div key={item.label} className="flex items-center gap-3">
                       <div
@@ -498,7 +499,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                           backgroundColor: item.color.includes('red') ? '#ef4444' :
                             item.color.includes('orange') ? '#f97316' :
                             item.color.includes('yellow') ? '#eab308' :
-                            item.color.includes('emerald') ? '#22c55e' : '#06b6d4'
+                            item.color.includes('emerald') ? '#22c55e' : '#a1a1aa'
                         }}
                       />
                       <span className={cn("flex-1 text-xs font-medium", item.textColor)}>{item.label}</span>
@@ -514,7 +515,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
           )}
 
           {activeTab === "filters" && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-200">
               <div>
                 <p className="mb-3 text-xs font-medium text-foreground">High Risk Countries</p>
                 <div className="space-y-1">
@@ -547,7 +548,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
           )}
 
           {activeTab === "metrics" && (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
               <p className="text-xs text-muted-foreground">
                 Configure which metrics are used in risk calculations.
               </p>
@@ -572,7 +573,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
           )}
 
           {activeTab === "options" && (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
               <p className="text-xs text-muted-foreground">
                 Configure display and analysis options.
               </p>

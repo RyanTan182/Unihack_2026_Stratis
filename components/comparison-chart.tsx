@@ -18,7 +18,7 @@ interface ComparisonChartProps {
 }
 
 const COLORS = [
-  "oklch(0.72 0.14 195)",  // cyan
+  "oklch(0.75 0.008 260)",  // muted gray
   "oklch(0.65 0.18 145)",  // emerald
   "oklch(0.75 0.18 60)",   // amber
   "oklch(0.70 0.18 280)",  // violet

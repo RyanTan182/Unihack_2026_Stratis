@@ -15,7 +15,7 @@ const badgeVariants = cva(
         high: "border border-orange-500/50 text-orange-400",
         medium: "border border-yellow-500/50 text-yellow-400",
         low: "border border-emerald-500/50 text-emerald-400",
-        minimal: "border border-cyan-500/50 text-cyan-400",
+        minimal: "border border-zinc-500/50 text-zinc-400",
         // Status
         active: "border border-emerald-500/50 bg-emerald-500/10 text-emerald-400",
         inactive: "border border-border text-muted-foreground",
