@@ -12,12 +12,6 @@ interface TraversalResult {
   uniqueChokepoints: string[]
 }
 
-/**
- * Build an adjacency graph from country risks
- * @param countryRisks - Array of all country and chokepoint nodes
- * @returns A Map representing the adjacency graph with copies of node objects as values
- * Each connection propagates the bottleneck (highest overallRisk) to connected nodes
- */
 export function buildCountryGraph(
   countryRisks: CountryRisk[]
 ): Map<string, CountryRisk[]> {
@@ -30,33 +24,15 @@ export function buildCountryGraph(
       const connNode = riskMap.get(connId)
       if (connNode) {
         if (!graph.has(connId)) graph.set(connId, [])
-        
-        // Calculate bottleneck as the maximum risk of the two nodes
-        const bottleneck = Math.max(node.overallRisk, connNode.overallRisk)
-        
-        // Push copies with the bottleneck risk set
-        graph.get(node.id)!.push({ ...connNode, overallRisk: bottleneck })
-        graph.get(connId)!.push({ ...node, overallRisk: bottleneck })
+        graph.get(node.id)!.push(connNode)
+        graph.get(connId)!.push(node)
       }
     })
-  })
-
-  // Remove duplicates from each node's connections
-  graph.forEach((connections) => {
-    const unique = Array.from(new Map(connections.map(c => [c.id, c])).values())
-    connections.length = 0
-    connections.push(...unique)
   })
 
   return graph
 }
 
-/**
- * Extract chokepoints from a path
- * @param path - Array of node IDs representing the path
- * @param riskMap - Map of node IDs to their CountryRisk data
- * @returns Array of chokepoint IDs found in the path
- */
 export function extractChokepointsFromPath(
   path: string[],
   riskMap: Map<string, CountryRisk>

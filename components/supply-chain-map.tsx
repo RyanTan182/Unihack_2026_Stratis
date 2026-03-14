@@ -56,7 +56,7 @@ interface CustomRoute {
 
 type ItemType = "product" | "component" | "material" | "resource"
 
-interface SupplyChainItem {
+export interface SupplyChainItem {
   id: string
   name: string
   type: ItemType
