@@ -15,8 +15,9 @@ import { SupplierRecommendations } from "@/components/supplier-recommendations"
 import { RouteSummary } from "@/components/route-summary"
 import { AlertBanner, type AlertData } from "@/components/alert-banner"
 import { ActionBar } from "@/components/action-bar"
+import { ProductSupplyChainRoutesPanel } from "@/components/product-supply-chain-routes-panel"
 import { cn } from "@/lib/utils"
-import type { FoundRoute } from "@/lib/route-types"
+import type { FoundRoute, CountryRiskData as RouteCountryRiskData } from "@/lib/route-types"
 import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateAllCountriesInChunks } from "./lib/risk-client"
@@ -54,9 +55,9 @@ const countryRisks: CountryRiskData[] = [
     name: "China",
     type: "country",
     connections: ["Strait of Malacca", "Singapore", "Vietnam", "Japan", "South Korea", "Taiwan"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 65,
+    exportRisk: 75,
+    overallRisk: 70,
     newsHighlights: [
       "New tariff regulations affecting electronics exports",
       "Port congestion reported in Shanghai",
@@ -68,9 +69,9 @@ const countryRisks: CountryRiskData[] = [
     name: "United States",
     type: "country",
     connections: ["Canada", "Mexico", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 25,
+    exportRisk: 40,
+    overallRisk: 32,
     newsHighlights: [
       "New trade agreement negotiations ongoing",
       "West Coast port operations stabilizing",
@@ -81,9 +82,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Germany",
     type: "country",
     connections: ["Netherlands", "France", "Poland", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 20,
+    exportRisk: 28,
+    overallRisk: 24,
     newsHighlights: ["Strong logistics infrastructure performance"],
   },
   {
@@ -91,9 +92,9 @@ const countryRisks: CountryRiskData[] = [
     name: "India",
     type: "country",
     connections: ["Strait of Malacca", "Strait of Hormuz", "Bab-el-Mandeb", "United Arab Emirates", "Singapore", "Bangladesh", "Pakistan"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 48,
+    exportRisk: 56,
+    overallRisk: 52,
     newsHighlights: [
       "Monsoon affecting regional logistics",
       "Textile export growth continues",
@@ -104,9 +105,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Vietnam",
     type: "country",
     connections: ["China", "Thailand", "Malaysia", "Singapore", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 40,
+    exportRisk: 48,
+    overallRisk: 44,
     newsHighlights: [
       "Manufacturing capacity expanding",
       "Infrastructure improvements underway",
@@ -117,9 +118,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Brazil",
     type: "country",
     connections: ["Argentina", "Chile", "Panama Canal", "Peru"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 50,
+    exportRisk: 60,
+    overallRisk: 55,
     newsHighlights: [
       "Currency volatility affecting trade costs",
       "Agricultural exports remain strong",
@@ -130,9 +131,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Indonesia",
     type: "country",
     connections: ["Malaysia", "Singapore", "Australia", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 42,
+    exportRisk: 52,
+    overallRisk: 47,
     newsHighlights: ["Palm oil export restrictions easing"],
   },
   {
@@ -140,9 +141,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Japan",
     type: "country",
     connections: ["China", "South Korea", "Taiwan", "Strait of Malacca", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 24,
+    exportRisk: 30,
+    overallRisk: 27,
     newsHighlights: ["Semiconductor supply chain improvements"],
   },
   {
@@ -150,9 +151,9 @@ const countryRisks: CountryRiskData[] = [
     name: "South Korea",
     type: "country",
     connections: ["China", "Japan", "Taiwan", "Strait of Malacca", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 27,
+    exportRisk: 33,
+    overallRisk: 30,
     newsHighlights: ["Tech exports maintaining stability"],
   },
   {
@@ -160,9 +161,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Mexico",
     type: "country",
     connections: ["United States", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
     newsHighlights: [
       "Near-shoring trend boosting manufacturing",
       "Cross-border logistics improving",
@@ -173,9 +174,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Russia",
     type: "country",
     connections: ["Georgia", "Bosphorus", "China", "Iran"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 85,
+    exportRisk: 95,
+    overallRisk: 90,
     newsHighlights: [
       "Ongoing sanctions affecting trade routes",
       "Payment system complications",
@@ -187,9 +188,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Ukraine",
     type: "country",
     connections: ["Romania", "Bosphorus", "Poland"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 90,
+    exportRisk: 96,
+    overallRisk: 93,
     newsHighlights: [
       "Active conflict zones affecting logistics",
       "Agricultural exports disrupted",
@@ -200,9 +201,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Taiwan",
     type: "country",
     connections: ["China", "Japan", "South Korea", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 55,
+    exportRisk: 65,
+    overallRisk: 60,
     newsHighlights: [
       "Semiconductor supply critical globally",
       "Geopolitical tensions elevated",
@@ -213,9 +214,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Saudi Arabia",
     type: "country",
     connections: ["Strait of Hormuz", "Bab-el-Mandeb", "United Arab Emirates", "Qatar", "Egypt"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 32,
+    exportRisk: 42,
+    overallRisk: 37,
     newsHighlights: ["Energy export routes stable"],
   },
   {
@@ -223,9 +224,9 @@ const countryRisks: CountryRiskData[] = [
     name: "South Africa",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 45,
+    exportRisk: 55,
+    overallRisk: 50,
     newsHighlights: [
       "Port operations experiencing delays",
       "Mining sector exports fluctuating",
@@ -236,9 +237,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Turkey",
     type: "country",
     connections: ["Greece", "Bulgaria", "Romania", "Bosphorus", "Suez Canal", "Iran"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 58,
+    exportRisk: 68,
+    overallRisk: 63,
     newsHighlights: [
       "Currency instability affecting costs",
       "Strategic position for regional trade",
@@ -249,9 +250,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Thailand",
     type: "country",
     connections: ["Vietnam", "Malaysia", "Singapore", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 35,
+    exportRisk: 43,
+    overallRisk: 39,
     newsHighlights: ["Electronics manufacturing stable"],
   },
   {
@@ -259,9 +260,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Malaysia",
     type: "country",
     connections: ["Thailand", "Vietnam", "Singapore", "Indonesia", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 38,
+    overallRisk: 34,
     newsHighlights: ["Semiconductor supply chain hub"],
   },
   {
@@ -269,9 +270,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Singapore",
     type: "country",
     connections: ["Malaysia", "Indonesia", "Vietnam", "Thailand", "India", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 15,
+    exportRisk: 19,
+    overallRisk: 17,
     newsHighlights: ["Premier logistics hub status maintained"],
   },
   {
@@ -279,9 +280,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Netherlands",
     type: "country",
     connections: ["Germany", "France", "United Kingdom", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 19,
+    exportRisk: 23,
+    overallRisk: 21,
     newsHighlights: ["Rotterdam port efficiency high"],
   },
   {
@@ -289,9 +290,9 @@ const countryRisks: CountryRiskData[] = [
     name: "United Kingdom",
     type: "country",
     connections: ["Netherlands", "France"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 38,
+    overallRisk: 34,
     newsHighlights: ["Post-Brexit trade flows stabilizing"],
   },
   {
@@ -299,9 +300,9 @@ const countryRisks: CountryRiskData[] = [
     name: "France",
     type: "country",
     connections: ["Germany", "Netherlands", "United Kingdom", "Spain", "Italy", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 26,
+    exportRisk: 32,
+    overallRisk: 29,
     newsHighlights: ["Agricultural exports strong"],
   },
   {
@@ -309,9 +310,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Italy",
     type: "country",
     connections: ["France", "Spain", "Greece", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 38,
+    overallRisk: 34,
     newsHighlights: ["Manufacturing sector resilient"],
   },
   {
@@ -319,9 +320,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Spain",
     type: "country",
     connections: ["France", "Italy"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 28,
+    exportRisk: 34,
+    overallRisk: 31,
     newsHighlights: ["Mediterranean trade routes stable"],
   },
   {
@@ -329,9 +330,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Australia",
     type: "country",
     connections: ["Indonesia", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 24,
+    exportRisk: 30,
+    overallRisk: 27,
     newsHighlights: ["Resource exports to Asia strong"],
   },
   {
@@ -339,9 +340,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Canada",
     type: "country",
     connections: ["United States", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 21,
+    exportRisk: 27,
+    overallRisk: 24,
     newsHighlights: ["USMCA trade flows steady"],
   },
   {
@@ -349,9 +350,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Egypt",
     type: "country",
     connections: ["Suez Canal", "Bab-el-Mandeb", "Saudi Arabia", "Greece"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 48,
+    exportRisk: 58,
+    overallRisk: 53,
     newsHighlights: [
       "Suez Canal operations normal",
       "Regional tensions monitoring",
@@ -362,9 +363,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Nigeria",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 60,
+    exportRisk: 70,
+    overallRisk: 65,
     newsHighlights: [
       "Oil exports facing logistics challenges",
       "Currency volatility high",
@@ -375,9 +376,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Argentina",
     type: "country",
     connections: ["Brazil", "Chile", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 65,
+    exportRisk: 75,
+    overallRisk: 70,
     newsHighlights: [
       "Currency restrictions affecting trade",
       "Agricultural exports strong",
@@ -388,9 +389,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Chile",
     type: "country",
     connections: ["Peru", "Brazil", "Argentina", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 36,
+    overallRisk: 33,
     newsHighlights: ["Mining exports stable"],
   },
   {
@@ -398,9 +399,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Poland",
     type: "country",
     connections: ["Germany", "Ukraine", "Romania"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 33,
+    exportRisk: 41,
+    overallRisk: 37,
     newsHighlights: ["Manufacturing hub for Europe"],
   },
   {
@@ -408,9 +409,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Bangladesh",
     type: "country",
     connections: ["India", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 48,
+    exportRisk: 58,
+    overallRisk: 53,
     newsHighlights: [
       "Textile exports growing",
       "Infrastructure development ongoing",
@@ -421,9 +422,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Pakistan",
     type: "country",
     connections: ["India", "Iran", "Strait of Hormuz"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 65,
+    exportRisk: 75,
+    overallRisk: 70,
     newsHighlights: [
       "Economic instability affecting trade",
       "Textile sector challenges",
@@ -434,9 +435,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Philippines",
     type: "country",
     connections: ["Taiwan", "Japan", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 40,
+    exportRisk: 48,
+    overallRisk: 44,
     newsHighlights: ["Electronics manufacturing growing"],
   },
   {
@@ -570,6 +571,7 @@ export default function SupplyChainCrisisDetector() {
   const [alternativesPanelOpen, setAlternativesPanelOpen] = useState(false)
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
+  const [routesPanelProduct, setRoutesPanelProduct] = useState<StoredProduct | null>(null)
 
   // Alternative supplier scanning
   const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
@@ -984,6 +986,8 @@ export default function SupplyChainCrisisDetector() {
         insights={insightsData}
         onFindSafeRouteFromInsights={handleFindSafeRouteFromInsights}
         onViewAlternatives={handleViewAlternatives}
+        routesPanelProduct={routesPanelProduct}
+        onRoutesPanelProductChange={setRoutesPanelProduct}
       />
 
       {/* Main Map Area */}
@@ -1059,6 +1063,15 @@ export default function SupplyChainCrisisDetector() {
           onReplaceSupplier={(alternative) => {
             setAlternativesPanelOpen(false)
           }}
+        />
+
+        {/* Product Supply Chain Routes Panel */}
+        <ProductSupplyChainRoutesPanel
+          isOpen={routesPanelProduct !== null}
+          onClose={() => setRoutesPanelProduct(null)}
+          product={routesPanelProduct}
+          countryRisks={resolvedCountryRisks as RouteCountryRiskData[]}
+          onVisualizeRoutes={handleRouteFound}
         />
       </div>
     </div>

@@ -10,11 +10,18 @@ import {
   DollarSign,
   Target,
   Zap,
+  Sparkles,
+  Loader2,
+  X,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { useState, useCallback } from "react"
+import { useAlternatives, type AlternativeEntry } from "@/hooks/use-alternatives"
 
 // Define types locally
 interface PriceFactor {
@@ -74,6 +81,152 @@ function getRiskLevel(score: number): { label: string; color: string; textColor:
   if (score >= 40) return { label: "Medium", color: "bg-yellow-500 text-foreground", textColor: "text-yellow-400" }
   if (score >= 20) return { label: "Low", color: "bg-emerald-500 text-white", textColor: "text-emerald-400" }
   return { label: "Minimal", color: "bg-cyan-500 text-white", textColor: "text-cyan-400" }
+}
+
+// Component for high-risk component row with alternatives
+function HighRiskComponentRow({
+  comp,
+  onFindSafeRoute,
+  onViewAlternatives,
+}: {
+  comp: ComponentRiskForInsights
+  onFindSafeRoute?: (
+    origin: string,
+    destination: string,
+    itemName: string,
+    componentId?: string,
+    productId?: string
+  ) => void
+  onViewAlternatives?: (component: ComponentRiskForInsights, parentCountry: string) => void
+}) {
+  const [showAlternatives, setShowAlternatives] = useState(false)
+  const { alternatives, loading, error, fetchAlternatives, clearAlternatives } = useAlternatives()
+
+  const handleViewAlternatives = useCallback(async () => {
+    if (onViewAlternatives) {
+      // Use the callback if provided (for external handling)
+      onViewAlternatives(comp, comp.country)
+    } else {
+      // Use internal alternatives fetching
+      if (showAlternatives) {
+        setShowAlternatives(false)
+        clearAlternatives()
+      } else {
+        setShowAlternatives(true)
+        await fetchAlternatives(
+          comp.country,
+          "component",
+          comp.componentName,
+          comp.risk
+        )
+      }
+    }
+  }, [comp, onViewAlternatives, showAlternatives, fetchAlternatives, clearAlternatives])
+
+  return (
+    <div className="rounded-lg border border-border/50 bg-muted/30 p-2">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium truncate">{comp.componentName}</p>
+          <p className="text-[10px] text-muted-foreground">{comp.country}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Badge variant="destructive" className="text-[10px] h-5">
+            {comp.risk}%
+          </Badge>
+          {onFindSafeRoute && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 w-6 p-0"
+              onClick={() => onFindSafeRoute(
+                comp.country,
+                "United States",
+                comp.componentName,
+                comp.componentId,
+                comp.productId
+              )}
+              title="Find safe route"
+            >
+              <MapPin className="h-3 w-3" />
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn("h-6 px-1.5 text-[10px]", showAlternatives && "bg-primary/10 border-primary text-primary")}
+            onClick={handleViewAlternatives}
+            title="View AI alternatives"
+          >
+            <Sparkles className="h-3 w-3 mr-0.5" />
+            Alternatives
+          </Button>
+        </div>
+      </div>
+
+      {/* Alternatives Display */}
+      {showAlternatives && (
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground">
+              AI-Generated Alternatives
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-4 w-4 p-0"
+              onClick={() => setShowAlternatives(false)}
+            >
+              <X className="h-2.5 w-2.5" />
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground py-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Fetching alternatives...
+            </div>
+          ) : error ? (
+            <p className="text-[10px] text-red-400">{error}</p>
+          ) : alternatives.length > 0 ? (
+            <div className="space-y-1.5">
+              {alternatives.map((alt, i) => (
+                <AlternativeCard key={i} alternative={alt} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-muted-foreground">No alternatives found.</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Card for displaying an alternative
+function AlternativeCard({ alternative }: { alternative: AlternativeEntry }) {
+  const riskColors = {
+    low: "text-emerald-400",
+    medium: "text-yellow-400",
+    high: "text-red-400",
+  }
+
+  return (
+    <div className="rounded border border-border/50 bg-background/50 p-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium">{alternative.country}</span>
+        <Badge
+          variant="outline"
+          className={cn("text-[9px] h-4 px-1", riskColors[alternative.risk])}
+        >
+          {alternative.risk} risk
+        </Badge>
+      </div>
+      <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">
+        {alternative.reason}
+      </p>
+    </div>
+  )
 }
 
 export function InsightsSection({
@@ -150,38 +303,14 @@ export function InsightsSection({
             <AlertTriangle className="h-3.5 w-3.5 text-orange-400" />
             High-Risk ({insights.highRiskComponents.length})
           </div>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
+          <div className="space-y-1 max-h-40 overflow-y-auto">
             {insights.highRiskComponents.slice(0, 3).map((comp) => (
-              <div key={comp.componentId} className="rounded-lg border border-border/50 bg-muted/30 p-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{comp.componentName}</p>
-                    <p className="text-[10px] text-muted-foreground">{comp.country}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Badge variant="destructive" className="text-[10px] h-5">
-                      {comp.risk}%
-                    </Badge>
-                    {onFindSafeRoute && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => onFindSafeRoute(
-                          comp.country,
-                          "United States",
-                          comp.componentName,
-                          comp.componentId,
-                          comp.productId
-                        )}
-                        title="Find safe route"
-                      >
-                        <MapPin className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <HighRiskComponentRow
+                key={comp.componentId}
+                comp={comp}
+                onFindSafeRoute={onFindSafeRoute}
+                onViewAlternatives={onViewAlternatives}
+              />
             ))}
           </div>
         </div>

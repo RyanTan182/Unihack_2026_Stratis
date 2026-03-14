@@ -3,18 +3,8 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Route,
   Globe,
   Layers,
-  Wrench,
-  ChevronDown,
   Play,
   BarChart3,
   Sparkles,
@@ -58,41 +48,26 @@ export function ActionBar({
   isAnimating,
 }: ActionBarProps) {
   return (
-    <div className="absolute left-4 top-4 z-10 flex gap-2">
-      {/* Tools Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="secondary"
-            size="default"
-            className="gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer h-9 glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-          >
-            <Wrench className="h-4 w-4" />
-            Tools
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
-          {productCount > 0 && onToggleRouteSummary && (
-            <DropdownMenuItem
-              onClick={onToggleRouteSummary}
-              className={cn(isRouteSummaryOpen && "bg-primary/10 text-primary")}
-            >
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Route Summary
-            </DropdownMenuItem>
+    <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
+      {/* Route Summary - conditional */}
+      {productCount > 0 && onToggleRouteSummary && (
+        <Button
+          variant={isRouteSummaryOpen ? "default" : "secondary"}
+          size="sm"
+          className={cn(
+            "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
+            isRouteSummaryOpen
+              ? "bg-primary text-primary-foreground glow-primary"
+              : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={onClear}
-          >
-            <Layers className="mr-2 h-4 w-4" />
-            Clear Selection
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          onClick={onToggleRouteSummary}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Route Summary
+        </Button>
+      )}
 
-      {/* Quick Actions */}
+      {/* Risk Zones Toggle */}
       <Button
         variant={showRiskZones ? "default" : "secondary"}
         size="sm"
@@ -108,6 +83,7 @@ export function ActionBar({
         Risk Zones
       </Button>
 
+      {/* Clear Selection */}
       <Button
         variant="secondary"
         size="sm"

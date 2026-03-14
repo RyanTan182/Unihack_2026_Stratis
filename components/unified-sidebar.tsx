@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import {
   MapPin,
   List,
@@ -31,6 +31,7 @@ import {
   Eye,
   Factory,
   Flag,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -56,6 +57,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 // --- Types ---
 interface CountryRisk {
@@ -116,6 +118,9 @@ interface UnifiedSidebarProps {
     productId?: string
   ) => void
   onViewAlternatives?: (component: ComponentRiskForInsights, parentCountry: string) => void
+  // Routes panel - controlled from parent for proper positioning
+  routesPanelProduct?: StoredProduct | null
+  onRoutesPanelProductChange?: (product: StoredProduct | null) => void
 }
 
 // --- Constants ---
@@ -442,6 +447,119 @@ function ProductCard({
   )
 }
 
+// --- Manual Component Input ---
+interface ManualComponent {
+  id: string
+  name: string
+  country: string
+}
+
+function ManualComponentInput({
+  components,
+  onComponentsChange,
+  countries,
+}: {
+  components: ManualComponent[]
+  onComponentsChange: (components: ManualComponent[]) => void
+  countries: CountryRisk[]
+}) {
+  const [newComponentName, setNewComponentName] = useState("")
+  const [newComponentCountry, setNewComponentCountry] = useState("")
+
+  const addComponent = () => {
+    if (newComponentName.trim() && newComponentCountry) {
+      onComponentsChange([
+        ...components,
+        {
+          id: crypto.randomUUID(),
+          name: newComponentName.trim(),
+          country: newComponentCountry,
+        },
+      ])
+      setNewComponentName("")
+      setNewComponentCountry("")
+    }
+  }
+
+  const removeComponent = (id: string) => {
+    onComponentsChange(components.filter((c) => c.id !== id))
+  }
+
+  return (
+    <div className="space-y-3">
+      <label className="text-xs font-medium text-muted-foreground">Components</label>
+
+      {/* Existing components */}
+      {components.length > 0 && (
+        <div className="space-y-1.5">
+          {components.map((comp) => (
+            <div
+              key={comp.id}
+              className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 px-2.5 py-1.5"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Package className="h-3 w-3 text-muted-foreground shrink-0" />
+                <span className="text-xs truncate">{comp.name}</span>
+                <Badge variant="outline" className="text-[10px] h-4 px-1">
+                  {comp.country}
+                </Badge>
+              </div>
+              <button
+                onClick={() => removeComponent(comp.id)}
+                className="shrink-0 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new component */}
+      <div className="space-y-2">
+        <Input
+          value={newComponentName}
+          onChange={(e) => setNewComponentName(e.target.value)}
+          placeholder="Component name..."
+          className="h-8 text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && newComponentName.trim() && newComponentCountry) {
+              e.preventDefault()
+              addComponent()
+            }
+          }}
+        />
+        <div className="flex gap-2">
+          <Select value={newComponentCountry} onValueChange={setNewComponentCountry}>
+            <SelectTrigger className="h-8 text-sm flex-1">
+              <SelectValue placeholder="Select country..." />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map((c) => (
+                <SelectItem key={c.id} value={c.name}>
+                  <div className="flex items-center gap-2">
+                    <Flag className="h-3 w-3 text-muted-foreground" />
+                    {c.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0"
+            onClick={addComponent}
+            disabled={!newComponentName.trim() || !newComponentCountry}
+          >
+            Add
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // --- Inventory View Component ---
 function InventoryView({
   products,
@@ -472,6 +590,8 @@ function InventoryView({
   const [productName, setProductName] = useState("")
   const [suppliers, setSuppliers] = useState<string[]>([])
   const [destination, setDestination] = useState<string>("")
+  const [creationMode, setCreationMode] = useState<"ai" | "manual">("ai")
+  const [manualComponents, setManualComponents] = useState<ManualComponent[]>([])
 
   const { tree, isLoading, error, durationMs, decompose, abort } = useDecompose()
 
@@ -514,6 +634,99 @@ function InventoryView({
     await decompose(productName.trim(), suppliers, destination)
   }, [productName, suppliers, destination, decompose])
 
+  const handleManualCreate = useCallback(() => {
+    if (!productName.trim() || manualComponents.length === 0) return
+
+    // Save destination as default for future products
+    if (destination) {
+      setDefaultDestination(destination)
+    }
+
+    // Build a decomposition tree from manual components
+    const nodeId = crypto.randomUUID()
+    const nodes: Record<string, SupplyChainNode> = {
+      [nodeId]: {
+        id: nodeId,
+        name: productName.trim(),
+        type: 'product',
+        tier: 0,
+        status: 'verified',
+        source: 'inferred',
+        risk_score: 50, // Default risk, will be calculated based on components
+        confidence: 1,
+        children: [],
+        geographic_concentration: {},
+        risk_factors: [],
+        search_evidence: null,
+        correction: null,
+      },
+    }
+
+    // Add each manual component as a child node
+    const childIds: string[] = []
+    for (const comp of manualComponents) {
+      const childId = crypto.randomUUID()
+      nodes[childId] = {
+        id: childId,
+        name: comp.name,
+        type: 'component',
+        tier: 1,
+        status: 'verified',
+        source: 'inferred',
+        risk_score: 50, // Default risk
+        confidence: 0.9,
+        children: [],
+        geographic_concentration: { [comp.country]: 100 },
+        risk_factors: [],
+        search_evidence: null,
+        correction: null,
+      }
+      childIds.push(childId)
+    }
+
+    // Update the root node with children
+    nodes[nodeId].children = childIds
+
+    // Calculate average risk from components
+    if (childIds.length > 0) {
+      const avgRisk = Math.round(
+        childIds.reduce((sum, id) => sum + nodes[id].risk_score, 0) / childIds.length
+      )
+      nodes[nodeId].risk_score = avgRisk
+    }
+
+    const tree: DecompositionTree = {
+      product: productName.trim(),
+      phase: 'verified',
+      root_id: nodeId,
+      nodes,
+      metadata: {
+        total_nodes: Object.keys(nodes).length,
+        verified_count: Object.keys(nodes).length,
+        corrected_count: 0,
+        avg_confidence: 0.95,
+      },
+    }
+
+    const newProduct: StoredProduct = {
+      id: crypto.randomUUID(),
+      name: productName.trim(),
+      suppliers,
+      destinationCountry: destination,
+      tree,
+      durationMs: 0,
+      createdAt: Date.now(),
+    }
+
+    onProductAdd(newProduct)
+    setActiveProductId(newProduct.id)
+    setView("tree")
+    onTreeChange(tree)
+    setProductName("")
+    setSuppliers([])
+    setManualComponents([])
+  }, [productName, suppliers, destination, manualComponents, onProductAdd, onTreeChange])
+
   const prevTreeRef = useRef<DecompositionTree | null>(null)
   useEffect(() => {
     if (view === "form" && tree && !isLoading && tree !== prevTreeRef.current) {
@@ -544,6 +757,8 @@ function InventoryView({
     onTreeChange(null)
     onNodeSelect(null)
     prevTreeRef.current = null
+    setManualComponents([])
+    setCreationMode("ai")
   }, [isLoading, abort, onTreeChange, onNodeSelect])
 
   const goToTree = useCallback(() => {
@@ -600,67 +815,181 @@ function InventoryView({
           </Button>
           <h2 className="text-sm font-semibold text-sidebar-foreground truncate">New Product</h2>
         </div>
-        <div className="space-y-4 p-4 min-w-0">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Product Name</label>
-            <Input
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              placeholder="e.g. iPhone 17, Tesla Model Y"
-              className="h-9 w-full"
-              disabled={isLoading}
-              onKeyDown={(e) => { if (e.key === "Enter" && productName.trim() && !isLoading) handleDecompose() }}
-            />
+
+        <Tabs
+          value={creationMode}
+          onValueChange={(v) => setCreationMode(v as "ai" | "manual")}
+          className="flex-1 flex flex-col min-h-0"
+        >
+          {/* Tab Headers */}
+          <div className="px-4 pt-4 pb-0">
+            <TabsList className="w-full h-9 p-0.5 bg-muted/50">
+              <TabsTrigger
+                value="ai"
+                className="flex-1 h-8 text-xs font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Decompose
+              </TabsTrigger>
+              <TabsTrigger
+                value="manual"
+                className="flex-1 h-8 text-xs font-medium gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Manual Create
+              </TabsTrigger>
+            </TabsList>
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-muted-foreground">Destination Market</label>
-              <span className="text-[10px] text-muted-foreground/60">Saved as default</span>
-            </div>
-            <Select value={destination} onValueChange={setDestination}>
-              <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Select destination..." />
-              </SelectTrigger>
-              <SelectContent>
-                {countries.map((c) => (
-                  <SelectItem key={c.id} value={c.name}>
-                    <div className="flex items-center gap-2">
-                      <Flag className="h-3 w-3 text-muted-foreground" />
-                      {c.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <SupplierTagInput tags={suppliers} onTagsChange={setSuppliers} />
-          <Button className="w-full gap-2" onClick={handleDecompose} disabled={!productName.trim() || isLoading}>
-            {isLoading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" />Decomposing...</>
-            ) : (
-              <><Search className="h-4 w-4" />Decompose Supply Chain</>
-            )}
-          </Button>
-          {isLoading && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-xs text-primary font-medium">Analyzing supply chain with AI...</span>
+
+          {/* AI Decompose Tab Content */}
+          <TabsContent value="ai" className="flex-1 min-h-0 mt-0">
+            <div className="space-y-4 p-4 min-w-0">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Product Name</label>
+                <Input
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="e.g. iPhone 17, Tesla Model Y"
+                  className="h-9 w-full"
+                  disabled={isLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && productName.trim() && !isLoading) {
+                      handleDecompose()
+                    }
+                  }}
+                />
               </div>
-              <p className="mt-1.5 text-[10px] text-muted-foreground">This may take 30-60 seconds</p>
-            </div>
-          )}
-          {error && (
-            <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                <span className="text-xs text-destructive font-medium">Decomposition failed</span>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">Destination Market</label>
+                  <span className="text-[10px] text-muted-foreground/60">Saved as default</span>
+                </div>
+                <Select value={destination} onValueChange={setDestination}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select destination..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        <div className="flex items-center gap-2">
+                          <Flag className="h-3 w-3 text-muted-foreground" />
+                          {c.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <p className="mt-1 text-[10px] text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={handleDecompose}>Retry</Button>
+
+              <SupplierTagInput tags={suppliers} onTagsChange={setSuppliers} />
+
+              <Button
+                className="w-full gap-2"
+                onClick={handleDecompose}
+                disabled={!productName.trim() || isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Decomposing...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4" />
+                    Decompose Supply Chain
+                  </>
+                )}
+              </Button>
+
+              {isLoading && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-xs text-primary font-medium">Analyzing supply chain with AI...</span>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">This may take 30-60 seconds</p>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="text-xs text-destructive font-medium">Decomposition failed</span>
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">{error}</p>
+                  <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={handleDecompose}>
+                    Retry
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </TabsContent>
+
+          {/* Manual Create Tab Content */}
+          <TabsContent value="manual" className="flex-1 min-h-0 mt-0">
+            <div className="space-y-4 p-4 min-w-0">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Product Name</label>
+                <Input
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="e.g. Custom Product"
+                  className="h-9 w-full"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && productName.trim() && manualComponents.length > 0) {
+                      handleManualCreate()
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">Destination Market</label>
+                  <span className="text-[10px] text-muted-foreground/60">Saved as default</span>
+                </div>
+                <Select value={destination} onValueChange={setDestination}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select destination..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        <div className="flex items-center gap-2">
+                          <Flag className="h-3 w-3 text-muted-foreground" />
+                          {c.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <ManualComponentInput
+                components={manualComponents}
+                onComponentsChange={setManualComponents}
+                countries={countries}
+              />
+
+              <Button
+                className="w-full gap-2"
+                onClick={handleManualCreate}
+                disabled={!productName.trim() || manualComponents.length === 0}
+              >
+                <Plus className="h-4 w-4" />
+                Create Product
+              </Button>
+
+              {manualComponents.length === 0 && (
+                <p className="text-[10px] text-muted-foreground text-center">
+                  Add at least one component to create a product
+                </p>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </>
     )
   }
@@ -730,15 +1059,36 @@ export function UnifiedSidebar({
   insights,
   onFindSafeRouteFromInsights,
   onViewAlternatives,
+  routesPanelProduct: externalRoutesPanelProduct,
+  onRoutesPanelProductChange,
 }: UnifiedSidebarProps) {
   // Collapsible section states
   const [inventoryOpen, setInventoryOpen] = useState(true)
   const [routesOpen, setRoutesOpen] = useState(false)
   const [relocationOpen, setRelocationOpen] = useState(false)
   const [insightsOpen, setInsightsOpen] = useState(false)
+  const [newsOpen, setNewsOpen] = useState(true)
+
+  // News state
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([])
 
   // Trigger for showing add product form
   const [showAddProductForm, setShowAddProductForm] = useState(false)
+
+  // Product supply chain routes panel - use external state if provided
+  const [internalRoutesPanelProduct, setInternalRoutesPanelProduct] = useState<StoredProduct | null>(null)
+  const routesPanelProduct = externalRoutesPanelProduct ?? internalRoutesPanelProduct
+  const setRoutesPanelProduct = onRoutesPanelProductChange ?? setInternalRoutesPanelProduct
+
+  // Memoized callbacks for the routes panel
+  const handleVisualizeRoutes = useCallback((routes: FoundRoute[]) => {
+    onRouteFound?.(routes)
+  }, [onRouteFound])
+
+  const handleCloseRoutesPanel = useCallback(() => {
+    setRoutesPanelProduct(null)
+  }, [])
 
   // Auto-open Routes section when safe route context is set
   useEffect(() => {
@@ -747,6 +1097,57 @@ export function UnifiedSidebar({
     }
   }, [preselectedOrigin, preselectedDestination])
 
+  // Fetch news when a country is selected
+  useEffect(() => {
+    if (!selectedCountry) {
+      setNewsArticles([])
+      return
+    }
+
+    const countryData = countryRisks.find(c => c.id === selectedCountry)
+    if (!countryData) {
+      setNewsArticles([])
+      return
+    }
+
+    // Check cache first
+    const cached = readCachedNews(countryData.name)
+    if (cached) {
+      setNewsArticles(cached)
+      return
+    }
+
+    // Fetch from API
+    const fetchNews = async () => {
+      setNewsLoading(true)
+      try {
+        const res = await fetch(`/api/news?country=${encodeURIComponent(countryData.name)}`)
+        if (res.ok) {
+          const data = await res.json()
+          const articles = data.articles ?? []
+          setNewsArticles(articles)
+          writeCachedNews(countryData.name, articles)
+        } else {
+          setNewsArticles([])
+        }
+      } catch {
+        setNewsArticles([])
+      } finally {
+        setNewsLoading(false)
+      }
+    }
+
+    fetchNews()
+  }, [selectedCountry, countryRisks])
+
+  // Sweep cache on mount
+  useEffect(() => {
+    const storage = getSessionStorage()
+    if (storage) {
+      sweepNewsCache(storage)
+    }
+  }, [])
+
   const riskColors = {
     low: "text-emerald-500",
     medium: "text-amber-500",
@@ -754,7 +1155,8 @@ export function UnifiedSidebar({
   }
 
   // Convert countryRisks to CountryRiskData format for RouteFinderSection
-  const countryRiskData: CountryRiskData[] = countryRisks.map(c => ({
+  // Memoized to prevent infinite re-renders in ProductSupplyChainRoutesPanel
+  const countryRiskData: CountryRiskData[] = useMemo(() => countryRisks.map(c => ({
     id: c.id,
     name: c.name,
     type: 'country' as const,
@@ -763,7 +1165,7 @@ export function UnifiedSidebar({
     exportRisk: c.exportRisk,
     overallRisk: c.overallRisk,
     newsHighlights: c.newsHighlights,
-  }))
+  })), [countryRisks])
 
   return (
     <div className="z-30 shrink-0 flex h-full min-w-0 flex-col border-r border-sidebar-border bg-sidebar relative overflow-hidden" style={{ width: 'var(--sidebar-width)', maxWidth: '100%' }}>
@@ -828,7 +1230,7 @@ export function UnifiedSidebar({
                   onNodeSelect={onNodeSelect}
                   onOpenInBuilder={onOpenInBuilder}
                   onViewInsights={onViewInsights}
-                  onFindSafeRoute={onFindSafeRoute}
+                  onFindSafeRoute={(product) => setRoutesPanelProduct(product)}
                   showAddForm={showAddProductForm}
                   onAddFormShown={() => setShowAddProductForm(false)}
                   countries={countryRisks}
@@ -910,6 +1312,68 @@ export function UnifiedSidebar({
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          {/* News Section - Shows when a country is selected */}
+          {selectedCountry && (
+            <Collapsible open={newsOpen} onOpenChange={setNewsOpen}>
+              <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <Radio className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">News</span>
+                  {!newsLoading && newsArticles.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                      {newsArticles.length}
+                    </Badge>
+                  )}
+                </div>
+                {newsOpen ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-1">
+                <div className="min-w-0 overflow-hidden rounded-lg border border-border/50 bg-muted/20 p-3">
+                  {newsLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Fetching latest news...
+                    </div>
+                  ) : newsArticles.length > 0 ? (
+                    <ul className="space-y-2">
+                      {newsArticles.slice(0, 5).map((article, i) => (
+                        <li key={i} className="group">
+                          <a
+                            href={article.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-2 rounded-lg p-2 text-xs text-foreground transition-colors hover:bg-muted/50"
+                          >
+                            <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                            <div className="flex-1 min-w-0">
+                              <p className="line-clamp-2 leading-relaxed group-hover:text-primary">
+                                {article.title}
+                              </p>
+                              {article.source && (
+                                <p className="mt-1 text-[10px] text-muted-foreground">
+                                  {article.source} • {article.date}
+                                </p>
+                              )}
+                            </div>
+                            <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground group-hover:text-primary" />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      No recent news found for this country.
+                    </p>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </ScrollArea>
 
