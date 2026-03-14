@@ -252,7 +252,7 @@ function SupplyChainItemRow({
       setAlternatives(preloadedAlts)
     }
   }
-  const config = itemTypeConfig[item.type]
+  const config = itemTypeConfig[item.type] ?? itemTypeConfig.component
   const Icon = config.icon
   const hasChildren = item.children.length > 0
 
