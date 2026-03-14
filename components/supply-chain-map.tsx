@@ -100,6 +100,7 @@ export interface ProductSupplyRoute {
   itemType: ItemType
   riskScore: number
   isDangerous: boolean
+  componentRiskPrediction: number
   productColor: string
   productId: string
   productName: string
@@ -354,7 +355,8 @@ function extractProductRoutes(
         toItem: parentName,
         itemType: item.type,
         riskScore: avgRisk,
-        isDangerous: avgRisk >= DANGER_THRESHOLD,
+        isDangerous: avgRisk >= DANGER_THRESHOLD || item.riskPrediction > 60,
+        componentRiskPrediction: item.riskPrediction,
         productColor,
         productId,
         productName,
@@ -709,6 +711,7 @@ export function SupplyChainMap({
         if (!fromCoords || !toCoords) return
 
         const segmentIsDangerous = segment.riskScore >= 60
+        const isHighRisk = segmentIsDangerous || route.isDangerous
 
         features.push({
           type: "Feature" as const,
@@ -718,9 +721,9 @@ export function SupplyChainMap({
             isDangerous: segmentIsDangerous,
             isSelected,
             isDimmed,
-            color: segmentIsDangerous ? "#dc2626" : route.productColor,
-            width: isSelected ? 4 : segmentIsDangerous ? 3.5 : 2.5,
-            opacity: isDimmed ? 0.22 : segmentIsDangerous ? 1 : 0.9,
+            color: isHighRisk ? "#dc2626" : route.productColor,
+            width: isSelected ? 4 : isHighRisk ? 3.5 : 2.5,
+            opacity: isDimmed ? 0.22 : isHighRisk ? 1 : 0.9,
           },
           geometry: {
             type: "LineString" as const,
