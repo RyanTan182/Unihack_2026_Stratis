@@ -897,25 +897,6 @@ export default function SupplyChainCrisisDetector() {
     setSafeRouteContext(null)
   }
 
-  const handleInventoryProductsChange = (updated: Product[]) => {
-    // Keep core products list in sync with any changes made in Inventory
-    setProducts((prev) => {
-      if (prev.length === 0) return prev
-      const updatedById = new Map(updated.map((p) => [p.id, p]))
-      let changed = false
-
-      const next = prev.map((p) => {
-        const candidate = updatedById.get(p.id)
-        if (!candidate) return p
-        if (candidate === p) return p
-        changed = true
-        return candidate
-      })
-
-      return changed ? next : prev
-    })
-  }
-
   // Handler for viewing supplier alternatives
   const handleViewAlternatives = (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => {
     // Find the component risk from insights
@@ -1198,7 +1179,6 @@ export default function SupplyChainCrisisDetector() {
           destinationCountry={products[0]?.destinationCountry || 'United States'}
           onSelectAlternative={(alternative) => {
             // Handle alternative selection - could update the supply chain
-            console.log('Selected alternative:', alternative)
           }}
           onViewRoute={(origin, destination) => {
             setSafeRouteContext({ origin, destination, itemName: 'Alternative Route' })
@@ -1207,7 +1187,6 @@ export default function SupplyChainCrisisDetector() {
           }}
           onReplaceSupplier={(alternative) => {
             // Handle supplier replacement in supply chain
-            console.log('Replace supplier with:', alternative)
             setAlternativesPanelOpen(false)
           }}
         />
