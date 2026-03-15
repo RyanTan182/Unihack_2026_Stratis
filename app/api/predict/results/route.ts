@@ -2,11 +2,8 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { miroFishClient } from "@/lib/mirofish/client"
+import { getPipeline } from "@/lib/mirofish/pipeline-manager"
 import type { PredictionResult, SentimentDataPoint, AffectedCountry, MiroFishAction } from "@/lib/mirofish/types"
-import { activeSimulations } from "../trigger/route"
-
-// Cache generated reports to avoid re-triggering on repeated calls
-const reportCache = new Map<string, string>()
 
 async function computeSentimentByRound(simulationId: string): Promise<SentimentDataPoint[]> {
   try {
@@ -258,16 +255,38 @@ function parseReportForPrediction(
 }
 
 export async function GET(request: NextRequest) {
-  const simulationId = request.nextUrl.searchParams.get("simulationId")
+  if (process.env.DISABLE_MIROFISH === "true") {
+    return NextResponse.json(
+      { error: "Hi, you've called the Simulation API in deployment, but due to cost constraints, we cannot provide this right now. Please use the demo mode instead." },
+      { status: 503 }
+    )
+  }
 
-  if (!simulationId) {
+  const pipelineId = request.nextUrl.searchParams.get("simulationId")
+
+  if (!pipelineId) {
     return NextResponse.json({ error: "simulationId parameter required" }, { status: 400 })
   }
 
   try {
-    const meta = activeSimulations.get(simulationId)
-    const countries = meta?.countries || []
-    const scenario = meta?.scenario || ""
+    // Get pipeline state from in-memory manager
+    const pipeline = getPipeline(pipelineId)
+    if (!pipeline) {
+      return NextResponse.json(
+        { error: "Pipeline not found — it may have expired or the server restarted" },
+        { status: 404 }
+      )
+    }
+
+    const { simulationId, scenario, countries } = pipeline
+    console.log(`[predict/results] pipeline found | stage=${pipeline.stage} | simId=${simulationId || "none"} | scenario="${scenario}"`)
+
+    if (!simulationId) {
+      return NextResponse.json(
+        { error: "Simulation not yet created — pipeline still in progress" },
+        { status: 425 }
+      )
+    }
 
     // Get run status for confidence calculation
     let currentRound = 10
@@ -293,27 +312,35 @@ export async function GET(request: NextRequest) {
 
     const countryDeltas = computeSentimentPerCountry(allActions, countries)
 
-    // Generate report (cached to avoid duplicate generation)
-    let fullReport = reportCache.get(simulationId) || ""
+    // Generate report
+    let fullReport = ""
 
-    if (!fullReport) {
-      const reportRes = await miroFishClient.generateReport(simulationId)
+    console.log(`[predict/results] generating report for simulation ${simulationId}`)
+    const reportRes = await miroFishClient.generateReport(simulationId)
 
-      if (reportRes.success && reportRes.data?.report_id) {
-        const reportId = reportRes.data.report_id
-        let attempts = 0
-        while (attempts < 30) {
-          const report = await miroFishClient.getReport(reportId)
-          if (report.success && report.data?.markdown_content) {
-            fullReport = report.data.markdown_content
-            reportCache.set(simulationId, fullReport)
-            break
-          }
-          if (report.data?.status === "failed" || report.data?.status === "error") break
-          await new Promise((resolve) => setTimeout(resolve, 5000))
-          attempts++
+    if (reportRes.success && reportRes.data?.report_id) {
+      const reportId = reportRes.data.report_id
+      console.log(`[predict/results] report generation started → reportId=${reportId}, polling...`)
+      let attempts = 0
+      while (attempts < 30) {
+        const report = await miroFishClient.getReport(reportId)
+        if (report.success && report.data?.markdown_content) {
+          fullReport = report.data.markdown_content
+          console.log(`[predict/results] report ready (${fullReport.length} chars) after ${attempts + 1} polls`)
+          break
         }
+        if (report.data?.status === "failed" || report.data?.status === "error") {
+          console.log(`[predict/results] report generation FAILED at poll ${attempts + 1}`, report.data)
+          break
+        }
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+        attempts++
       }
+      if (!fullReport) {
+        console.log(`[predict/results] report not ready after ${attempts} polls — using fallback`)
+      }
+    } else {
+      console.log(`[predict/results] report generation request failed or no report_id`, reportRes)
     }
 
     // Build fallback if report failed
@@ -322,7 +349,6 @@ export async function GET(request: NextRequest) {
       const fallback = await buildFallbackContent(simulationId, scenario, countries)
       fullReport = fallback.report
       fallbackFindings = fallback.findings
-      reportCache.set(simulationId, fullReport)
     }
 
     // Compute sentiment
@@ -355,7 +381,7 @@ export async function GET(request: NextRequest) {
         : ("stable" as const)
 
     const result: PredictionResult = {
-      simulationId,
+      simulationId: pipelineId,
       prediction: {
         ...parsed,
         riskDirection,
@@ -364,9 +390,11 @@ export async function GET(request: NextRequest) {
       sentimentByRound,
     }
 
+    console.log(`[predict/results] returning result | confidence=${result.prediction.confidence} | findings=${result.prediction.keyFindings.length} | sentiment points=${result.sentimentByRound.length}`)
     return NextResponse.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
+    console.error(`[predict/results] 500 ERROR:`, error)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

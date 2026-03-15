@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     status: currentRound === 0 ? "starting" : isCompleted ? "completed" : "running",
     currentRound,
     totalRounds: sim.totalRounds,
-    activeAgents: isCompleted ? 0 : 6 + Math.floor(Math.random() * 3),
+    activeAgents: isCompleted ? 0 : 80 + Math.floor(Math.random() * 3),
     recentActions: recentActions.slice(-10),
   }
 
