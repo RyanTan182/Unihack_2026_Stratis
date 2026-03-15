@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   X,
   Zap,
@@ -297,13 +298,13 @@ export function PredictionsPanel({
             </div>
           )}
         </div>
-      </div>
+      </ScrollArea>
     </>
   )
 
   if (inline) {
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex h-full w-full flex-col bg-sidebar">
         {content}
       </div>
     )

@@ -82,6 +82,10 @@ function mapNodeType(nodeType: SupplyChainNode["type"]): MapItemType {
   }
 }
 
+function formatRisk(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
 function nodeToSupplyChainItem(
   node: SupplyChainNode,
   tree: DecompositionTree
@@ -104,7 +108,7 @@ function nodeToSupplyChainItem(
     name: node.name,
     type: mapNodeType(node.type),
     country,
-    riskPrediction: node.risk_score,
+    riskPrediction: formatRisk(node.risk_score),
     riskDirection: node.risk_score >= 50 ? "up" : "down",
     children,
     isPredicted,
@@ -144,7 +148,7 @@ export function storedProductToMapProduct(
     type: "product",
     country: rootCountry,
     color,
-    riskPrediction: rootNode.risk_score,
+    riskPrediction: formatRisk(rootNode.risk_score),
     riskDirection: rootNode.risk_score >= 50 ? "up" : "down",
     components,
     isPredicted,

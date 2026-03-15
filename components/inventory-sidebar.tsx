@@ -904,17 +904,21 @@ export function InventorySidebar({
     [onNodeSelect]
   )
 
+  // Handle decomposition completing — check if tree arrived
+  const prevTreeRef = useRef<DecompositionTree | null>(null)
+  const isDecomposingRef = useRef(false)
+
   // Start decomposition
   const handleDecompose = useCallback(async () => {
     if (!productName.trim()) return
+    isDecomposingRef.current = true
     await decompose(productName.trim(), suppliers)
   }, [productName, suppliers, decompose])
 
-  // Handle decomposition completing — check if tree arrived
-  const prevTreeRef = useRef<DecompositionTree | null>(null)
   useEffect(() => {
-    if (view === "form" && tree && !isLoading && tree !== prevTreeRef.current) {
+    if (view === "form" && tree && !isLoading && tree !== prevTreeRef.current && productName.trim() && isDecomposingRef.current) {
       prevTreeRef.current = tree
+      isDecomposingRef.current = false
       const newProduct: StoredProduct = {
         id: crypto.randomUUID(),
         name: productName.trim(),
@@ -1017,6 +1021,7 @@ export function InventorySidebar({
     onTreeChange(null)
     onNodeSelect(null)
     prevTreeRef.current = null
+    isDecomposingRef.current = false
     setManualName("")
     setManualCountry("China")
     setManualComponents([])

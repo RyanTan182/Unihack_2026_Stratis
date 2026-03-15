@@ -1325,7 +1325,7 @@ export default function SupplyChainCrisisDetector() {
   return (
     <div className="grid h-screen w-full grid-cols-[380px_1fr] overflow-hidden bg-background">
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
-      <div>
+      <div className="h-full overflow-hidden flex flex-col">
         <div className="border-b border-sidebar-border px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1367,6 +1367,7 @@ export default function SupplyChainCrisisDetector() {
             </button>
           ))}
         </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
       {activeTab == "inventory" && (
         <InventorySidebar
           products={storedProducts}
@@ -1471,6 +1472,7 @@ export default function SupplyChainCrisisDetector() {
           inline
         />
       )}
+        </div>
       </div>
 
       {/* Main Map Area */}

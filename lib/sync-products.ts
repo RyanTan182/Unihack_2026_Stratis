@@ -22,7 +22,12 @@ function mapNodeType(type: SupplyChainNode["type"]): ItemType {
     case "component": return "component"
     case "material": return "material"
     case "geography": return "resource"
+    default: return "component"
   }
+}
+
+function formatRisk(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 function convertNode(node: SupplyChainNode, tree: DecompositionTree): SupplyChainItem {
@@ -31,7 +36,7 @@ function convertNode(node: SupplyChainNode, tree: DecompositionTree): SupplyChai
     name: node.name,
     type: mapNodeType(node.type),
     country: topCountry(node),
-    riskPrediction: node.risk_score,
+    riskPrediction: formatRisk(node.risk_score),
     riskDirection: node.risk_score >= 50 ? "up" : "down",
     children: node.children
       .map((childId) => tree.nodes[childId])
@@ -64,7 +69,7 @@ export function storedProductToProduct(stored: StoredProduct, index: number): Pr
     type: "product",
     country: topCountry(root),
     color: PRODUCT_COLORS[index % PRODUCT_COLORS.length],
-    riskPrediction: root.risk_score,
+    riskPrediction: formatRisk(root.risk_score),
     riskDirection: root.risk_score >= 50 ? "up" : "down",
     components: root.children
       .map((childId) => tree.nodes[childId])
