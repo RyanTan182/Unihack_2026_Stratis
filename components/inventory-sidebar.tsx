@@ -46,6 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { RouteMode } from "@/lib/route-types"
 
 type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -59,6 +60,17 @@ interface ManualComponent {
   name: string
   type: "component" | "material" | "geography"
   country: string
+}
+
+interface CountryRiskData {
+  id: string
+  name: string
+  type: "country" | "chokepoint"
+  connections: string[]
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
 }
 
 // --- Color palette for geographic concentration bars ---
@@ -509,60 +521,160 @@ function NodeDetail({
   )
 }
 
+function getPrimaryCountry(node: SupplyChainNode | undefined | null): string | null {
+  if (!node) return null
+
+  const entries = Object.entries(node.geographic_concentration ?? {})
+  if (entries.length === 0) return null
+
+  entries.sort((a, b) => b[1] - a[1])
+  return entries[0][0] ?? null
+}
+
+function getLeafNodes(tree: DecompositionTree): SupplyChainNode[] {
+  return Object.values(tree.nodes).filter((node) => node.children.length === 0)
+}
+
+function normalizeCountryName(name: string): string {
+  return name.trim().toLowerCase()
+}
+
+function findCountryRisk(
+  countryRisks: CountryRiskData[],
+  countryName: string
+): CountryRiskData | null {
+  const normalized = normalizeCountryName(countryName)
+
+  return (
+    countryRisks.find(
+      (r) =>
+        r.type === "country" &&
+        normalizeCountryName(r.name) === normalized
+    ) ?? null
+  )
+}
+
+function isRouteSafeByCountryRisk(
+  originRisk: CountryRiskData | null,
+  destinationRisk: CountryRiskData | null
+) {
+  if (!originRisk || !destinationRisk) return false
+
+  return originRisk.overallRisk < 50 && destinationRisk.overallRisk < 50
+}
+
+interface CountryRiskData {
+  id: string
+  name: string
+  type: "country" | "chokepoint"
+  connections: string[]
+  importRisk: number
+  exportRisk: number
+  overallRisk: number
+  newsHighlights: string[]
+}
+
+function computeRouteRiskScore(
+  originRisk: CountryRiskData | null,
+  destinationRisk: CountryRiskData | null
+): number {
+  if (!originRisk || !destinationRisk) return 100
+  return Math.round(originRisk.exportRisk * 0.6 + destinationRisk.importRisk * 0.4)
+}
+
 function ProductCard({
   product,
   onClick,
+  onOpenInBuilder,
+  onSafeRoutes,
+  onRouteModeChange
 }: {
   product: StoredProduct
   onClick: () => void
+  onOpenInBuilder?: (product: StoredProduct) => void
+  onSafeRoutes?: (product: StoredProduct) => void
+  onRouteModeChange?: (mode: RouteMode) => void
 }) {
+  const rootNode = product.tree.nodes[product.tree.root_id]
+  const score = rootNode?.risk_score ?? 0
+
+  const topCountries = Object.entries(rootNode?.geographic_concentration ?? {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 1)
+    .map(([country]) => country)
+
   return (
-    <button
-      className="flex w-full items-center gap-3 rounded-xl border border-border bg-card/80 p-3 text-left transition-all hover:border-primary/30 hover:bg-card"
-      onClick={onClick}
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-        <Package className="h-5 w-5 text-primary" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-sidebar-foreground">
-          {product.name}
-        </p>
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-          <span className="flex items-center gap-0.5">
-            <Hash className="h-2.5 w-2.5" />
-            {product.tree.metadata.total_nodes} nodes
-          </span>
-          <span className="flex items-center gap-0.5">
-            <Shield className="h-2.5 w-2.5" />
-            {Math.round(product.tree.metadata.avg_confidence * 100)}%
-          </span>
-          <span className="flex items-center gap-0.5">
-            <Clock className="h-2.5 w-2.5" />
-            {(product.durationMs / 1000).toFixed(0)}s
-          </span>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card/80 transition-all hover:border-primary/30 hover:bg-card">
+      {/* Top clickable area */}
+      <button
+        className="flex w-full items-center gap-3 p-4 text-left"
+        onClick={onClick}
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10">
+          <Package className="h-5 w-5 text-primary" />
         </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-sidebar-foreground">
+            {product.name}
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Hash className="h-3.5 w-3.5" />
+              {product.tree.metadata.total_nodes} nodes
+            </span>
+
+            <span className="flex items-center gap-1">
+              <Shield className="h-3.5 w-3.5" />
+              {Math.round(product.tree.metadata.avg_confidence * 100)}%
+            </span>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "shrink-0 rounded-full border px-4 py-1.5 text-[10px] font-semibold",
+            score >= 70
+              ? "border-red-500/40 bg-red-500/10 text-red-400"
+              : score >= 40
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                : "border-yellow-500/40 bg-yellow-500/10 text-yellow-400"
+          )}
+        >
+          {score}%
+        </div>
+      </button>
+
+      {/* Bottom action row */}
+      <div className="grid grid-cols-2 border-t border-border">
+        <button
+          type="button"
+          className="flex items-center justify-center gap-2 px-4 py-3 text-[10px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenInBuilder?.(product)
+            onRouteModeChange?.("shortest")
+          }}
+        >
+          <Activity className="h-4 w-4" />
+          Normal routes
+        </button>
+
+        <button
+          type="button"
+          className="flex items-center justify-center gap-2 border-l border-border px-4 py-3 text-[10px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          onClick={(e) => {
+            e.stopPropagation()
+            onSafeRoutes?.(product)
+            onRouteModeChange?.("safest")
+          }}
+        >
+          <Navigation className="h-4 w-4" />
+          Safe Routes
+        </button>
       </div>
-      {(() => {
-        const rootNode = product.tree.nodes[product.tree.root_id]
-        const score = rootNode?.risk_score ?? 0
-        return (
-          <Badge
-            variant={score >= 70 ? "destructive" : "secondary"}
-            className={cn(
-              "shrink-0 text-[10px]",
-              score >= 70
-                ? ""
-                : score >= 40
-                  ? "bg-amber-500/10 text-amber-600"
-                  : "bg-emerald-500/10 text-emerald-600"
-            )}
-          >
-            {score}
-          </Badge>
-        )
-      })()}
-    </button>
+    </div>
   )
 }
 
@@ -595,7 +707,10 @@ interface InventorySidebarProps {
   onProductAdd: (product: StoredProduct) => void
   onTreeChange: (tree: DecompositionTree | null) => void
   onNodeSelect: (nodeId: string | null) => void
+  onOpenInBuilder?: (product: StoredProduct) => void
+  onOpenSafeRoutes?: (product: StoredProduct) => void
   onProductSelect?: (product: StoredProduct) => void
+  countryRisks: CountryRiskData[]
   countryOptions?: CountryOption[]
   alternativesMap?: Record<string, AlternativeEntry[]>
   altScanLoading?: boolean
@@ -604,6 +719,7 @@ interface InventorySidebarProps {
   insights?: SupplyChainInsightsData
   onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
   rightPanelProducts?: { id: string; name: string; country: string; components: { name: string; type: string; country: string; children: any[] }[] }[]
+  onRouteModeChange?: (mode: RouteMode) => void
 }
 
 function createManualStoredProduct(
@@ -676,6 +792,9 @@ export function InventorySidebar({
   onTreeChange,
   onNodeSelect,
   onProductSelect,
+  onOpenInBuilder,
+  onOpenSafeRoutes,
+  countryRisks,
   countryOptions = [],
   alternativesMap = {},
   altScanLoading = false,
@@ -684,6 +803,7 @@ export function InventorySidebar({
   insights,
   onViewAlternatives,
   rightPanelProducts = [],
+  onRouteModeChange
 }: InventorySidebarProps) {
   const [view, setView] = useState<"list" | "chooser" | "form" | "manual" | "tree" | "detail">("list")
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
@@ -704,6 +824,63 @@ export function InventorySidebar({
 
   const activeProduct = products.find((p) => p.id === activeProductId) ?? null
   const activeTree = view === "form" ? tree : activeProduct?.tree ?? null
+
+  const handleSafeRoutesForProduct = useCallback(
+    (product: StoredProduct) => {
+      if (!onFindSafeRoute) return
+
+      const rootNode = product.tree.nodes[product.tree.root_id]
+      const destination = getPrimaryCountry(rootNode)
+
+      if (!destination) return
+
+      const destinationRisk = findCountryRisk(countryRisks, destination)
+      if (!destinationRisk) return
+
+      const leafNodes = getLeafNodes(product.tree)
+
+      console.log("------ SAFE ROUTE ANALYSIS ------")
+      console.log("Product:", product.name)
+      console.log("Destination:", destination)
+
+      const seen = new Set<string>()
+
+      leafNodes.forEach((node) => {
+        const origin = getPrimaryCountry(node)
+        if (!origin) return
+        if (origin === destination) return
+
+        const originRisk = findCountryRisk(countryRisks, origin)
+
+        const score = computeRouteRiskScore(originRisk, destinationRisk)
+
+        console.log(
+          `[Route Check] ${origin} → ${destination} | component=${node.name} | risk=${score}`
+        )
+
+        if (score >= 50) {
+          console.log("❌ Rejected (risk too high)")
+          return
+        }
+
+        const key = `${node.name}__${origin}__${destination}`
+        if (seen.has(key)) return
+        seen.add(key)
+
+        console.log("✅ SAFE ROUTE:", {
+          origin,
+          destination,
+          component: node.name,
+          riskScore: score,
+        })
+
+        onFindSafeRoute(origin, destination, node.name)
+      })
+
+      console.log("------ END SAFE ROUTE ANALYSIS ------")
+    },
+    [onFindSafeRoute, countryRisks]
+  )
 
   // Navigate to product tree and notify parent for alternatives scan
   const viewProduct = useCallback(
@@ -901,6 +1078,9 @@ export function InventorySidebar({
                   key={product.id}
                   product={product}
                   onClick={() => viewProduct(product)}
+                  onOpenInBuilder={(p) => onOpenInBuilder?.(p)}
+                  onSafeRoutes={(p) => handleSafeRoutesForProduct(p)}
+                  onRouteModeChange={onRouteModeChange}
                 />
               ))
             )}

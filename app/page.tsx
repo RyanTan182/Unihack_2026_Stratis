@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { RouteMode } from "@/lib/route-types"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -635,7 +636,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Panama Canal",
     name: "Panama Canal",
     type: "chokepoint",
-    connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "United Kingdom", "Germany", "France"],
+    connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "United Kingdom", "Germany", "France", "Japan"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -753,6 +754,7 @@ export default function SupplyChainCrisisDetector() {
   const [alternativesPanelOpen, setAlternativesPanelOpen] = useState(false)
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
+  const [routeMode, setRouteMode] = useState<RouteMode>("shortest")
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -1292,6 +1294,7 @@ export default function SupplyChainCrisisDetector() {
           onTreeChange={handleTreeChange}
           onNodeSelect={handleNodeSelect}
           onProductSelect={handleInventoryProductSelect}
+          countryRisks={countryRisks}
           countryOptions={countryOptions}
           alternativesMap={alternativesMap}
           altScanLoading={altScanLoading}
@@ -1310,6 +1313,7 @@ export default function SupplyChainCrisisDetector() {
               children: c.children,
             })),
           }))}
+          onRouteModeChange={(mode: RouteMode) => setRouteMode(mode)}
         />
       )}
 
@@ -1398,6 +1402,7 @@ export default function SupplyChainCrisisDetector() {
           }}
           foundRoutes={foundRoutes}
           selectedFoundRouteId={selectedFoundRouteId}
+          routeMode={routeMode}
         />
 
         {/* Action Buttons */}

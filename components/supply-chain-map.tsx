@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { extractChokepointsFromPath } from "@/lib/utils"
 import { Package, Boxes, Box, Fuel } from "lucide-react"
 import { FoundRoutesLayer } from "@/components/found-routes-layer"
-import type { FoundRoute } from "@/lib/route-types"
+import type { FoundRoute, RouteMode } from "@/lib/route-types"
 
 export interface CountryRisk {
   id: string
@@ -121,6 +121,7 @@ interface SupplyChainMapProps {
   onAddItemAtCountry?: (country: string, itemType: ItemType) => void
   foundRoutes?: FoundRoute[]
   selectedFoundRouteId?: string | null
+  routeMode?: RouteMode
 }
 
 const getRiskColor = (risk: number): string => {
@@ -286,6 +287,106 @@ function findShortestPath(
   return [start, end]
 }
 
+function getEdgeTraversalCost(
+  fromId: string,
+  toId: string,
+  nodeMap: globalThis.Map<string, CountryRisk>
+): number {
+  const fromNode = nodeMap.get(fromId)
+  const toNode = nodeMap.get(toId)
+
+  const fromRisk = fromNode?.overallRisk ?? 30
+  const toRisk = toNode?.overallRisk ?? 30
+
+  const avgRisk = (fromRisk + toRisk) / 2
+
+  const chokepointPenalty =
+    fromNode?.type === "chokepoint" || toNode?.type === "chokepoint"
+      ? 20
+      : 0
+
+  const highRiskChokepointPenalty =
+    (fromNode?.type === "chokepoint" && fromRisk >= 60) ||
+    (toNode?.type === "chokepoint" && toRisk >= 60)
+      ? 25
+      : 0
+
+  return avgRisk + chokepointPenalty + highRiskChokepointPenalty * 20
+}
+
+function findSafestPath(
+  graph: globalThis.Map<string, string[]>,
+  nodes: CountryRisk[],
+  start: string,
+  end: string
+): string[] {
+  if (start === end) return [start]
+  if (!graph.has(start) || !graph.has(end)) return [start, end]
+
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(
+    nodes.map((n) => [n.id, n])
+  )
+
+  const distances = new Map<string, number>()
+  const previous = new Map<string, string | null>()
+  const unvisited = new Set<string>()
+
+  for (const nodeId of graph.keys()) {
+    distances.set(nodeId, Number.POSITIVE_INFINITY)
+    previous.set(nodeId, null)
+    unvisited.add(nodeId)
+  }
+
+  distances.set(start, 0)
+
+  while (unvisited.size > 0) {
+    let current: string | null = null
+    let currentDistance = Number.POSITIVE_INFINITY
+
+    for (const nodeId of unvisited) {
+      const dist = distances.get(nodeId) ?? Number.POSITIVE_INFINITY
+      if (dist < currentDistance) {
+        currentDistance = dist
+        current = nodeId
+      }
+    }
+
+    if (!current) break
+    if (current === end) break
+
+    unvisited.delete(current)
+
+    const neighbors = graph.get(current) || []
+    for (const neighbor of neighbors) {
+      if (!unvisited.has(neighbor)) continue
+
+      const edgeCost = getEdgeTraversalCost(current, neighbor, nodeMap)
+      const alt = currentDistance + edgeCost
+
+      if (alt < (distances.get(neighbor) ?? Number.POSITIVE_INFINITY)) {
+        distances.set(neighbor, alt)
+        previous.set(neighbor, current)
+      }
+    }
+  }
+
+  const path: string[] = []
+  let cursor: string | null = end
+
+  while (cursor) {
+    path.unshift(cursor)
+    cursor = previous.get(cursor) ?? null
+  }
+
+  if (path.length === 0 || path[0] !== start) {
+    return [start, end]
+  }
+
+  console.log(path)
+
+  return path
+}
+
 function buildRouteSegmentsFromPath(
   pathNodes: string[],
   nodes: CountryRisk[]
@@ -314,7 +415,8 @@ function buildRouteSegmentsFromPath(
 
 function extractProductRoutes(
   products: Product[],
-  countryRisks: CountryRisk[]
+  countryRisks: CountryRisk[],
+  routeMode: RouteMode = "shortest"
 ): ProductSupplyRoute[] {
   const routes: ProductSupplyRoute[] = []
   const DANGER_THRESHOLD = 60
@@ -334,7 +436,10 @@ function extractProductRoutes(
     productName: string,
   ) => {
     if (item.country !== parentCountry) {
-      const pathNodes = findShortestPath(graph, item.country, parentCountry)
+      const pathNodes =
+        routeMode === "safest"
+          ? findSafestPath(graph, countryRisks, item.country, parentCountry)
+          : findShortestPath(graph, item.country, parentCountry)
       const segments = buildRouteSegmentsFromPath(pathNodes, countryRisks)
       const chokepoints = extractChokepointsFromPath(pathNodes, nodeMap)
 
@@ -499,7 +604,7 @@ export function SupplyChainMap({
   onAddItemAtCountry,
   foundRoutes = [],
   selectedFoundRouteId,
-
+  routeMode = "shortest",
 }: SupplyChainMapProps) {
   const [mounted, setMounted] = useState(false)
   const [viewState, setViewState] = useState({
@@ -625,8 +730,8 @@ export function SupplyChainMap({
   }, [countryRisks])
 
   const productRoutes = useMemo(() => {
-    return extractProductRoutes(products, countryRisks)
-  }, [products, countryRisks])
+    return extractProductRoutes(products, countryRisks, routeMode)
+  }, [products, countryRisks, routeMode])
 
   const activeProductChokepoints = useMemo(() => {
     const set = new Set<string>()
