@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Filter, BarChart3, AlertTriangle, Settings, ChevronDown, ChevronRight, ExternalLink, Star, Loader2, TrendingUp, TrendingDown, Radio, Zap } from "lucide-react"
+import { Search, Filter, BarChart3, AlertTriangle, Settings, ChevronDown, ChevronRight, ExternalLink, Star, Loader2, TrendingUp, TrendingDown, Radio, Zap, Package } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
-import { PredictionAlert } from "@/components/prediction-alert"
-import type { PredictionResult } from "@/lib/mirofish/types"
+import { InventorySidebar } from "./inventory-sidebar"
 
 interface CountryRisk {
   id: string
@@ -40,9 +39,9 @@ interface RiskSidebarProps {
   countryRisks: CountryRisk[]
   selectedCountry: string | null
   onCountrySelect: (countryId: string | null) => void
+  onInventoryClick?: () => void
+  isInventoryOpen?: boolean
   onReset: () => void
-  predictions?: PredictionResult[]
-  onPredictionClick?: () => void
 }
 
 const riskMetrics: RiskMetric[] = [
@@ -193,9 +192,9 @@ const writeCachedNews = (country: string, articles: NewsArticle[]) => {
   )
 }
 
-export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onReset, predictions, onPredictionClick }: RiskSidebarProps) {
+export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onInventoryClick, isInventoryOpen, onReset }: RiskSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState<"filters" | "metrics" | "risk" | "options">("risk")
+  const [activeTab, setActiveTab] = useState<"inventory" | "risk">("risk")
   const [expandedMetrics, setExpandedMetrics] = useState<string[]>(["political-stability", "trade-barriers"])
   const [liveNews, setLiveNews] = useState<NewsArticle[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
@@ -265,80 +264,15 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
   }
 
   const tabs = [
-    { id: "filters" as const, icon: Filter, label: "Filters" },
-    { id: "metrics" as const, icon: BarChart3, label: "Metrics" },
-    { id: "risk" as const, icon: AlertTriangle, label: "Risk" },
-    { id: "options" as const, icon: Settings, label: "Options" },
+    { id: "inventory" as const, icon: Package, label: "Inventory", onClick: onInventoryClick },
+    { id: "risk" as const, icon: AlertTriangle, label: "Risk", onClick: () => {} },
   ]
 
   return (
     <div className="flex h-full w-full flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Header */}
-      <div className="border-b border-sidebar-border px-5 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Zap className="h-5 w-5 text-primary" />
-            <div>
-              <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
-              <p className="text-[10px] text-muted-foreground">Real-time intelligence</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Radio className="h-3 w-3 text-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-medium text-emerald-500">LIVE</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search countries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 border-border/50 bg-muted/30 pl-9 text-sm transition-colors focus:border-primary/50 focus:bg-muted/50"
-            />
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onReset}
-            className="h-9 px-3 text-xs text-primary hover:bg-primary/10 hover:text-primary"
-          >
-            Reset
-          </Button>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex border-b border-sidebar-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "relative flex flex-1 cursor-pointer flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
-              activeTab === tab.id
-                ? "text-primary"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />
-            )}
-            <tab.icon className="h-4 w-4" />
-            <span className="text-[10px] font-medium">{tab.label}</span>
-          </button>
-        ))}
-      </div>
-
       {/* Content */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-4">
-          {activeTab === "risk" && (
             <div className="space-y-4">
               {/* Risk Beta Notice */}
               <div className="rounded-xl border border-border/50 bg-card/30 p-3">
@@ -439,177 +373,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                   </div>
                 </div>
               )}
-
-              {/* Risk Metrics List */}
-              <div className="space-y-1">
-                {riskMetrics.map((metric) => (
-                  <Collapsible
-                    key={metric.id}
-                    open={expandedMetrics.includes(metric.id)}
-                    onOpenChange={() => toggleMetric(metric.id)}
-                  >
-                    <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-2.5 rounded-lg p-2.5 text-left transition-colors hover:bg-muted/50">
-                      <div className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-md border transition-colors",
-                        metric.isActive ? "border-primary bg-primary text-primary-foreground" : "border-border bg-transparent text-muted-foreground group-hover:border-primary/50"
-                      )}>
-                        {expandedMetrics.includes(metric.id) ? (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronRight className="h-3.5 w-3.5" />
-                        )}
-                      </div>
-                      <span className="flex-1 text-xs font-medium text-foreground">{metric.name}</span>
-                      {metric.isActive && (
-                        <span className="rounded-full border border-emerald-500/50 px-2 py-0.5 text-[9px] font-medium text-emerald-400">
-                          Active
-                        </span>
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-8">
-                      <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                        <p className="text-[10px] leading-relaxed text-muted-foreground">{metric.description}</p>
-                        <a
-                          href={metric.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 flex items-center gap-1.5 text-[10px] text-primary transition-colors hover:underline"
-                        >
-                          Source: {metric.source}
-                          <ExternalLink className="h-2.5 w-2.5" />
-                        </a>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </div>
-
-              {/* Risk Legend */}
-              <div className="rounded-xl border border-border/50 bg-muted/30 p-4">
-                <p className="mb-3 text-xs font-medium text-foreground">Risk Score Legend</p>
-                <div className="space-y-2">
-                  {[
-                    { color: "bg-red-500", textColor: "text-red-400", label: "Critical", range: "80-100" },
-                    { color: "bg-orange-500", textColor: "text-orange-400", label: "High", range: "60-79" },
-                    { color: "bg-yellow-500", textColor: "text-yellow-400", label: "Medium", range: "40-59" },
-                    { color: "bg-emerald-500", textColor: "text-emerald-400", label: "Low", range: "20-39" },
-                    { color: "bg-cyan-500", textColor: "text-cyan-400", label: "Minimal", range: "0-19" },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-3">
-                      <div
-                        className="h-2.5 w-6 rounded-sm shadow-sm"
-                        style={{
-                          backgroundColor: item.color.includes('red') ? '#ef4444' :
-                            item.color.includes('orange') ? '#f97316' :
-                            item.color.includes('yellow') ? '#eab308' :
-                            item.color.includes('emerald') ? '#22c55e' : '#06b6d4'
-                        }}
-                      />
-                      <span className={cn("flex-1 text-xs font-medium", item.textColor)}>{item.label}</span>
-                      <span className="text-[10px] text-muted-foreground">{item.range}</span>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="outline" size="sm" className="mt-4 w-full border-primary/30 bg-primary/5 text-xs font-medium text-primary hover:bg-primary/10">
-                  Run Full Analysis
-                </Button>
-              </div>
             </div>
-          )}
-
-          {activeTab === "filters" && (
-            <div className="space-y-4">
-              <div>
-                <p className="mb-3 text-xs font-medium text-foreground">High Risk Countries</p>
-                <div className="space-y-1">
-                  {filteredCountries
-                    .filter((c) => c.overallRisk >= 60)
-                    .sort((a, b) => b.overallRisk - a.overallRisk)
-                    .map((country) => (
-                      <div key={country.id}>
-                        <button
-                          onClick={() => onCountrySelect(country.name)}
-                          className={cn(
-                            "group flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-xs transition-all",
-                            selectedCountry === country.name
-                              ? "bg-primary/10 text-primary"
-                              : "text-foreground hover:bg-muted/50 hover:text-primary"
-                          )}
-                        >
-                          <span className="font-medium">{country.name}</span>
-                          <span className={cn(
-                            "rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                            country.overallRisk >= 80 ? "border-red-500/50 text-red-400" : "border-orange-500/50 text-orange-400"
-                          )}>
-                            {country.overallRisk}%
-                          </span>
-                        </button>
-                        {predictions?.map((result) => {
-                          const match = result.prediction.affectedCountries.find(
-                            (c) => c.country.toLowerCase() === country.name.toLowerCase()
-                          )
-                          if (!match) return null
-                          return (
-                            <PredictionAlert
-                              key={result.simulationId}
-                              prediction={match}
-                              onClick={onPredictionClick}
-                            />
-                          )
-                        })}
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "metrics" && (
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Configure which metrics are used in risk calculations.
-              </p>
-              {riskMetrics.map((metric) => (
-                <div
-                  key={metric.id}
-                  className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30"
-                >
-                  <div>
-                    <p className="text-xs font-medium text-foreground">{metric.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{metric.source}</p>
-                  </div>
-                  <span className={cn(
-                    "rounded-full px-2 py-0.5 text-[9px] font-medium border",
-                    metric.isActive ? "border-emerald-500/50 text-emerald-400" : "border-border text-muted-foreground"
-                  )}>
-                    {metric.isActive ? "Enabled" : "Disabled"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === "options" && (
-            <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">
-                Configure display and analysis options.
-              </p>
-              <div className="space-y-2">
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
-                  <p className="text-xs font-medium text-foreground">Auto-refresh</p>
-                  <p className="text-[10px] text-muted-foreground">Update risk scores every 15 minutes</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
-                  <p className="text-xs font-medium text-foreground">News Sources</p>
-                  <p className="text-[10px] text-muted-foreground">Reuters, AP, Financial Times, Bloomberg</p>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-muted/30 p-3 transition-colors hover:border-primary/30">
-                  <p className="text-xs font-medium text-foreground">Alert Threshold</p>
-                  <p className="text-[10px] text-muted-foreground">Notify when risk exceeds 70%</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </ScrollArea>
 

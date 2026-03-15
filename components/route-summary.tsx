@@ -181,8 +181,8 @@ export function RouteSummary({
   if (!isOpen) return null
 
   return (
-    <div className="absolute right-4 top-20 z-20 w-[380px] animate-in slide-in-from-right-4">
-      <Card className="max-h-[calc(100vh-6rem)] overflow-hidden border-border/50 bg-card/95 shadow-2xl backdrop-blur-xl">
+    <div className="absolute right-4 top-100 z-20 w-[380px] animate-in slide-in-from-right-4">
+      <Card className="max-h-[calc(100vh-6rem)] overflow-hidden border-border/50 bg-card/60 shadow-2xl backdrop-blur-xl">
         <CardContent className="p-0">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/50 p-4">

@@ -179,34 +179,11 @@ export function RelocationPanel({
   if (!isOpen) return null
 
   return (
-    <>
+    <div className="h-screen min-h-0">
       {/* Main Panel */}
-      <div className="absolute right-4 top-20 z-20 w-[380px] animate-in slide-in-from-right-4 duration-300">
-      <Card className="max-h-[calc(100vh-6rem)] overflow-hidden border-primary/20 glass-panel shadow-2xl">
-        <CardHeader className="pb-3 border-b border-border/50">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2.5 text-base">
-                <Factory className="h-5 w-5 text-primary" />
-                Relocation Advisor
-              </CardTitle>
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3 w-3 text-primary" />
-                AI-powered factory relocation recommendations
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8 hover:bg-muted/50"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-
-        <div className="max-h-[calc(100vh-16rem)] overflow-y-auto">
+      <div className="h-4/5">
+      <div className="h-full glass-panel shadow-2xl">
+        <div className="h-full overflow-y-auto">
           {/* Show form when no results, or show both */}
           <div className="p-4 space-y-4">
             {/* Error State */}
@@ -284,7 +261,7 @@ export function RelocationPanel({
             )}
           </div>
         </div>
-      </Card>
+      </div>
     </div>
 
       {/* Relocation Simulator - appears as separate overlay */}
@@ -296,6 +273,6 @@ export function RelocationPanel({
         industryType={industryType}
         countryName={getCountryName}
       />
-    </>
+    </div>
   )
 }

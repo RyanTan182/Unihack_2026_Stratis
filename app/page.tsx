@@ -21,18 +21,21 @@ import { RouteSummary } from "@/components/route-summary"
 import { PriceRiskTimeline } from "@/components/price-risk-timeline"
 import { AlertBanner, type AlertData } from "@/components/alert-banner"
 import { Button } from "@/components/ui/button"
-import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3 } from "lucide-react"
+import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3, AlertTriangle, Zap, Radio, FactoryIcon, SparkleIcon, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { FoundRoute } from "@/lib/route-types"
 import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
 import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
 import { collectCountriesFromProducts } from "./lib/risk-country-utils";
-import { PredictionsPanel } from "@/components/predictions-panel"
-import { usePredictions } from "@/hooks/use-predictions"
-import { toast } from "sonner"
-import { computeProductImpacts } from "@/lib/mirofish/supply-chain-impact"
-import type { ProductImpact } from "@/lib/mirofish/types"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { RouteMode } from "@/lib/route-types"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -70,7 +73,7 @@ const countryRisks: CountryRiskData[] = [
     id: "United States",
     name: "United States",
     type: "country",
-    connections: ["Canada", "Mexico", "Panama Canal"],
+    connections: ["Canada", "Mexico", "Panama Canal", "United Kingdom", "Germany", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -83,7 +86,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Germany",
     name: "Germany",
     type: "country",
-    connections: ["Netherlands", "France", "Poland", "Suez Canal"],
+    connections: ["Netherlands", "France", "Poland", "Suez Canal", "United States", "Canada", "Mexico"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -119,7 +122,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Brazil",
     name: "Brazil",
     type: "country",
-    connections: ["Argentina", "Chile", "Panama Canal", "Peru"],
+    connections: ["Panama Canal", "United Kingdom", "Germany", "France", "Italy", "Spain"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -142,7 +145,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Japan",
     name: "Japan",
     type: "country",
-    connections: ["China", "South Korea", "Taiwan", "Strait of Malacca", "Panama Canal"],
+    connections: ["China", "South Korea", "Taiwan", "Strait of Malacca"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -152,7 +155,7 @@ const countryRisks: CountryRiskData[] = [
     id: "South Korea",
     name: "South Korea",
     type: "country",
-    connections: ["China", "Japan", "Taiwan", "Strait of Malacca", "Panama Canal"],
+    connections: ["China", "Japan", "Taiwan", "Strait of Malacca"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -162,7 +165,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Mexico",
     name: "Mexico",
     type: "country",
-    connections: ["United States", "Panama Canal"],
+    connections: ["United States", "Panama Canal", "United Kingdom", "Germany", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -291,7 +294,7 @@ const countryRisks: CountryRiskData[] = [
     id: "United Kingdom",
     name: "United Kingdom",
     type: "country",
-    connections: ["Netherlands", "France"],
+    connections: ["Netherlands", "France", "United States", "Canada", "Mexico"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -301,7 +304,7 @@ const countryRisks: CountryRiskData[] = [
     id: "France",
     name: "France",
     type: "country",
-    connections: ["Germany", "Netherlands", "United Kingdom", "Spain", "Italy", "Suez Canal"],
+    connections: ["Germany", "Netherlands", "United Kingdom", "Spain", "Italy", "Suez Canal", "United States", "Canada", "Mexico"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -311,7 +314,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Italy",
     name: "Italy",
     type: "country",
-    connections: ["France", "Spain", "Greece", "Suez Canal"],
+    connections: ["France", "Spain", "Greece", "Suez Canal", "United States", "Canada", "Mexico"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -321,7 +324,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Spain",
     name: "Spain",
     type: "country",
-    connections: ["France", "Italy"],
+    connections: ["France", "Italy", "United States", "Canada", "Mexico", "Brazil"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -341,7 +344,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Canada",
     name: "Canada",
     type: "country",
-    connections: ["United States", "Panama Canal"],
+    connections: ["United States", "Panama Canal", "Germany", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -390,7 +393,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Chile",
     name: "Chile",
     type: "country",
-    connections: ["Peru", "Brazil", "Argentina", "Panama Canal"],
+    connections: ["Peru", "Argentina", "Panama Canal"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -591,7 +594,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Peru",
     name: "Peru",
     type: "country",
-    connections: ["Chile", "Brazil", "Panama Canal"],
+    connections: ["Panama Canal"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -633,7 +636,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Panama Canal",
     name: "Panama Canal",
     type: "chokepoint",
-    connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "Japan", "South Korea"],
+    connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "United Kingdom", "Germany", "France", "Japan"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -751,62 +754,7 @@ export default function SupplyChainCrisisDetector() {
   const [alternativesPanelOpen, setAlternativesPanelOpen] = useState(false)
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
-  const [isPredictionsOpen, setIsPredictionsOpen] = useState(false)
-  const predictions = usePredictions()
-
-  // Compute product impacts for all completed predictions
-  const productImpactsBySimulation = useMemo(() => {
-    const map: Record<string, ProductImpact[]> = {}
-    for (const result of predictions.completedPredictions) {
-      map[result.simulationId] = computeProductImpacts(result, storedProducts, riskSnapshots)
-    }
-    return map
-  }, [predictions.completedPredictions, storedProducts, riskSnapshots])
-
-  useEffect(() => {
-    for (const result of predictions.completedPredictions) {
-      // Check for product-specific critical impacts
-      const impacts = productImpactsBySimulation[result.simulationId] || []
-      const criticalImpacts = impacts.filter(
-        (i) => i.overallSeverity === "critical" || i.overallSeverity === "high"
-      )
-
-      if (criticalImpacts.length > 0) {
-        const productList = criticalImpacts
-          .slice(0, 3)
-          .map((i) => `${i.productName} (${i.estimatedPriceImpact})`)
-          .join(", ")
-        toast.error(
-          `Supply Chain Alert: ${criticalImpacts.length} product${criticalImpacts.length > 1 ? "s" : ""} at risk`,
-          {
-            description: productList,
-            action: {
-              label: "View Details",
-              onClick: () => setIsPredictionsOpen(true),
-            },
-            id: `supply-chain-${result.simulationId}`,
-          }
-        )
-      }
-
-      // Country-level alerts (existing behavior)
-      for (const country of result.prediction.affectedCountries) {
-        if (country.predictedRisk - country.currentRisk > 20) {
-          toast.warning(
-            `Prediction Alert: ${result.prediction.summary}`,
-            {
-              description: `${country.country} risk predicted to rise from ${country.currentRisk} to ${country.predictedRisk}`,
-              action: {
-                label: "View Details",
-                onClick: () => setIsPredictionsOpen(true),
-              },
-              id: `prediction-${result.simulationId}-${country.country}`,
-            }
-          )
-        }
-      }
-    }
-  }, [predictions.completedPredictions, productImpactsBySimulation])
+  const [routeMode, setRouteMode] = useState<RouteMode>("shortest")
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -1281,6 +1229,17 @@ export default function SupplyChainCrisisDetector() {
     }
   }
 
+  const [currentMethod, setCurrentMethod] = useState<string>("Relocation");
+  const methodOptions = ["Safe Routes", "Relocation"];
+
+  const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization">("risk")
+
+  const tabs = [
+    { id: "inventory" as const, icon: Package, label: "Inventory" },
+    { id: "optimization" as const, icon: Sparkles, label: "Optimization" },
+    { id: "risk" as const, icon: AlertTriangle, label: "Risk" },
+  ]
+
   return (
     <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
       {/* Left Navigation Sidebar */}
@@ -1289,21 +1248,53 @@ export default function SupplyChainCrisisDetector() {
         isInventoryOpen={isInventorySidebarOpen}
         onLocationClick={() => setIsInventorySidebarOpen(false)}
         isLocationActive={!isInventorySidebarOpen}
-        onPredictionsClick={() => {
-          setIsPredictionsOpen(!isPredictionsOpen)
-          setIsInventorySidebarOpen(false)
-        }}
-        isPredictionsOpen={isPredictionsOpen}
       />
 
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
-      {isInventorySidebarOpen ? (
+      <div>
+        <div className="border-b border-sidebar-border px-5 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Zap className="h-5 w-5 text-primary" />
+              <div>
+                <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
+                <p className="text-[10px] text-muted-foreground">Real-time intelligence</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Radio className="h-3 w-3 text-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-medium text-emerald-500">LIVE</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex border-b border-sidebar-border">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "relative flex flex-1 cursor-pointer flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
+                activeTab === tab.id
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-primary" />
+              )}
+              <tab.icon className="h-4 w-4" />
+              <span className="text-[10px] font-medium">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      {activeTab == "inventory" && (
         <InventorySidebar
           products={storedProducts}
           onProductAdd={handleProductAdd}
           onTreeChange={handleTreeChange}
           onNodeSelect={handleNodeSelect}
           onProductSelect={handleInventoryProductSelect}
+          countryRisks={countryRisks}
           countryOptions={countryOptions}
           alternativesMap={alternativesMap}
           altScanLoading={altScanLoading}
@@ -1322,17 +1313,69 @@ export default function SupplyChainCrisisDetector() {
               children: c.children,
             })),
           }))}
+          onRouteModeChange={(mode: RouteMode) => setRouteMode(mode)}
         />
-      ) : (
+      )}
+
+      {activeTab == "optimization" && (
+        <div>
+        <div className="rounded-xs p-4">
+        <Select value={currentMethod} onValueChange={setCurrentMethod}>
+          <SelectTrigger className="w-full border-border/50 bg-muted/30">
+            <SelectValue placeholder="Select current country..." />
+          </SelectTrigger>
+
+          <SelectContent className="glass-panel border-primary/20">
+            {methodOptions.map((m) => (
+              <SelectItem key={m} value={m}>
+                <div className="flex items-center justify-between gap-4">
+                  <span>{m}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        </div>
+        {currentMethod == "Safe Routes" && (
+          <RouteFinderPanel
+            isOpen={true}
+            onClose={() => {
+              setIsRouteFinderOpen(false)
+              setSafeRouteContext(null)
+            }}
+            countryRisks={resolvedCountryRisks}
+            onRouteFound={(routes) => {
+              setFoundRoutes(routes)
+              if (routes.length > 0) {
+                setSelectedFoundRouteId(routes[0].id)
+              }
+            }}
+            preselectedOrigin={safeRouteContext?.origin}
+            preselectedDestination={safeRouteContext?.destination}
+          />
+        )}
+        {currentMethod == "Relocation" && (
+          <RelocationPanel
+            isOpen={true}
+            onClose={() => setIsRelocationOpen(false)}
+            countryRisks={countryRisks}
+            onCountrySelect={setSelectedCountry}
+          />
+        )}
+        </div>
+      )}
+
+      {activeTab == "risk" && (
         <RiskSidebar
           countryRisks={resolvedCountryRisks}
           selectedCountry={selectedCountry}
           onCountrySelect={setSelectedCountry}
+          onInventoryClick={handleToggleInventory}
+          isInventoryOpen={isInventorySidebarOpen}
           onReset={handleReset}
-          predictions={predictions.completedPredictions}
-          onPredictionClick={() => setIsPredictionsOpen(true)}
         />
       )}
+      </div>
 
       {/* Main Map Area */}
       <div className="relative h-full w-full overflow-hidden">
@@ -1359,10 +1402,12 @@ export default function SupplyChainCrisisDetector() {
           }}
           foundRoutes={foundRoutes}
           selectedFoundRouteId={selectedFoundRouteId}
+          routeMode={routeMode}
         />
 
         {/* Action Buttons */}
         <div className="absolute left-4 top-4 z-10 flex gap-2">
+          {/*
           <Button
             variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}
             size="sm"
@@ -1380,6 +1425,7 @@ export default function SupplyChainCrisisDetector() {
             <Route className="h-4 w-4" />
             {customRoute ? `${customRoute.totalRisk}% Risk` : "Build Route"}
           </Button>
+          */}
 
           <Button
             variant={isProductBuilderOpen || products.length > 0 ? "default" : "secondary"}
@@ -1397,9 +1443,10 @@ export default function SupplyChainCrisisDetector() {
             }}
           >
             <Package className="h-4 w-4" />
-            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Products"}
+            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Tracking"}
           </Button>
 
+          {/*
           <Button
             variant={isRelocationOpen ? "default" : "secondary"}
             size="sm"
@@ -1418,7 +1465,9 @@ export default function SupplyChainCrisisDetector() {
             <Factory className="h-4 w-4" />
             Relocation
           </Button>
+          */}
 
+          {/*
           <Button
             variant={isRouteFinderOpen ? "default" : "secondary"}
             size="sm"
@@ -1438,6 +1487,7 @@ export default function SupplyChainCrisisDetector() {
             <Navigation className="h-4 w-4" />
             Safe Routes
           </Button>
+          */}
 
           <Button
             variant={showRiskZones ? "default" : "secondary"}
@@ -1454,6 +1504,7 @@ export default function SupplyChainCrisisDetector() {
             Risk Zones
           </Button>
 
+          {/*
           <Button
             variant="secondary"
             size="sm"
@@ -1466,6 +1517,7 @@ export default function SupplyChainCrisisDetector() {
             <Layers className="h-4 w-4" />
             Clear
           </Button>
+          */}
 
           {/* Route Summary Button */}
           {products.length > 0 && (
@@ -1541,14 +1593,6 @@ export default function SupplyChainCrisisDetector() {
           onClose={() => setSelectedRoute(null)}
         />
 
-        {/* Relocation Advisor Panel */}
-        <RelocationPanel
-          isOpen={isRelocationOpen}
-          onClose={() => setIsRelocationOpen(false)}
-          countryRisks={countryRisks}
-          onCountrySelect={setSelectedCountry}
-        />
-
         {/* Route Summary Panel */}
         <RouteSummary
           isOpen={isRouteSummaryOpen}
@@ -1580,18 +1624,6 @@ export default function SupplyChainCrisisDetector() {
             // Handle supplier replacement in supply chain
             setAlternativesPanelOpen(false)
           }}
-        />
-
-        {/* Predictions Panel */}
-        <PredictionsPanel
-          isOpen={isPredictionsOpen}
-          onClose={() => setIsPredictionsOpen(false)}
-          activePredictions={predictions.activePredictions}
-          completedPredictions={predictions.completedPredictions}
-          isTriggering={predictions.isTriggering}
-          error={predictions.error}
-          onTrigger={predictions.triggerPrediction}
-          productImpactsBySimulation={productImpactsBySimulation}
         />
       </div>
     </div>
