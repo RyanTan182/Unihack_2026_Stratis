@@ -35,6 +35,7 @@ interface PredictionsPanelProps {
   error: string | null
   onTrigger: (scenario: string, countries: string[]) => void
   productImpactsBySimulation?: Record<string, ProductImpact[]>
+  inline?: boolean
 }
 
 import {
@@ -92,6 +93,7 @@ export function PredictionsPanel({
   error,
   onTrigger,
   productImpactsBySimulation,
+  inline,
 }: PredictionsPanelProps) {
   const [scenario, setScenario] = useState("")
   const [countriesInput, setCountriesInput] = useState("")
@@ -110,10 +112,10 @@ export function PredictionsPanel({
     setCountriesInput("")
   }
 
-  return (
-    <div className="fixed inset-y-0 right-0 z-40 w-[420px] shadow-2xl">
-      <div className="flex h-full flex-col bg-background/95 backdrop-blur-xl border-l border-border">
-        {/* Header */}
+  const content = (
+    <>
+      {/* Header */}
+      {!inline && (
         <div className="flex items-center justify-between border-b border-border p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -135,146 +137,162 @@ export function PredictionsPanel({
             <X className="h-4 w-4" />
           </Button>
         </div>
+      )}
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto">
-          {/* What-If Input */}
-          <div className="p-4 border-b border-border space-y-3">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Globe className="h-4 w-4 text-primary" />
-              What-If Scenario
-            </h3>
-            <Input
-              placeholder='e.g., "Military tensions in the Taiwan Strait"'
-              value={scenario}
-              onChange={(e) => setScenario(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              className="text-sm"
-            />
-            <Input
-              placeholder="Countries (comma-separated): Taiwan, China, Japan"
-              value={countriesInput}
-              onChange={(e) => setCountriesInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              className="text-sm"
-            />
-            <Button
-              onClick={handleSubmit}
-              disabled={isTriggering || !scenario.trim() || !countriesInput.trim()}
-              size="sm"
-              className="w-full gap-2"
-            >
-              {isTriggering ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Starting simulation...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Simulate
-                </>
-              )}
-            </Button>
-            {error && (
-              <p className="text-xs text-red-400">{error}</p>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* What-If Input */}
+        <div className={cn("border-b border-border space-y-3", inline ? "p-3" : "p-4")}>
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <Globe className="h-4 w-4 text-primary" />
+            What-If Scenario
+          </h3>
+          <Input
+            placeholder='e.g., "Military tensions in the Taiwan Strait"'
+            value={scenario}
+            onChange={(e) => setScenario(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            className="text-sm"
+          />
+          <Input
+            placeholder="Countries (comma-separated): Taiwan, China, Japan"
+            value={countriesInput}
+            onChange={(e) => setCountriesInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            className="text-sm"
+          />
+          <Button
+            onClick={handleSubmit}
+            disabled={isTriggering || !scenario.trim() || !countriesInput.trim()}
+            size="sm"
+            className="w-full gap-2"
+          >
+            {isTriggering ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Starting simulation...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Simulate
+              </>
             )}
-          </div>
+          </Button>
+          {error && (
+            <p className="text-xs text-red-400">{error}</p>
+          )}
+        </div>
 
-          {/* Active Simulations */}
-          {activePredictions.length > 0 && (
-            <div className="p-4 border-b border-border space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4 text-yellow-400 animate-pulse" />
-                Active Simulations ({activePredictions.length})
-              </h3>
-              {activePredictions.map((pred) => {
-                const progress = pred.status
-                  ? (pred.status.currentRound / pred.status.totalRounds) * 100
-                  : 0
-                const remaining = pred.status
-                  ? Math.ceil(
-                      ((pred.status.totalRounds - pred.status.currentRound) * 90) / // ~90s per round
-                        60
-                    )
-                  : 15
+        {/* Active Simulations */}
+        {activePredictions.length > 0 && (
+          <div className={cn("border-b border-border space-y-3", inline ? "p-3" : "p-4")}>
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4 text-yellow-400 animate-pulse" />
+              Active Simulations ({activePredictions.length})
+            </h3>
+            {activePredictions.map((pred) => {
+              const progress = pred.status
+                ? (pred.status.currentRound / pred.status.totalRounds) * 100
+                : 0
+              const remaining = pred.status
+                ? Math.ceil(
+                    ((pred.status.totalRounds - pred.status.currentRound) * 90) / // ~90s per round
+                      60
+                  )
+                : 15
 
-                return (
-                  <div
-                    key={pred.simulationId}
-                    className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-2"
-                  >
-                    <p className="text-sm font-medium">{pred.scenario}</p>
-                    <div className="flex items-center gap-2">
-                      <Progress value={progress} className="flex-1 h-2" />
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {pred.status
-                          ? `R${pred.status.currentRound}/${pred.status.totalRounds}`
-                          : "Starting..."}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      ~{remaining} min remaining &middot;{" "}
-                      {pred.status?.activeAgents || 0} agents active
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {pred.countries.map((c) => (
-                        <Badge key={c} variant="outline" className="text-xs">
-                          {c}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    {/* Agent Activity Feed */}
-                    {pred.status && pred.status.recentActions.length > 0 && (
-                      <div className="pt-2 border-t border-border/30">
-                        <h4 className="text-xs font-medium mb-2 text-muted-foreground">
-                          Live Agent Feed
-                        </h4>
-                        <AgentFeed actions={pred.status.recentActions} />
-                      </div>
-                    )}
-
-                    {/* Error state */}
-                    {pred.status?.status === "failed" && (
-                      <p className="text-xs text-red-400">
-                        {pred.status.error || "Simulation failed"}
-                      </p>
-                    )}
-                    {pred.status?.status === "timed_out" && (
-                      <p className="text-xs text-yellow-400">
-                        {pred.status.error || "Simulation timed out"}
-                      </p>
-                    )}
+              return (
+                <div
+                  key={pred.simulationId}
+                  className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-2"
+                >
+                  <p className="text-sm font-medium">{pred.scenario}</p>
+                  <div className="flex items-center gap-2">
+                    <Progress value={progress} className="flex-1 h-2" />
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {pred.status
+                        ? `R${pred.status.currentRound}/${pred.status.totalRounds}`
+                        : "Starting..."}
+                    </span>
                   </div>
-                )
-              })}
+                  <p className="text-xs text-muted-foreground">
+                    ~{remaining} min remaining &middot;{" "}
+                    {pred.status?.activeAgents || 0} agents active
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {pred.countries.map((c) => (
+                      <Badge key={c} variant="outline" className="text-xs">
+                        {c}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Agent Activity Feed */}
+                  {pred.status && pred.status.recentActions.length > 0 && (
+                    <div className="pt-2 border-t border-border/30">
+                      <h4 className="text-xs font-medium mb-2 text-muted-foreground">
+                        Live Agent Feed
+                      </h4>
+                      <AgentFeed actions={pred.status.recentActions} />
+                    </div>
+                  )}
+
+                  {/* Error state */}
+                  {pred.status?.status === "failed" && (
+                    <p className="text-xs text-red-400">
+                      {pred.status.error || "Simulation failed"}
+                    </p>
+                  )}
+                  {pred.status?.status === "timed_out" && (
+                    <p className="text-xs text-yellow-400">
+                      {pred.status.error || "Simulation timed out"}
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Completed Predictions */}
+        <div className={cn("space-y-3", inline ? "p-3" : "p-4")}>
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <Zap className="h-4 w-4 text-primary" />
+            Predictions ({completedPredictions.length})
+          </h3>
+          {completedPredictions.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8">
+              No predictions yet. Run a What-If scenario to get started.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {completedPredictions.map((result) => (
+                <PredictionCard
+                  key={result.simulationId}
+                  result={result}
+                  productImpacts={productImpactsBySimulation?.[result.simulationId]}
+                />
+              ))}
             </div>
           )}
-
-          {/* Completed Predictions */}
-          <div className="p-4 space-y-3">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" />
-              Predictions ({completedPredictions.length})
-            </h3>
-            {completedPredictions.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">
-                No predictions yet. Run a What-If scenario to get started.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {completedPredictions.map((result) => (
-                  <PredictionCard
-                    key={result.simulationId}
-                    result={result}
-                    productImpacts={productImpactsBySimulation?.[result.simulationId]}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
         </div>
+      </div>
+    </>
+  )
+
+  if (inline) {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-y-0 right-0 z-40 w-[420px] shadow-2xl">
+      <div className="flex h-full flex-col bg-background/95 backdrop-blur-xl border-l border-border">
+        {content}
       </div>
     </div>
   )

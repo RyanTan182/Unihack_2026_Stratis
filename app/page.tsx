@@ -1313,16 +1313,17 @@ export default function SupplyChainCrisisDetector() {
   const [currentMethod, setCurrentMethod] = useState<string>("Relocation");
   const methodOptions = ["Safe Routes", "Relocation"];
 
-  const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization">("risk")
+  const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization" | "simulation">("risk")
 
   const tabs = [
     { id: "inventory" as const, icon: Package, label: "Inventory" },
     { id: "optimization" as const, icon: Sparkles, label: "Optimization" },
     { id: "risk" as const, icon: AlertTriangle, label: "Risk" },
+    { id: "simulation" as const, icon: Zap, label: "Simulation" },
   ]
 
   return (
-    <div className="grid h-screen w-full grid-cols-[320px_1fr] overflow-hidden bg-background">
+    <div className="grid h-screen w-full grid-cols-[380px_1fr] overflow-hidden bg-background">
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
       <div>
         <div className="border-b border-sidebar-border px-5 py-4">
@@ -1349,7 +1350,10 @@ export default function SupplyChainCrisisDetector() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id)
+                setIsPredictionsOpen(tab.id === "simulation")
+              }}
               className={cn(
                 "relative flex flex-1 cursor-pointer flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
                 activeTab === tab.id
@@ -1453,6 +1457,20 @@ export default function SupplyChainCrisisDetector() {
           onReset={handleReset}
           predictions={predictions.completedPredictions}
           onPredictionClick={() => setIsPredictionsOpen(true)}
+        />
+      )}
+
+      {activeTab == "simulation" && (
+        <PredictionsPanel
+          isOpen={true}
+          onClose={() => setActiveTab("risk")}
+          activePredictions={predictions.activePredictions}
+          completedPredictions={predictions.completedPredictions}
+          isTriggering={predictions.isTriggering}
+          error={predictions.error}
+          onTrigger={predictions.triggerPrediction}
+          productImpactsBySimulation={productImpactsBySimulation}
+          inline
         />
       )}
       </div>
@@ -1586,20 +1604,6 @@ export default function SupplyChainCrisisDetector() {
             Risk Zones
           </Button>
 
-          <Button
-            variant={isPredictionsOpen ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              isPredictionsOpen
-                ? "bg-red-600/80 text-white border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.3)]"
-                : "bg-red-500/15 text-red-400 border-red-500/30 hover:bg-red-500/25 hover:border-red-500/50"
-            )}
-            onClick={() => setIsPredictionsOpen(!isPredictionsOpen)}
-          >
-            Crisis Simulation
-          </Button>
-
           {/*
           <Button
             variant="secondary"
@@ -1726,17 +1730,6 @@ export default function SupplyChainCrisisDetector() {
           }}
         />
 
-        {/* Predictions Panel */}
-        <PredictionsPanel
-          isOpen={isPredictionsOpen}
-          onClose={() => setIsPredictionsOpen(false)}
-          activePredictions={predictions.activePredictions}
-          completedPredictions={predictions.completedPredictions}
-          isTriggering={predictions.isTriggering}
-          error={predictions.error}
-          onTrigger={predictions.triggerPrediction}
-          productImpactsBySimulation={productImpactsBySimulation}
-        />
       </div>
     </div>
   )
