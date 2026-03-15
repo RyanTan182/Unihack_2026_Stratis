@@ -38,7 +38,6 @@ import {
 } from "@/components/ui/select"
 import { RouteMode } from "@/lib/route-types"
 import { getChokepointRisk } from "@/lib/chokepoints"
-import { storedProductToMapProduct } from "@/lib/decompose/to-map-product"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -652,8 +651,8 @@ const countryRisks: CountryRiskData[] = [
     ],
   },
   {
-    id: "Congo",
-    name: "Congo",
+    id: "DR Congo",
+    name: "DR Congo",
     type: "country",
     connections: ["South Africa", "Nigeria", "Bab-el-Mandeb", "Zambia", "Angola"],
     importRisk: 65,
@@ -1080,9 +1079,6 @@ export default function SupplyChainCrisisDetector() {
         newsHighlights: [
           ...node.newsHighlights,
           `Derived from ${availableSnapshots.length} neighboring countries`,
-          snapshot.summary,
-          `Import → tariff ${snapshot.importFactors.tariff.score}, conflict ${snapshot.importFactors.conflict.score}, policy ${snapshot.importFactors.policy.score}${snapshot.importFactors.labor != null ? `, labor ${snapshot.importFactors.labor.score}` : ""}`,
-          `Export → tariff ${snapshot.exportFactors.tariff.score}, conflict ${snapshot.exportFactors.conflict.score}, policy ${snapshot.exportFactors.policy.score}${snapshot.exportFactors.labor != null ? `, labor ${snapshot.exportFactors.labor.score}` : ""}`,
         ],
       }
     })
@@ -1133,13 +1129,6 @@ export default function SupplyChainCrisisDetector() {
     if (products.length === 0) return undefined
     return analyzeSupplyChain(products, resolvedCountryRisks)
   }, [products, resolvedCountryRisks])
-
-  // Convert stored products to map products for the right panel
-  const mapProducts = useMemo(() => {
-    return storedProducts
-      .map((sp, i) => storedProductToMapProduct(sp, i))
-      .filter((mp): mp is MapProduct => mp !== null)
-  }, [storedProducts])
 
   // Alerts from products (shared by banner and sidebar)
   const alerts = useMemo(() => {

@@ -204,6 +204,7 @@ const nodeCoordinates: Record<string, [number, number]> = {
   "Peru": [-75.02, -9.19],
   "Ethiopia": [40.49, 9.15],
   "Congo": [21.76, -4.04],
+  "DR Congo": [15.27, -4.44],
   "Czechia": [15.47, 49.82],
   "Zambia": [28.32, -15.42],
   "Zimbabwe": [29.15, -19.02],
@@ -880,33 +881,33 @@ export function SupplyChainMap({
   }, [products, countryRisks])
 
   // Generate GeoJSON for network connections
-  const networkGeoJSON = useMemo(() => {
-    const features = nodeConnections
-      .filter((edge) => !isPacificBridgeSegment(edge.from, edge.to))
-      .map((edge) => {
-        const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
-        return {
-          type: "Feature" as const,
-          properties: {
-            id: edge.id,
-            isChokepoint,
-            avgRisk: edge.avgRisk,
-            color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
-            width: isChokepoint ? 1.5 : 1,
-            opacity: isChokepoint ? 0.35 : 0.2,
-          },
-          geometry: {
-            type: "LineString" as const,
-            coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
-          },
-        }
-      })
+  // const networkGeoJSON = useMemo(() => {
+  //   const features = nodeConnections
+  //     .filter((edge) => !isPacificBridgeSegment(edge.from, edge.to))
+  //     .map((edge) => {
+  //       const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
+  //       return {
+  //         type: "Feature" as const,
+  //         properties: {
+  //           id: edge.id,
+  //           isChokepoint,
+  //           avgRisk: edge.avgRisk,
+  //           color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
+  //           width: isChokepoint ? 1.5 : 1,
+  //           opacity: isChokepoint ? 0.35 : 0.2,
+  //         },
+  //         geometry: {
+  //           type: "LineString" as const,
+  //           coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
+  //         },
+  //       }
+  //     })
 
-    return {
-      type: "FeatureCollection" as const,
-      features,
-    }
-  }, [nodeConnections])
+  //   return {
+  //     type: "FeatureCollection" as const,
+  //     features,
+  //   }
+  // }, [nodeConnections])
 
   // Generate GeoJSON for product routes
   const productRoutesGeoJSON = useMemo(() => {

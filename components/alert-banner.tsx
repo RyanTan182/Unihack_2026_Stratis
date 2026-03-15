@@ -11,8 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn, formatRisk } from "@/lib/utils"
-import type { SupplyChainInsights, Recommendation } from "@/lib/supply-chain-analyzer"
+import { cn } from "@/lib/utils"
 import type { AlertData } from "@/lib/alerts"
 
 export type { AlertData } from "@/lib/alerts"
@@ -33,85 +32,6 @@ export function AlertBanner({
   className,
 }: AlertBannerProps) {
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0)
-
-  // Generate alerts from insights
-  useEffect(() => {
-    if (!insights) {
-      setAlerts([])
-      return
-    }
-
-    const generatedAlerts: AlertData[] = []
-
-    // High risk components
-    const criticalComponents = insights.highRiskComponents.filter(c => c.risk >= 70)
-    if (criticalComponents.length > 0) {
-      generatedAlerts.push({
-        id: 'high-risk-components',
-        type: 'high_risk',
-        severity: 'critical',
-        title: `${criticalComponents.length} High-Risk Component${criticalComponents.length > 1 ? 's' : ''} Detected`,
-        description: `${criticalComponents[0].componentName} from ${criticalComponents[0].country} has ${formatRisk(criticalComponents[0].risk)}% risk`,
-        action: 'View alternatives',
-        relatedComponentId: criticalComponents[0].componentId,
-      })
-    }
-
-    // Price spike
-    const priceImpact = parseFloat(insights.priceImpact.estimated.replace('%', '').replace('+', ''))
-    if (priceImpact > 10) {
-      generatedAlerts.push({
-        id: 'price-spike',
-        type: 'price_spike',
-        severity: 'warning',
-        title: `Price Impact Alert: ${insights.priceImpact.estimated}`,
-        description: `Multiple factors contributing to ${insights.priceImpact.estimated} price increase`,
-        action: 'View details',
-      })
-    } else if (priceImpact > 5) {
-      generatedAlerts.push({
-        id: 'price-moderate',
-        type: 'price_spike',
-        severity: 'info',
-        title: `Moderate Price Impact: ${insights.priceImpact.estimated}`,
-        description: 'Monitor price factors that may affect your supply chain costs',
-        action: 'View timeline',
-      })
-    }
-
-    // Critical chokepoints
-    const criticalChokepoints = insights.criticalChokepoints.filter(c => c.risk >= 70)
-    if (criticalChokepoints.length > 0) {
-      generatedAlerts.push({
-        id: 'route-disruption',
-        type: 'route_disruption',
-        severity: 'warning',
-        title: `Critical Chokepoint${criticalChokepoints.length > 1 ? 's' : ''}: ${criticalChokepoints[0].name}`,
-        description: `${formatRisk(criticalChokepoints[0].risk)}% risk affecting ${criticalChokepoints[0].affectedComponents.length} components`,
-        action: 'Find alternatives',
-      })
-    }
-
-    // Critical recommendations
-    const criticalRecs = insights.recommendations.filter(r => r.type === 'critical')
-    if (criticalRecs.length > 0) {
-      criticalRecs.forEach((rec, idx) => {
-        generatedAlerts.push({
-          id: `recommendation-${idx}`,
-          type: 'critical_recommendation',
-          severity: 'critical',
-          title: rec.title,
-          description: rec.description,
-          action: rec.action,
-          relatedComponentId: rec.componentId,
-        })
-      })
-    }
-
-    // Filter out dismissed alerts
-    const activeAlerts = generatedAlerts.filter(a => !dismissedAlerts.has(a.id))
-    setAlerts(activeAlerts)
-  }, [insights, dismissedAlerts])
 
   const handleDismiss = (alertId: string) => {
     onDismiss?.(alertId)
