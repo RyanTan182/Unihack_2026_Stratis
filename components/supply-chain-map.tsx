@@ -259,6 +259,59 @@ function buildAdjacencyMap(nodes: CountryRisk[]): globalThis.Map<string, string[
   )
 }
 
+function buildChokepointOnlyAdjacencyMap(
+  nodes: CountryRisk[]
+): globalThis.Map<string, string[]> {
+  const nodeMap = new globalThis.Map(nodes.map((node) => [node.id, node]))
+  const graph: globalThis.Map<string, Set<string>> = new globalThis.Map()
+
+  const ensureNode = (id: string) => {
+    if (!graph.has(id)) graph.set(id, new Set())
+  }
+
+  for (const node of nodes) {
+    ensureNode(node.id)
+
+    for (const connectedId of node.connections || []) {
+      const connectedNode = nodeMap.get(connectedId)
+      if (!connectedNode) continue
+
+      const aIsCountry = node.type === "country"
+      const bIsCountry = connectedNode.type === "country"
+
+      // country-country は禁止
+      if (aIsCountry && bIsCountry) continue
+
+      // 許可:
+      // country <-> chokepoint
+      // chokepoint <-> chokepoint
+      graph.get(node.id)!.add(connectedId)
+      ensureNode(connectedId)
+      graph.get(connectedId)!.add(node.id)
+    }
+  }
+
+  return new globalThis.Map(
+    Array.from(graph.entries()).map(([id, neighbors]) => [id, Array.from(neighbors)])
+  )
+}
+
+function hasOnlyChokepointsAsIntermediateNodes(
+  path: string[],
+  nodeMap: globalThis.Map<string, CountryRisk>
+): boolean {
+  if (path.length <= 2) return true
+
+  for (let i = 1; i < path.length - 1; i++) {
+    const node = nodeMap.get(path[i])
+    if (!node || node.type !== "chokepoint") {
+      return false
+    }
+  }
+
+  return true
+}
+
 function findShortestPath(
   graph: globalThis.Map<string, string[]>,
   start: string,
@@ -422,8 +475,10 @@ function extractProductRoutes(
 ): ProductSupplyRoute[] {
   const routes: ProductSupplyRoute[] = []
   const DANGER_THRESHOLD = 60
-  const graph = buildAdjacencyMap(countryRisks)
-  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(countryRisks.map((n) => [n.id, n]))
+  const graph = buildChokepointOnlyAdjacencyMap(countryRisks)
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(
+    countryRisks.map((n) => [n.id, n])
+  )
 
   const getNodeRisk = (nodeId: string): number => {
     return nodeMap.get(nodeId)?.overallRisk ?? 30
@@ -442,6 +497,12 @@ function extractProductRoutes(
         routeMode === "safest"
           ? findSafestPath(graph, countryRisks, item.country, parentCountry)
           : findShortestPath(graph, item.country, parentCountry)
+
+      // 途中に国が混ざっていたら不採用
+      if (!hasOnlyChokepointsAsIntermediateNodes(pathNodes, nodeMap)) {
+        return
+      }
+
       const segments = buildRouteSegmentsFromPath(pathNodes, countryRisks)
       const chokepoints = extractChokepointsFromPath(pathNodes, nodeMap)
 
