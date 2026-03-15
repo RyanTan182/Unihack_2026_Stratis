@@ -12,22 +12,34 @@ const MIROFISH_URL = process.env.MIROFISH_URL || "http://localhost:5001/api"
 const GLOBAL_TIMEOUT_MS = 20 * 60 * 1000 // 20 minutes
 const POLL_INTERVAL_MS = 3000
 
+function dbg(label: string, data?: unknown) {
+  const ts = new Date().toISOString()
+  if (data !== undefined) {
+    console.log(`[MiroFish ${ts}] ${label}`, typeof data === "string" ? data : JSON.stringify(data, null, 2))
+  } else {
+    console.log(`[MiroFish ${ts}] ${label}`)
+  }
+}
+
 export class MiroFishClient {
   private baseUrl: string
 
   constructor(baseUrl?: string) {
     this.baseUrl = baseUrl || MIROFISH_URL
+    dbg(`Client initialized with baseUrl: ${this.baseUrl}`)
   }
 
   // --- Low-level API calls ---
 
   async healthCheck(): Promise<boolean> {
     try {
-      // Hit base URL without /api path — a 404 still means the server is up
       const rootUrl = this.baseUrl.replace(/\/api\/?$/, "")
-      await fetch(rootUrl, { signal: AbortSignal.timeout(5000) })
+      dbg(`Health check → GET ${rootUrl}`)
+      const res = await fetch(rootUrl, { signal: AbortSignal.timeout(5000) })
+      dbg(`Health check ← ${res.status} ${res.statusText}`)
       return true
-    } catch {
+    } catch (err) {
+      dbg(`Health check FAILED`, err instanceof Error ? err.message : String(err))
       return false
     }
   }
@@ -41,81 +53,125 @@ export class MiroFishClient {
     formData.append("files", blob, "seed.md")
     formData.append("simulation_requirement", simulationRequirement)
 
-    const res = await fetch(`${this.baseUrl}/graph/ontology/generate`, {
-      method: "POST",
-      body: formData,
-    })
-    return res.json()
+    const url = `${this.baseUrl}/graph/ontology/generate`
+    dbg(`generateOntology → POST ${url}`)
+    dbg(`  seed length: ${seedMarkdown.length} chars, requirement: "${simulationRequirement.slice(0, 100)}..."`)
+    const res = await fetch(url, { method: "POST", body: formData })
+    const json = await res.json()
+    dbg(`generateOntology ← ${res.status}`, json)
+    return json
   }
 
   async buildGraph(projectId: string): Promise<MiroFishTaskResponse> {
-    const res = await fetch(`${this.baseUrl}/graph/build`, {
+    const url = `${this.baseUrl}/graph/build`
+    const body = { project_id: projectId, chunk_size: 500, chunk_overlap: 50 }
+    dbg(`buildGraph → POST ${url}`, body)
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, chunk_size: 500, chunk_overlap: 50 }),
+      body: JSON.stringify(body),
     })
-    return res.json()
+    const json = await res.json()
+    dbg(`buildGraph ← ${res.status}`, json)
+    return json
   }
 
   async pollTask(taskId: string): Promise<MiroFishTaskStatus> {
-    const res = await fetch(`${this.baseUrl}/graph/task/${taskId}`)
-    return res.json()
+    const url = `${this.baseUrl}/graph/task/${taskId}`
+    dbg(`pollTask → GET ${url}`)
+    const res = await fetch(url)
+    const json = await res.json()
+    dbg(`pollTask ← ${res.status} | status=${json.data?.status || "unknown"}`, json)
+    return json
   }
 
   async createSimulation(projectId: string): Promise<MiroFishTaskResponse> {
-    const res = await fetch(`${this.baseUrl}/simulation/create`, {
+    const url = `${this.baseUrl}/simulation/create`
+    const body = { project_id: projectId }
+    dbg(`createSimulation → POST ${url}`, body)
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId }),
+      body: JSON.stringify(body),
     })
-    return res.json()
+    const json = await res.json()
+    dbg(`createSimulation ← ${res.status}`, json)
+    return json
   }
 
   async prepareSimulation(simulationId: string): Promise<MiroFishTaskResponse> {
-    const res = await fetch(`${this.baseUrl}/simulation/prepare`, {
+    const url = `${this.baseUrl}/simulation/prepare`
+    const body = { simulation_id: simulationId }
+    dbg(`prepareSimulation → POST ${url}`, body)
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ simulation_id: simulationId }),
+      body: JSON.stringify(body),
     })
-    return res.json()
+    const json = await res.json()
+    dbg(`prepareSimulation ← ${res.status}`, json)
+    return json
   }
 
   async startSimulation(simulationId: string): Promise<MiroFishTaskResponse> {
-    const res = await fetch(`${this.baseUrl}/simulation/start`, {
+    const url = `${this.baseUrl}/simulation/start`
+    const body = {
+      simulation_id: simulationId,
+      platform: "parallel",
+      max_rounds: 10,
+      enable_graph_memory_update: true,
+    }
+    dbg(`startSimulation → POST ${url}`, body)
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        simulation_id: simulationId,
-        platform: "parallel",
-        max_rounds: 10,
-        enable_graph_memory_update: true,
-      }),
+      body: JSON.stringify(body),
     })
-    return res.json()
+    const json = await res.json()
+    dbg(`startSimulation ← ${res.status}`, json)
+    return json
   }
 
   async getRunStatus(simulationId: string): Promise<MiroFishRunStatus> {
-    const res = await fetch(`${this.baseUrl}/simulation/${simulationId}/run-status`)
-    return res.json()
+    const url = `${this.baseUrl}/simulation/${simulationId}/run-status`
+    dbg(`getRunStatus → GET ${url}`)
+    const res = await fetch(url)
+    const json = await res.json()
+    dbg(`getRunStatus ← ${res.status}`, json)
+    return json
   }
 
   async getActions(simulationId: string): Promise<MiroFishActionsResponse> {
-    const res = await fetch(`${this.baseUrl}/simulation/${simulationId}/actions`)
-    return res.json()
+    const url = `${this.baseUrl}/simulation/${simulationId}/actions`
+    dbg(`getActions → GET ${url}`)
+    const res = await fetch(url)
+    const json = await res.json()
+    const count = json.data?.actions?.length ?? 0
+    dbg(`getActions ← ${res.status} | ${count} actions`)
+    return json
   }
 
   async generateReport(simulationId: string): Promise<MiroFishTaskResponse> {
-    const res = await fetch(`${this.baseUrl}/report/generate`, {
+    const url = `${this.baseUrl}/report/generate`
+    const body = { simulation_id: simulationId }
+    dbg(`generateReport → POST ${url}`, body)
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ simulation_id: simulationId }),
+      body: JSON.stringify(body),
     })
-    return res.json()
+    const json = await res.json()
+    dbg(`generateReport ← ${res.status}`, json)
+    return json
   }
 
   async getReport(reportId: string): Promise<MiroFishReportResponse> {
-    const res = await fetch(`${this.baseUrl}/report/${reportId}`)
-    return res.json()
+    const url = `${this.baseUrl}/report/${reportId}`
+    dbg(`getReport → GET ${url}`)
+    const res = await fetch(url)
+    const json = await res.json()
+    dbg(`getReport ← ${res.status} | status=${json.data?.status || "unknown"}`)
+    return json
   }
 
   // --- Pipeline endpoints (async, non-blocking) ---

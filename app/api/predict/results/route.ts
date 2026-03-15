@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { miroFishClient } from "@/lib/mirofish/client"
+import { getPipeline } from "@/lib/mirofish/pipeline-manager"
 import type { PredictionResult, SentimentDataPoint, AffectedCountry, MiroFishAction } from "@/lib/mirofish/types"
 
 async function computeSentimentByRound(simulationId: string): Promise<SentimentDataPoint[]> {
@@ -254,6 +255,13 @@ function parseReportForPrediction(
 }
 
 export async function GET(request: NextRequest) {
+  if (process.env.DISABLE_MIROFISH === "true") {
+    return NextResponse.json(
+      { error: "Hi, you've called the Simulation API in deployment, but due to cost constraints, we cannot provide this right now. Please use the demo mode instead." },
+      { status: 503 }
+    )
+  }
+
   const pipelineId = request.nextUrl.searchParams.get("simulationId")
 
   if (!pipelineId) {
@@ -261,13 +269,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get pipeline metadata (scenario, countries) from MiroFish
-    const pipelineRes = await miroFishClient.getPipelineStatus(pipelineId)
-    const pipelineData = pipelineRes.success ? pipelineRes.data : null
-    const metadata = (pipelineData?.metadata ?? {}) as Record<string, unknown>
-    const countries = (metadata.countries as string[]) || []
-    const scenario = (metadata.scenario as string) || ""
-    const simulationId = (pipelineData?.simulation_id as string) || ""
+    // Get pipeline state from in-memory manager
+    const pipeline = getPipeline(pipelineId)
+    if (!pipeline) {
+      return NextResponse.json(
+        { error: "Pipeline not found — it may have expired or the server restarted" },
+        { status: 404 }
+      )
+    }
+
+    const { simulationId, scenario, countries } = pipeline
+    console.log(`[predict/results] pipeline found | stage=${pipeline.stage} | simId=${simulationId || "none"} | scenario="${scenario}"`)
 
     if (!simulationId) {
       return NextResponse.json(
@@ -303,21 +315,32 @@ export async function GET(request: NextRequest) {
     // Generate report
     let fullReport = ""
 
+    console.log(`[predict/results] generating report for simulation ${simulationId}`)
     const reportRes = await miroFishClient.generateReport(simulationId)
 
     if (reportRes.success && reportRes.data?.report_id) {
       const reportId = reportRes.data.report_id
+      console.log(`[predict/results] report generation started → reportId=${reportId}, polling...`)
       let attempts = 0
       while (attempts < 30) {
         const report = await miroFishClient.getReport(reportId)
         if (report.success && report.data?.markdown_content) {
           fullReport = report.data.markdown_content
+          console.log(`[predict/results] report ready (${fullReport.length} chars) after ${attempts + 1} polls`)
           break
         }
-        if (report.data?.status === "failed" || report.data?.status === "error") break
+        if (report.data?.status === "failed" || report.data?.status === "error") {
+          console.log(`[predict/results] report generation FAILED at poll ${attempts + 1}`, report.data)
+          break
+        }
         await new Promise((resolve) => setTimeout(resolve, 5000))
         attempts++
       }
+      if (!fullReport) {
+        console.log(`[predict/results] report not ready after ${attempts} polls — using fallback`)
+      }
+    } else {
+      console.log(`[predict/results] report generation request failed or no report_id`, reportRes)
     }
 
     // Build fallback if report failed
@@ -367,9 +390,11 @@ export async function GET(request: NextRequest) {
       sentimentByRound,
     }
 
+    console.log(`[predict/results] returning result | confidence=${result.prediction.confidence} | findings=${result.prediction.keyFindings.length} | sentiment points=${result.sentimentByRound.length}`)
     return NextResponse.json(result)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
+    console.error(`[predict/results] 500 ERROR:`, error)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

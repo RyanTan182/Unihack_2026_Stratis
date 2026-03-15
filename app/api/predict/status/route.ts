@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { miroFishClient } from "@/lib/mirofish/client"
+import { advancePipeline, getPipeline } from "@/lib/mirofish/pipeline-manager"
 import type { SimulationStatus, AgentAction } from "@/lib/mirofish/types"
 
 // Map MiroFish action types to agent roles
@@ -20,21 +21,21 @@ function inferRole(agentName: string): AgentAction["role"] {
   return "civilian"
 }
 
-// Map pipeline status to client-facing simulation status
-function mapPipelineStatus(
-  pipelineStatus: string
+// Map pipeline stage to client-facing status
+function mapStageToStatus(
+  stage: string
 ): SimulationStatus["status"] {
-  switch (pipelineStatus) {
-    case "started":
+  switch (stage) {
     case "ontology":
     case "graph":
     case "creating":
     case "preparing":
+    case "starting":
       return "starting"
     case "running":
-      return "starting" // pipeline "running" means simulation was just launched
+      return "running"
     case "completed":
-      return "starting" // need to check actual simulation run status
+      return "completed"
     case "failed":
       return "failed"
     default:
@@ -43,6 +44,13 @@ function mapPipelineStatus(
 }
 
 export async function GET(request: NextRequest) {
+  if (process.env.DISABLE_MIROFISH === "true") {
+    return NextResponse.json(
+      { error: "Hi, you've called the Simulation API in deployment, but due to cost constraints, we cannot provide this right now. Please use the demo mode instead." },
+      { status: 503 }
+    )
+  }
+
   const pipelineId = request.nextUrl.searchParams.get("simulationId")
 
   if (!pipelineId) {
@@ -50,10 +58,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Get pipeline status from MiroFish
-    const pipelineRes = await miroFishClient.getPipelineStatus(pipelineId)
-
-    if (!pipelineRes.success) {
+    console.log(`[predict/status] GET simulationId=${pipelineId}`)
+    const pipeline = getPipeline(pipelineId)
+    if (!pipeline) {
       return NextResponse.json(
         {
           simulationId: pipelineId,
@@ -62,26 +69,27 @@ export async function GET(request: NextRequest) {
           totalRounds: 10,
           activeAgents: 0,
           recentActions: [],
-          error: pipelineRes.error || "Pipeline not found",
+          error: "Pipeline not found — it may have expired or the server restarted",
         } satisfies SimulationStatus,
         { status: 404 }
       )
     }
 
-    const pipelineData = pipelineRes.data!
-    const pipelineStatus = pipelineData.status as string
-    const simulationId = pipelineData.simulation_id as string | undefined
+    // Advance pipeline state machine
+    console.log(`[predict/status] advancing pipeline (current stage: ${pipeline.stage})`)
+    const state = await advancePipeline(pipelineId)
+    console.log(`[predict/status] after advance → stage=${state.stage}${state.error ? ` error="${state.error}"` : ""} | projectId=${state.projectId || "none"} | simId=${state.simulationId || "none"}`)
 
-    // If pipeline hasn't reached simulation stage yet, return pipeline progress
-    if (!simulationId || !["running", "completed"].includes(pipelineStatus)) {
+    // If pipeline hasn't reached simulation running stage yet, return pipeline progress
+    if (!state.simulationId || !["running", "completed"].includes(state.stage)) {
       const status: SimulationStatus = {
         simulationId: pipelineId,
-        status: mapPipelineStatus(pipelineStatus),
+        status: mapStageToStatus(state.stage),
         currentRound: 0,
         totalRounds: 10,
         activeAgents: 0,
         recentActions: [],
-        error: pipelineStatus === "failed" ? (pipelineData.error as string) : undefined,
+        error: state.stage === "failed" ? state.error : undefined,
       }
       return NextResponse.json(status)
     }
@@ -93,7 +101,7 @@ export async function GET(request: NextRequest) {
     let totalActions = 0
 
     try {
-      const runStatus = await miroFishClient.getRunStatus(simulationId)
+      const runStatus = await miroFishClient.getRunStatus(state.simulationId)
       if (runStatus.success && runStatus.data) {
         runnerStatus = runStatus.data.runner_status || "idle"
         currentRound = runStatus.data.current_round || 0
@@ -107,7 +115,7 @@ export async function GET(request: NextRequest) {
     // Get recent actions
     let recentActions: AgentAction[] = []
     try {
-      const actionsRes = await miroFishClient.getActions(simulationId)
+      const actionsRes = await miroFishClient.getActions(state.simulationId)
       if (actionsRes.success && actionsRes.data?.actions) {
         recentActions = actionsRes.data.actions.slice(-10).map((a) => ({
           agentName: a.agent_name,
@@ -138,9 +146,11 @@ export async function GET(request: NextRequest) {
       error: runnerStatus === "failed" ? "Simulation failed" : undefined,
     }
 
+    console.log(`[predict/status] responding with status=${status.status} round=${status.currentRound}/${status.totalRounds}`)
     return NextResponse.json(status)
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error"
+    console.error(`[predict/status] 500 ERROR:`, error)
     return NextResponse.json(
       {
         simulationId: pipelineId,

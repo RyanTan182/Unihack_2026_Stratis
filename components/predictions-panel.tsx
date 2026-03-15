@@ -14,6 +14,7 @@ import {
   Loader2,
   Activity,
   Globe,
+  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PredictionCard } from "./prediction-card"
@@ -141,6 +142,25 @@ export function PredictionsPanel({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
+        {/* Demo Mode Banner */}
+        {process.env.NEXT_PUBLIC_MOCK_PREDICTIONS === "true" && (
+          <div className={cn("border-b border-border bg-amber-500/10", inline ? "p-3" : "p-4")}>
+            <div className="flex gap-2 items-start">
+              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-amber-200/90 space-y-1">
+                <p className="font-medium text-amber-300">Simulation API Unavailable</p>
+                <p>
+                  Due to cost constraints, the live MiroFish simulation API is not available in this deployment.
+                  Each run costs ~$5 USD using Kimi-K2.5.
+                </p>
+                <p className="text-amber-200/70">
+                  We are demonstrating with <span className="font-medium">demo mode</span> instead.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* What-If Input */}
         <div className={cn("border-b border-border space-y-3", inline ? "p-3" : "p-4")}>
           <h3 className="text-sm font-medium flex items-center gap-2">
