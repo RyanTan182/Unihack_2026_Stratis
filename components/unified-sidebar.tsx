@@ -94,6 +94,7 @@ interface UnifiedSidebarProps {
   onReset: () => void
   products: StoredProduct[]
   onProductAdd: (product: StoredProduct) => void
+  onProductUpdate: (product: StoredProduct) => void
   onTreeChange: (tree: DecompositionTree | null) => void
   onNodeSelect: (nodeId: string | null) => void
   productCount?: number
@@ -234,47 +235,124 @@ function SupplierTagInput({ tags, onTagsChange }: { tags: string[]; onTagsChange
   )
 }
 
-function TreeNodeRow({ node, tree, depth, onNodeClick }: { node: SupplyChainNode; tree: DecompositionTree; depth: number; onNodeClick: (nodeId: string) => void }) {
+function TreeNodeRow({
+  node,
+  tree,
+  depth,
+  onNodeClick,
+  onAddChild,
+  countries,
+}: {
+  node: SupplyChainNode
+  tree: DecompositionTree
+  depth: number
+  onNodeClick: (nodeId: string) => void
+  onAddChild?: (parentId: string, name: string, country: string) => void
+  countries?: CountryRisk[]
+}) {
   const [isExpanded, setIsExpanded] = useState(depth < 2)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newName, setNewName] = useState("")
+  const [newCountry, setNewCountry] = useState("")
   const hasChildren = node.children.length > 0
   const geoCount = Object.keys(node.geographic_concentration).length
 
+  const handleSubmitChild = () => {
+    if (newName.trim() && newCountry && onAddChild) {
+      onAddChild(node.id, newName.trim(), newCountry)
+      setNewName("")
+      setNewCountry("")
+      setShowAddForm(false)
+      setIsExpanded(true)
+    }
+  }
+
   return (
     <div>
-      <button
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent"
-        style={{ paddingLeft: `${8 + depth * 16}px` }}
-        onClick={() => onNodeClick(node.id)}
-      >
-        {hasChildren ? (
-          <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setIsExpanded(!isExpanded) } }}
-            onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded) }}
-            className="shrink-0 cursor-pointer"
-          >
-            {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+      <div className="group flex items-center">
+        <button
+          className="flex flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent min-w-0"
+          style={{ paddingLeft: `${8 + depth * 16}px` }}
+          onClick={() => onNodeClick(node.id)}
+        >
+          {hasChildren || node.children.length > 0 ? (
+            <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setIsExpanded(!isExpanded) } }}
+              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded) }}
+              className="shrink-0 cursor-pointer"
+            >
+              {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+            </div>
+          ) : (
+            <div className="w-3.5" />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-sidebar-foreground">{node.name}</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-muted-foreground capitalize">{node.type}</span>
+              {geoCount > 0 && <span className="text-[10px] text-muted-foreground">{geoCount} {geoCount === 1 ? "country" : "countries"}</span>}
+            </div>
           </div>
-        ) : (
-          <div className="w-3.5" />
+          {node.risk_score >= 70 && <Badge variant="destructive" className="shrink-0 text-[10px]">{node.risk_score}</Badge>}
+          {node.risk_score >= 40 && node.risk_score < 70 && <Badge variant="secondary" className="shrink-0 text-[10px] bg-amber-500/10 text-amber-600">{node.risk_score}</Badge>}
+        </button>
+        {onAddChild && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowAddForm(!showAddForm); setIsExpanded(true) }}
+            className="shrink-0 mr-1 flex h-5 w-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-primary/10 hover:text-primary cursor-pointer"
+            title="Add child component"
+          >
+            <Plus className="h-3 w-3" />
+          </button>
         )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-sidebar-foreground">{node.name}</p>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground capitalize">{node.type}</span>
-            {geoCount > 0 && <span className="text-[10px] text-muted-foreground">{geoCount} {geoCount === 1 ? "country" : "countries"}</span>}
+      </div>
+      {showAddForm && onAddChild && countries && (
+        <div
+          className="mx-2 mb-1 rounded-lg border border-primary/30 bg-primary/5 p-2 space-y-2"
+          style={{ marginLeft: `${12 + depth * 16}px` }}
+        >
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Component name..."
+            className="h-7 text-xs"
+            autoFocus
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmitChild(); if (e.key === "Escape") setShowAddForm(false) }}
+          />
+          <Select value={newCountry} onValueChange={setNewCountry}>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue placeholder="Country..." />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.filter(c => c.type !== "chokepoint").map((c) => (
+                <SelectItem key={c.id} value={c.name}>
+                  <div className="flex items-center gap-1.5">
+                    <Flag className="h-2.5 w-2.5 text-muted-foreground" />
+                    <span className="text-xs">{c.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex gap-1.5">
+            <Button size="sm" className="h-6 text-[10px] flex-1 gap-1" onClick={handleSubmitChild} disabled={!newName.trim() || !newCountry}>
+              <Plus className="h-2.5 w-2.5" />
+              Add
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setShowAddForm(false)}>
+              Cancel
+            </Button>
           </div>
         </div>
-        {node.risk_score >= 70 && <Badge variant="destructive" className="shrink-0 text-[10px]">{node.risk_score}</Badge>}
-        {node.risk_score >= 40 && node.risk_score < 70 && <Badge variant="secondary" className="shrink-0 text-[10px] bg-amber-500/10 text-amber-600">{node.risk_score}</Badge>}
-      </button>
-      {hasChildren && isExpanded && (
+      )}
+      {isExpanded && (
         <div>
           {node.children.map((childId) => {
             const child = tree.nodes[childId]
             if (!child) return null
-            return <TreeNodeRow key={childId} node={child} tree={tree} depth={depth + 1} onNodeClick={onNodeClick} />
+            return <TreeNodeRow key={childId} node={child} tree={tree} depth={depth + 1} onNodeClick={onNodeClick} onAddChild={onAddChild} countries={countries} />
           })}
         </div>
       )}
@@ -564,6 +642,7 @@ function ManualComponentInput({
 function InventoryView({
   products,
   onProductAdd,
+  onProductUpdate,
   onTreeChange,
   onNodeSelect,
   onOpenInBuilder,
@@ -575,6 +654,7 @@ function InventoryView({
 }: {
   products: StoredProduct[]
   onProductAdd: (product: StoredProduct) => void
+  onProductUpdate: (product: StoredProduct) => void
   onTreeChange: (tree: DecompositionTree | null) => void
   onNodeSelect: (nodeId: string | null) => void
   onOpenInBuilder?: (product: StoredProduct) => void
@@ -766,6 +846,57 @@ function InventoryView({
     setSelectedNodeId(null)
     onNodeSelect(null)
   }, [onNodeSelect])
+
+  const handleAddChild = useCallback((parentId: string, name: string, country: string) => {
+    if (!activeProduct) return
+    const tree = activeProduct.tree
+    const parentNode = tree.nodes[parentId]
+    if (!parentNode) return
+
+    const countryRisk = countries.find(c => c.name === country)
+    const riskScore = countryRisk?.overallRisk ?? 50
+
+    const childId = crypto.randomUUID()
+    const newNode: SupplyChainNode = {
+      id: childId,
+      name,
+      type: "component",
+      tier: parentNode.tier + 1,
+      status: "verified",
+      source: "inferred",
+      risk_score: riskScore,
+      confidence: 0.9,
+      children: [],
+      geographic_concentration: { [country]: 100 },
+      risk_factors: [],
+      search_evidence: null,
+      correction: null,
+    }
+
+    const updatedTree: DecompositionTree = {
+      ...tree,
+      nodes: {
+        ...tree.nodes,
+        [childId]: newNode,
+        [parentId]: {
+          ...parentNode,
+          children: [...parentNode.children, childId],
+        },
+      },
+      metadata: {
+        ...tree.metadata,
+        total_nodes: tree.metadata.total_nodes + 1,
+      },
+    }
+
+    const updatedProduct: StoredProduct = {
+      ...activeProduct,
+      tree: updatedTree,
+    }
+
+    onProductUpdate(updatedProduct)
+    onTreeChange(updatedTree)
+  }, [activeProduct, countries, onProductUpdate, onTreeChange])
 
   if (view === "list") {
     return (
@@ -1017,7 +1148,7 @@ function InventoryView({
         </div>
         <ScrollArea className="flex-1 min-h-0 min-w-0">
           <div className="py-2 min-w-0">
-            {rootNode && <TreeNodeRow node={rootNode} tree={activeTree} depth={0} onNodeClick={viewNode} />}
+            {rootNode && <TreeNodeRow node={rootNode} tree={activeTree} depth={0} onNodeClick={viewNode} onAddChild={handleAddChild} countries={countries} />}
           </div>
         </ScrollArea>
       </>
@@ -1044,6 +1175,7 @@ export function UnifiedSidebar({
   onReset,
   products,
   onProductAdd,
+  onProductUpdate,
   onTreeChange,
   onNodeSelect,
   productCount = 0,
@@ -1226,6 +1358,7 @@ export function UnifiedSidebar({
                 <InventoryView
                   products={products}
                   onProductAdd={onProductAdd}
+                  onProductUpdate={onProductUpdate}
                   onTreeChange={onTreeChange}
                   onNodeSelect={onNodeSelect}
                   onOpenInBuilder={onOpenInBuilder}
@@ -1313,67 +1446,77 @@ export function UnifiedSidebar({
             </CollapsibleContent>
           </Collapsible>
 
-          {/* News Section - Shows when a country is selected */}
-          {selectedCountry && (
-            <Collapsible open={newsOpen} onOpenChange={setNewsOpen}>
-              <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted/50">
-                <div className="flex items-center gap-2">
-                  <Radio className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold">News</span>
-                  {!newsLoading && newsArticles.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                      {newsArticles.length}
-                    </Badge>
-                  )}
-                </div>
-                {newsOpen ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          {/* News Section - Always visible */}
+          <Collapsible open={newsOpen} onOpenChange={setNewsOpen}>
+            <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted/50">
+              <div className="flex items-center gap-2 min-w-0">
+                <Radio className="h-4 w-4 shrink-0 text-primary" />
+                <span className="text-sm font-semibold shrink-0">News</span>
+                {selectedCountry && (
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    — {countryRisks.find(c => c.id === selectedCountry)?.name ?? selectedCountry}
+                  </span>
                 )}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-1">
-                <div className="min-w-0 overflow-hidden rounded-lg border border-border/50 bg-muted/20 p-3">
-                  {newsLoading ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Fetching latest news...
-                    </div>
-                  ) : newsArticles.length > 0 ? (
-                    <ul className="space-y-2">
-                      {newsArticles.slice(0, 5).map((article, i) => (
-                        <li key={i} className="group">
-                          <a
-                            href={article.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-start gap-2 rounded-lg p-2 text-xs text-foreground transition-colors hover:bg-muted/50"
-                          >
-                            <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
-                            <div className="flex-1 min-w-0">
-                              <p className="line-clamp-2 leading-relaxed group-hover:text-primary">
-                                {article.title}
-                              </p>
-                              {article.source && (
-                                <p className="mt-1 text-[10px] text-muted-foreground">
-                                  {article.source} • {article.date}
-                                </p>
-                              )}
-                            </div>
-                            <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground group-hover:text-primary" />
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      No recent news found for this country.
+                {!newsLoading && newsArticles.length > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px] shrink-0">
+                    {newsArticles.length}
+                  </Badge>
+                )}
+              </div>
+              {newsOpen ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-1">
+              <div className="min-w-0 overflow-hidden rounded-lg border border-border/50 bg-muted/20 p-3">
+                {!selectedCountry ? (
+                  <div className="flex flex-col items-center gap-2 py-4 text-center">
+                    <MapPin className="h-5 w-5 text-muted-foreground/50" />
+                    <p className="text-xs text-muted-foreground">
+                      Select a country or chokepoint on the map to see related news.
                     </p>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+                  </div>
+                ) : newsLoading ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Fetching latest news...
+                  </div>
+                ) : newsArticles.length > 0 ? (
+                  <ul className="space-y-2">
+                    {newsArticles.slice(0, 5).map((article, i) => (
+                      <li key={i} className="group">
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-2 rounded-lg p-2 text-xs text-foreground transition-colors hover:bg-muted/50"
+                        >
+                          <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                          <div className="flex-1 min-w-0">
+                            <p className="line-clamp-2 leading-relaxed group-hover:text-primary">
+                              {article.title}
+                            </p>
+                            {article.source && (
+                              <p className="mt-1 text-[10px] text-muted-foreground">
+                                {article.source} • {article.date}
+                              </p>
+                            )}
+                          </div>
+                          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground group-hover:text-primary" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    No recent news found for this country.
+                  </p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </ScrollArea>
 

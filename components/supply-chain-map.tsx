@@ -73,12 +73,12 @@ export interface SupplyChainItem {
   isExpanded?: boolean
 }
 
-interface Product {
+export interface Product {
   id: string
   name: string
   type: "product"
   country: string
-  destinationCountry?: string // User-specified destination for route calculations
+  destinationCountry?: string
   color: string
   riskPrediction: number
   riskDirection: "up" | "down"

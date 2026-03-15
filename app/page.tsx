@@ -875,6 +875,11 @@ export default function SupplyChainCrisisDetector() {
     })
   }, [riskSnapshots])
 
+  // Convert storedProducts to the map's Product[] format for route rendering
+  const mapProducts = useMemo(() => {
+    return syncStoredToProducts(storedProducts, [])
+  }, [storedProducts])
+
   // Calculate insights from stored products
   const insights = useMemo<SupplyChainInsights | undefined>(() => {
     if (storedProducts.length === 0) return undefined
@@ -1061,6 +1066,12 @@ export default function SupplyChainCrisisDetector() {
     setActiveTree(tree)
   }, [])
 
+  const handleProductUpdate = useCallback((updated: StoredProduct) => {
+    setStoredProducts((prev) =>
+      prev.map((sp) => sp.id === updated.id ? updated : sp)
+    )
+  }, [])
+
   const handleNodeSelect = useCallback((nodeId: string | null) => {
     setSelectedDecompNodeId(nodeId)
   }, [])
@@ -1196,6 +1207,7 @@ export default function SupplyChainCrisisDetector() {
         onReset={handleReset}
         products={storedProducts}
         onProductAdd={handleProductAdd}
+        onProductUpdate={handleProductUpdate}
         onTreeChange={handleTreeChange}
         onNodeSelect={handleNodeSelect}
         productCount={storedProducts.length}
@@ -1243,7 +1255,7 @@ export default function SupplyChainCrisisDetector() {
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
           customRoute={null}
-          products={[]}
+          products={mapProducts}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
@@ -1264,7 +1276,7 @@ export default function SupplyChainCrisisDetector() {
         <RouteSummary
           isOpen={isRouteSummaryOpen}
           onClose={() => setIsRouteSummaryOpen(false)}
-          products={[]}
+          products={mapProducts}
           countryRisks={resolvedCountryRisks}
           onRouteClick={(origin, destination) => {
             setSafeRouteContext({ origin, destination, itemName: 'Selected Route' })
@@ -1286,6 +1298,9 @@ export default function SupplyChainCrisisDetector() {
             setAlternativesPanelOpen(false)
           }}
           onReplaceSupplier={(alternative) => {
+            if (selectedComponentRisk) {
+              handleApplyAlternative(selectedComponentRisk.componentId, alternative.country)
+            }
             setAlternativesPanelOpen(false)
           }}
         />

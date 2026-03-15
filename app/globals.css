@@ -16,7 +16,7 @@
   --foreground: oklch(0.95 0.005 250);
 
   /* Layout - viewport-responsive sidebar */
-  --sidebar-width: clamp(320px, 24vw, 450px);
+  --sidebar-width: 287px;
 
   /* Card surfaces with subtle transparency */
   --card: oklch(0.12 0.012 260);
