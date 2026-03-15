@@ -30,6 +30,7 @@ interface ComponentRiskForInsights {
   componentName: string
   country: string
   risk: number
+  productId?: string
 }
 
 interface Recommendation {
@@ -59,7 +60,13 @@ interface InsightsPanelProps {
   isOpen: boolean
   onClose: () => void
   insights: SupplyChainInsightsData
-  onFindSafeRoute?: (origin: string, destination: string, itemName: string) => void
+  onFindSafeRoute?: (
+    origin: string,
+    destination: string,
+    itemName: string,
+    componentId?: string,
+    productId?: string
+  ) => void
   onViewAlternatives?: (component: ComponentRiskForInsights, parentCountry: string) => void
 }
 
@@ -205,7 +212,13 @@ export function InsightsPanel({
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0"
-                          onClick={() => onFindSafeRoute(comp.country, "United States", comp.componentName)}
+                          onClick={() => onFindSafeRoute(
+                            comp.country,
+                            "United States",
+                            comp.componentName,
+                            comp.componentId,
+                            comp.productId
+                          )}
                           title="Find safe route"
                         >
                           <MapPin className="h-3 w-3" />

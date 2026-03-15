@@ -13,4 +13,3 @@ node_modules/
 .playwright-mcp/
 .superpowers/
 decomposition-demo/
-data/alternatives-cache.json

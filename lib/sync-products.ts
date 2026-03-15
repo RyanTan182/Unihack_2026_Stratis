@@ -1,5 +1,5 @@
 import type { StoredProduct, DecompositionTree, SupplyChainNode } from "@/lib/decompose/types"
-import type { Product, SupplyChainItem } from "@/components/product-supply-chain"
+import type { Product, SupplyChainItem } from "@/components/supply-chain-map"
 
 const PRODUCT_COLORS = [
   "#06b6d4", "#22c55e", "#f59e0b", "#8b5cf6",

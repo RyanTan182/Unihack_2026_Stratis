@@ -40,6 +40,7 @@ export interface ComponentRisk {
   risk: number
   factors: string[]
   alternatives: SupplierAlternative[]
+  productId?: string
 }
 
 export interface SupplierAlternative {
@@ -527,7 +528,7 @@ export function analyzeSupplyChain(
 
   // Find high-risk components
   const highRiskComponents: ComponentRisk[] = []
-  const processItem = (item: SupplyChainItem, destination?: string) => {
+  const processItem = (item: SupplyChainItem, destination?: string, productId?: string) => {
     const countryRisk = countryRisks.find(c => c.id === item.country || c.name === item.country)
     if (countryRisk && countryRisk.overallRisk > 50) {
       const factors: string[] = []
@@ -555,18 +556,19 @@ export function analyzeSupplyChain(
         country: item.country,
         risk: countryRisk.overallRisk,
         factors: factors.length > 0 ? factors : ['Elevated risk'],
-        alternatives
+        alternatives,
+        productId
       })
     }
 
     if (item.children) {
-      item.children.forEach(child => processItem(child, item.parentDestination || destination))
+      item.children.forEach(child => processItem(child, item.parentDestination || destination, productId))
     }
   }
 
   products.forEach(product => {
     const destination = product.destinationCountry || 'United States'
-    product.components.forEach(comp => processItem(comp, destination))
+    product.components.forEach(comp => processItem(comp, destination, product.id))
   })
 
   // Sort by risk (highest first)

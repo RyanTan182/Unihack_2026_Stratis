@@ -44,6 +44,7 @@ export type SSEEvent =
 export interface DecomposeRequest {
   product: string;
   suppliers: string[];
+  destination?: string; // Optional destination country for route calculations
 }
 
 export interface StoredProduct {
@@ -51,6 +52,7 @@ export interface StoredProduct {
   name: string;
   suppliers: string[];
   tree: DecompositionTree;
+  destinationCountry?: string; // Where the product is being shipped/produced for
   durationMs: number;
   createdAt: number;
 }

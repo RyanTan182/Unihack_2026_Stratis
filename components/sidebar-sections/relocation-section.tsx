@@ -5,39 +5,35 @@ import {
   Factory,
   Sparkles,
   ArrowLeft,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RelocationForm } from "@/components/relocation-form"
 import { RelocationResults } from "@/components/relocation-results"
 import { CountryComparison } from "@/components/country-comparison"
-import { SidePanel } from "@/components/side-panel"
 import { RelocationSimulator } from "@/components/relocation-simulator"
 import type { RelocationRequest, RelocationRecommendation, CountryComparisonData, IndustryType } from "@/lib/relocation-types"
 
 interface CountryRisk {
   id: string
   name: string
-  type: "country" | "chokepoint"
-  connections: string[]
+  type?: "country" | "chokepoint"
+  connections?: string[]
   importRisk: number
   exportRisk: number
   overallRisk: number
   newsHighlights: string[]
 }
 
-interface RelocationPanelProps {
-  isOpen: boolean
-  onClose: () => void
+interface RelocationSectionProps {
   countryRisks: CountryRisk[]
   onCountrySelect?: (countryId: string) => void
 }
 
-export function RelocationPanel({
-  isOpen,
-  onClose,
+export function RelocationSection({
   countryRisks,
   onCountrySelect,
-}: RelocationPanelProps) {
+}: RelocationSectionProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [recommendations, setRecommendations] = useState<RelocationRecommendation[]>([])
   const [currentCountry, setCurrentCountry] = useState<{ name: string; risk: number } | null>(null)
@@ -174,93 +170,77 @@ export function RelocationPanel({
   }
 
   return (
-    <>
-      {/* Main Panel using SidePanel */}
-      <SidePanel
-        isOpen={isOpen}
-        onClose={onClose}
-        title="Relocation Advisor"
-        icon={<Factory className="h-5 w-5" />}
-      >
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5 mb-4">
-          <Sparkles className="h-3 w-3 text-primary" />
-          AI-powered factory relocation recommendations
-        </p>
+    <div className="space-y-3">
+      {/* Error State */}
+      {error && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-400">
+          {error}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="ml-2 h-auto p-0 text-red-400 underline"
+          >
+            Try again
+          </Button>
+        </div>
+      )}
 
-        {/* Error State */}
-        {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400 mb-4">
-            {error}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleReset}
-              className="ml-2 h-auto p-0 text-red-400 underline"
-            >
-              Try again
-            </Button>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center py-6">
+          <div className="relative">
+            <div className="h-10 w-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            <Factory className="absolute inset-0 m-auto h-4 w-4 text-primary" />
           </div>
-        )}
+          <p className="mt-3 text-xs font-medium text-foreground">Analyzing options...</p>
+        </div>
+      )}
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className="relative">
-              <div className="h-12 w-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-              <Factory className="absolute inset-0 m-auto h-5 w-5 text-primary" />
+      {/* Comparison View */}
+      {showComparison && comparisonCountries.length > 0 && !isLoading && (
+        <div className="space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBackFromComparison}
+            className="gap-1 text-muted-foreground hover:text-foreground h-7 text-xs"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Back
+          </Button>
+          <CountryComparison
+            countries={comparisonCountries}
+            winner={comparisonWinner}
+            onSelectCountry={handleSelectTarget}
+          />
+        </div>
+      )}
+
+      {/* Show form if not loading and not in comparison mode */}
+      {!isLoading && !showComparison && (
+        <>
+          {/* Form */}
+          <RelocationForm
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            countryOptions={countryOptions}
+          />
+
+          {/* Results */}
+          {recommendations.length > 0 && currentCountry && (
+            <div className="mt-3">
+              <RelocationResults
+                recommendations={recommendations}
+                currentCountryName={currentCountry.name}
+                currentCountryRisk={currentCountry.risk}
+                onCountrySelect={onCountrySelect}
+                onCompare={handleCompare}
+              />
             </div>
-            <p className="mt-4 text-sm font-medium text-foreground">Analyzing relocation options...</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              AI is evaluating risk factors and trade agreements
-            </p>
-          </div>
-        )}
-
-        {/* Comparison View */}
-        {showComparison && comparisonCountries.length > 0 && !isLoading && (
-          <div className="space-y-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBackFromComparison}
-              className="gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to recommendations
-            </Button>
-            <CountryComparison
-              countries={comparisonCountries}
-              winner={comparisonWinner}
-              onSelectCountry={handleSelectTarget}
-            />
-          </div>
-        )}
-
-        {/* Show form if not loading and not in comparison mode */}
-        {!isLoading && !showComparison && (
-          <>
-            {/* Form */}
-            <RelocationForm
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              countryOptions={countryOptions}
-            />
-
-            {/* Results */}
-            {recommendations.length > 0 && currentCountry && (
-              <div className="mt-4">
-                <RelocationResults
-                  recommendations={recommendations}
-                  currentCountryName={currentCountry.name}
-                  currentCountryRisk={currentCountry.risk}
-                  onCountrySelect={onCountrySelect}
-                  onCompare={handleCompare}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </SidePanel>
+          )}
+        </>
+      )}
 
       {/* Relocation Simulator - appears as separate overlay */}
       <RelocationSimulator
@@ -271,6 +251,6 @@ export function RelocationPanel({
         industryType={industryType}
         countryName={getCountryName}
       />
-    </>
+    </div>
   )
 }

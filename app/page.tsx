@@ -1,40 +1,36 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { NavSidebar } from "@/components/nav-sidebar"
-import { RiskSidebar } from "@/components/risk-sidebar"
-import { InventorySidebar } from "@/components/inventory-sidebar"
-import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { UnifiedSidebar } from "@/components/unified-sidebar"
+import { SupplyChainMap, type ProductSupplyRoute, type SupplyChainMapRef } from "@/components/supply-chain-map"
 import type { ItemType } from "@/components/supply-chain-map"
-import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
-import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
 import type { StoredProduct, DecompositionTree } from "@/lib/decompose/types"
 import { syncStoredToProducts } from "@/lib/sync-products"
 import { storedProductToMapProduct, type MapProduct } from "@/lib/decompose/to-map-product"
 import { PathDetailsPanel } from "@/components/path-details-panel"
-import { RelocationPanel } from "@/components/relocation-panel"
 import { analyzeSupplyChain } from "@/lib/supply-chain-analyzer"
 import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/lib/supply-chain-analyzer"
+import { convertTreeToAnalyzerProducts, extractHighRiskCountries } from "@/lib/product-converter"
 import { SupplierRecommendations } from "@/components/supplier-recommendations"
-import { RouteFinderPanel } from "@/components/route-finder-panel"
 import { RouteSummary } from "@/components/route-summary"
-import { PriceRiskTimeline } from "@/components/price-risk-timeline"
-import { AlertBanner, type AlertData } from "@/components/alert-banner"
-import { Button } from "@/components/ui/button"
-import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3 } from "lucide-react"
+import { AlertBanner } from "@/components/alert-banner"
+import { AlertsSidebar } from "@/components/alerts-sidebar"
+import { ActionBar } from "@/components/action-bar"
+import { ProductSupplyChainRoutesPanel } from "@/components/product-supply-chain-routes-panel"
 import { cn } from "@/lib/utils"
-import type { FoundRoute } from "@/lib/route-types"
+import type { FoundRoute, CountryRiskData as RouteCountryRiskData } from "@/lib/route-types"
 import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
-import { evaluateCountryRiskBatch, evaluateAllCountriesInChunks } from "./lib/risk-client"
-import { collectCountriesFromProducts } from "./lib/risk-country-utils";
+import { evaluateAllCountriesInChunks } from "./lib/risk-client"
+import type { SupplyChainInsightsData, ComponentRiskForInsights } from "@/components/sidebar-sections/insights-section"
+import { generateAlertsFromProducts, type AlertData } from "@/lib/alerts"
+import { NavSidebar } from "@/components/nav-sidebar"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
 // Type definition for country risks
 type CountryRiskType = "country" | "chokepoint"
-
-interface CountryRiskData {
+type CountryRiskData = {
   id: string
   name: string
   type: CountryRiskType
@@ -45,6 +41,16 @@ interface CountryRiskData {
   newsHighlights: string[]
 }
 
+// Map chokepoints to their connected countries for risk derivation
+const chokeToCountriesMap: Record<string, string[]> = {
+  "Suez Canal": ["Egypt", "Greece", "Italy", "France", "Netherlands", "Germany", "Turkey"],
+  "Panama Canal": ["United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "Japan", "South Korea"],
+  "Strait of Hormuz": ["Iran", "Saudi Arabia", "United Arab Emirates", "Qatar", "India", "Pakistan"],
+  "Strait of Malacca": ["China", "Singapore", "Malaysia", "Indonesia", "Thailand", "Vietnam", "India", "Bangladesh", "Taiwan", "Japan", "South Korea", "Philippines", "Australia"],
+  "Bab-el-Mandeb": ["Egypt", "Saudi Arabia", "United Arab Emirates", "Yemen", "Djibouti", "Ethiopia", "South Africa", "Nigeria", "India"],
+  "Bosphorus": ["Turkey", "Greece", "Romania", "Bulgaria", "Georgia", "Ukraine", "Russia"],
+}
+
 // Mock data for country risks with news-based analysis
 const countryRisks: CountryRiskData[] = [
   {
@@ -52,9 +58,9 @@ const countryRisks: CountryRiskData[] = [
     name: "China",
     type: "country",
     connections: ["Strait of Malacca", "Singapore", "Vietnam", "Japan", "South Korea", "Taiwan"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 65,
+    exportRisk: 75,
+    overallRisk: 70,
     newsHighlights: [
       "New tariff regulations affecting electronics exports",
       "Port congestion reported in Shanghai",
@@ -66,9 +72,9 @@ const countryRisks: CountryRiskData[] = [
     name: "United States",
     type: "country",
     connections: ["Canada", "Mexico", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 25,
+    exportRisk: 40,
+    overallRisk: 32,
     newsHighlights: [
       "New trade agreement negotiations ongoing",
       "West Coast port operations stabilizing",
@@ -79,9 +85,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Germany",
     type: "country",
     connections: ["Netherlands", "France", "Poland", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 20,
+    exportRisk: 28,
+    overallRisk: 24,
     newsHighlights: ["Strong logistics infrastructure performance"],
   },
   {
@@ -89,9 +95,9 @@ const countryRisks: CountryRiskData[] = [
     name: "India",
     type: "country",
     connections: ["Strait of Malacca", "Strait of Hormuz", "Bab-el-Mandeb", "United Arab Emirates", "Singapore", "Bangladesh", "Pakistan"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 48,
+    exportRisk: 56,
+    overallRisk: 52,
     newsHighlights: [
       "Monsoon affecting regional logistics",
       "Textile export growth continues",
@@ -102,9 +108,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Vietnam",
     type: "country",
     connections: ["China", "Thailand", "Malaysia", "Singapore", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 40,
+    exportRisk: 48,
+    overallRisk: 44,
     newsHighlights: [
       "Manufacturing capacity expanding",
       "Infrastructure improvements underway",
@@ -115,9 +121,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Brazil",
     type: "country",
     connections: ["Argentina", "Chile", "Panama Canal", "Peru"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 50,
+    exportRisk: 60,
+    overallRisk: 55,
     newsHighlights: [
       "Currency volatility affecting trade costs",
       "Agricultural exports remain strong",
@@ -128,9 +134,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Indonesia",
     type: "country",
     connections: ["Malaysia", "Singapore", "Australia", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 42,
+    exportRisk: 52,
+    overallRisk: 47,
     newsHighlights: ["Palm oil export restrictions easing"],
   },
   {
@@ -138,9 +144,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Japan",
     type: "country",
     connections: ["China", "South Korea", "Taiwan", "Strait of Malacca", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 24,
+    exportRisk: 30,
+    overallRisk: 27,
     newsHighlights: ["Semiconductor supply chain improvements"],
   },
   {
@@ -148,9 +154,9 @@ const countryRisks: CountryRiskData[] = [
     name: "South Korea",
     type: "country",
     connections: ["China", "Japan", "Taiwan", "Strait of Malacca", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 27,
+    exportRisk: 33,
+    overallRisk: 30,
     newsHighlights: ["Tech exports maintaining stability"],
   },
   {
@@ -158,9 +164,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Mexico",
     type: "country",
     connections: ["United States", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
     newsHighlights: [
       "Near-shoring trend boosting manufacturing",
       "Cross-border logistics improving",
@@ -171,9 +177,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Russia",
     type: "country",
     connections: ["Georgia", "Bosphorus", "China", "Iran"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 85,
+    exportRisk: 95,
+    overallRisk: 90,
     newsHighlights: [
       "Ongoing sanctions affecting trade routes",
       "Payment system complications",
@@ -185,9 +191,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Ukraine",
     type: "country",
     connections: ["Romania", "Bosphorus", "Poland"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 90,
+    exportRisk: 96,
+    overallRisk: 93,
     newsHighlights: [
       "Active conflict zones affecting logistics",
       "Agricultural exports disrupted",
@@ -198,9 +204,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Taiwan",
     type: "country",
     connections: ["China", "Japan", "South Korea", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 55,
+    exportRisk: 65,
+    overallRisk: 60,
     newsHighlights: [
       "Semiconductor supply critical globally",
       "Geopolitical tensions elevated",
@@ -211,9 +217,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Saudi Arabia",
     type: "country",
     connections: ["Strait of Hormuz", "Bab-el-Mandeb", "United Arab Emirates", "Qatar", "Egypt"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 32,
+    exportRisk: 42,
+    overallRisk: 37,
     newsHighlights: ["Energy export routes stable"],
   },
   {
@@ -221,12 +227,13 @@ const countryRisks: CountryRiskData[] = [
     name: "South Africa",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 40,
+    exportRisk: 50,
+    overallRisk: 45,
     newsHighlights: [
-      "Port operations experiencing delays",
-      "Mining sector exports fluctuating",
+      "Load shedding affecting manufacturing output",
+      "Labor unrest in mining sector",
+      "Port operations at Durban experiencing delays",
     ],
   },
   {
@@ -234,9 +241,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Turkey",
     type: "country",
     connections: ["Greece", "Bulgaria", "Romania", "Bosphorus", "Suez Canal", "Iran"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 58,
+    exportRisk: 68,
+    overallRisk: 63,
     newsHighlights: [
       "Currency instability affecting costs",
       "Strategic position for regional trade",
@@ -247,9 +254,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Thailand",
     type: "country",
     connections: ["Vietnam", "Malaysia", "Singapore", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 35,
+    exportRisk: 43,
+    overallRisk: 39,
     newsHighlights: ["Electronics manufacturing stable"],
   },
   {
@@ -257,9 +264,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Malaysia",
     type: "country",
     connections: ["Thailand", "Vietnam", "Singapore", "Indonesia", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 38,
+    overallRisk: 34,
     newsHighlights: ["Semiconductor supply chain hub"],
   },
   {
@@ -267,9 +274,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Singapore",
     type: "country",
     connections: ["Malaysia", "Indonesia", "Vietnam", "Thailand", "India", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 15,
+    exportRisk: 19,
+    overallRisk: 17,
     newsHighlights: ["Premier logistics hub status maintained"],
   },
   {
@@ -277,9 +284,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Netherlands",
     type: "country",
     connections: ["Germany", "France", "United Kingdom", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 19,
+    exportRisk: 23,
+    overallRisk: 21,
     newsHighlights: ["Rotterdam port efficiency high"],
   },
   {
@@ -287,9 +294,9 @@ const countryRisks: CountryRiskData[] = [
     name: "United Kingdom",
     type: "country",
     connections: ["Netherlands", "France"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 38,
+    overallRisk: 34,
     newsHighlights: ["Post-Brexit trade flows stabilizing"],
   },
   {
@@ -297,9 +304,9 @@ const countryRisks: CountryRiskData[] = [
     name: "France",
     type: "country",
     connections: ["Germany", "Netherlands", "United Kingdom", "Spain", "Italy", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 26,
+    exportRisk: 32,
+    overallRisk: 29,
     newsHighlights: ["Agricultural exports strong"],
   },
   {
@@ -307,9 +314,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Italy",
     type: "country",
     connections: ["France", "Spain", "Greece", "Suez Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 38,
+    overallRisk: 34,
     newsHighlights: ["Manufacturing sector resilient"],
   },
   {
@@ -317,9 +324,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Spain",
     type: "country",
     connections: ["France", "Italy"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 28,
+    exportRisk: 34,
+    overallRisk: 31,
     newsHighlights: ["Mediterranean trade routes stable"],
   },
   {
@@ -327,9 +334,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Australia",
     type: "country",
     connections: ["Indonesia", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 24,
+    exportRisk: 30,
+    overallRisk: 27,
     newsHighlights: ["Resource exports to Asia strong"],
   },
   {
@@ -337,9 +344,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Canada",
     type: "country",
     connections: ["United States", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 21,
+    exportRisk: 27,
+    overallRisk: 24,
     newsHighlights: ["USMCA trade flows steady"],
   },
   {
@@ -347,12 +354,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Egypt",
     type: "country",
     connections: ["Suez Canal", "Bab-el-Mandeb", "Saudi Arabia", "Greece"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 40,
+    exportRisk: 50,
+    overallRisk: 45,
     newsHighlights: [
-      "Suez Canal operations normal",
-      "Regional tensions monitoring",
+      "Debt burden affecting import capacity",
+      "Suez Canal revenue decline from Red Sea tensions",
+      "Labor rights concerns in manufacturing",
     ],
   },
   {
@@ -360,12 +368,13 @@ const countryRisks: CountryRiskData[] = [
     name: "Nigeria",
     type: "country",
     connections: ["Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 50,
+    exportRisk: 60,
+    overallRisk: 55,
     newsHighlights: [
-      "Oil exports facing logistics challenges",
-      "Currency volatility high",
+      "Corruption concerns in port operations",
+      "Security challenges in oil-producing regions",
+      "Currency volatility affecting trade costs",
     ],
   },
   {
@@ -373,9 +382,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Argentina",
     type: "country",
     connections: ["Brazil", "Chile", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 65,
+    exportRisk: 75,
+    overallRisk: 70,
     newsHighlights: [
       "Currency restrictions affecting trade",
       "Agricultural exports strong",
@@ -386,9 +395,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Chile",
     type: "country",
     connections: ["Peru", "Brazil", "Argentina", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 30,
+    exportRisk: 36,
+    overallRisk: 33,
     newsHighlights: ["Mining exports stable"],
   },
   {
@@ -396,9 +405,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Poland",
     type: "country",
     connections: ["Germany", "Ukraine", "Romania"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 33,
+    exportRisk: 41,
+    overallRisk: 37,
     newsHighlights: ["Manufacturing hub for Europe"],
   },
   {
@@ -406,9 +415,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Bangladesh",
     type: "country",
     connections: ["India", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 48,
+    exportRisk: 58,
+    overallRisk: 53,
     newsHighlights: [
       "Textile exports growing",
       "Infrastructure development ongoing",
@@ -419,9 +428,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Pakistan",
     type: "country",
     connections: ["India", "Iran", "Strait of Hormuz"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 65,
+    exportRisk: 75,
+    overallRisk: 70,
     newsHighlights: [
       "Economic instability affecting trade",
       "Textile sector challenges",
@@ -432,9 +441,9 @@ const countryRisks: CountryRiskData[] = [
     name: "Philippines",
     type: "country",
     connections: ["Taiwan", "Japan", "Strait of Malacca"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 40,
+    exportRisk: 48,
+    overallRisk: 44,
     newsHighlights: ["Electronics manufacturing growing"],
   },
   {
@@ -451,70 +460,103 @@ const countryRisks: CountryRiskData[] = [
     ],
   },
 
-  // additional countries used by chokepoint-oriented routing
+  // New countries with detailed risk data
   {
-    id: "Panama",
-    name: "Panama",
+    id: "Congo",
+    name: "Congo (DRC)",
     type: "country",
-    connections: ["Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Bab-el-Mandeb", "South Africa"],
+    importRisk: 68,
+    exportRisk: 76,
+    overallRisk: 72,
     newsHighlights: [
-      "Canal-linked logistics remains strategically important",
-      "Waterway dependency amplifies transit-related risk",
+      "Major cobalt producer with child labor concerns",
+      "Conflict in eastern regions affecting mining",
+      "Infrastructure challenges for export routes",
     ],
   },
   {
-    id: "United Arab Emirates",
-    name: "United Arab Emirates",
+    id: "Zambia",
+    name: "Zambia",
     type: "country",
-    connections: ["Saudi Arabia", "Qatar", "Oman", "Strait of Hormuz", "Bab-el-Mandeb", "India"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Congo", "South Africa"],
+    importRisk: 48,
+    exportRisk: 62,
+    overallRisk: 55,
     newsHighlights: [
-      "Regional transshipment hub",
-      "Exposure to Gulf and Red Sea route conditions",
+      "Copper and cobalt production hub",
+      "Power supply instability affecting mining",
+      "Landlocked logistics challenges",
     ],
   },
   {
-    id: "Oman",
-    name: "Oman",
+    id: "Zimbabwe",
+    name: "Zimbabwe",
     type: "country",
-    connections: ["United Arab Emirates", "Strait of Hormuz"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["South Africa", "Zambia"],
+    importRisk: 70,
+    exportRisk: 80,
+    overallRisk: 75,
     newsHighlights: [
-      "Strategic location near Gulf shipping lanes",
-      "Energy and port logistics remain regionally important",
+      "Lithium reserves attracting investment",
+      "Sanctions affecting international trade",
+      "Currency instability impacting costs",
     ],
   },
   {
-    id: "Qatar",
-    name: "Qatar",
+    id: "Morocco",
+    name: "Morocco",
     type: "country",
-    connections: ["Saudi Arabia", "United Arab Emirates", "Strait of Hormuz"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Spain", "France"],
+    importRisk: 35,
+    exportRisk: 49,
+    overallRisk: 42,
     newsHighlights: [
-      "LNG export flows highly strategic",
-      "Trade sensitivity tied to Gulf maritime stability",
+      "Phosphate rock exporter",
+      "Automotive manufacturing growing",
+      "Stable trade relations with EU",
     ],
   },
   {
-    id: "Yemen",
-    name: "Yemen",
+    id: "Kazakhstan",
+    name: "Kazakhstan",
     type: "country",
-    connections: ["Bab-el-Mandeb", "Saudi Arabia"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Russia", "China"],
+    importRisk: 42,
+    exportRisk: 54,
+    overallRisk: 48,
     newsHighlights: [
-      "Conflict-related disruption risk remains very high",
-      "Red Sea shipping security strongly affected",
+      "Uranium production concerns",
+      "Russia dependency for transit routes",
+      "Oil export infrastructure development",
+    ],
+  },
+  {
+    id: "Mongolia",
+    name: "Mongolia",
+    type: "country",
+    connections: ["China", "Russia"],
+    importRisk: 45,
+    exportRisk: 59,
+    overallRisk: 52,
+    newsHighlights: [
+      "Copper and rare earth exports to China",
+      "Infrastructure dependency on China",
+      "Harsh winters affecting logistics",
+    ],
+  },
+  {
+    id: "Czechia",
+    name: "Czechia",
+    type: "country",
+    connections: ["Germany", "Poland", "Slovakia"],
+    importRisk: 12,
+    exportRisk: 18,
+    overallRisk: 15,
+    newsHighlights: [
+      "Stable EU manufacturing hub",
+      "Automotive production center",
+      "Reliable logistics infrastructure",
     ],
   },
   {
@@ -522,64 +564,97 @@ const countryRisks: CountryRiskData[] = [
     name: "Djibouti",
     type: "country",
     connections: ["Bab-el-Mandeb", "Ethiopia"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
     newsHighlights: [
-      "Important Red Sea logistics location",
-      "Strategic shipping and port relevance remains elevated",
+      "China debt dependency concerns",
+      "Strategic port for regional trade",
+      "Ethiopia transit hub",
     ],
   },
   {
-    id: "Greece",
-    name: "Greece",
+    id: "Ethiopia",
+    name: "Ethiopia",
     type: "country",
-    connections: ["Egypt", "Italy", "Turkey", "Suez Canal", "Bosphorus"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Djibouti", "Kenya"],
+    importRisk: 45,
+    exportRisk: 55,
+    overallRisk: 50,
     newsHighlights: [
-      "Eastern Mediterranean maritime hub role remains important",
-      "Port connectivity links Asia-Europe routes",
+      "Conflict aftermath affecting recovery",
+      "Landlocked nation challenges",
+      "Agricultural export growth",
     ],
   },
   {
-    id: "Romania",
-    name: "Romania",
+    id: "Tanzania",
+    name: "Tanzania",
     type: "country",
-    connections: ["Ukraine", "Poland", "Turkey", "Bosphorus", "Bulgaria"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Kenya", "South Africa"],
+    importRisk: 38,
+    exportRisk: 48,
+    overallRisk: 43,
     newsHighlights: [
-      "Black Sea trade relevance elevated",
-      "Regional logistics affected by security conditions",
+      "Mining sector reforms",
+      "Port of Dar es Salaam expansion",
+      "Agricultural export potential",
     ],
   },
   {
-    id: "Bulgaria",
-    name: "Bulgaria",
+    id: "Kenya",
+    name: "Kenya",
     type: "country",
-    connections: ["Romania", "Turkey", "Greece", "Bosphorus"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["Ethiopia", "Tanzania"],
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
     newsHighlights: [
-      "Black Sea and Balkan corridor importance continues",
-      "Regional multimodal trade routes remain relevant",
+      "Mombasa port improvements",
+      "Tech sector growth",
+      "Agricultural export stability",
     ],
   },
   {
-    id: "Georgia",
-    name: "Georgia",
+    id: "Angola",
+    name: "Angola",
     type: "country",
-    connections: ["Russia", "Turkey", "Bosphorus"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    connections: ["South Africa", "Namibia"],
+    importRisk: 45,
+    exportRisk: 55,
+    overallRisk: 50,
     newsHighlights: [
-      "Caucasus corridor role remains strategically important",
-      "Regional geopolitical conditions shape logistics risk",
+      "Oil export dependency",
+      "Infrastructure investment",
+      "Currency volatility concerns",
+    ],
+  },
+  {
+    id: "Ghana",
+    name: "Ghana",
+    type: "country",
+    connections: ["Nigeria", "Ivory Coast"],
+    importRisk: 32,
+    exportRisk: 42,
+    overallRisk: 37,
+    newsHighlights: [
+      "Gold and cocoa exports stable",
+      "Port of Tema modernization",
+      "Democratic stability",
+    ],
+  },
+  {
+    id: "Namibia",
+    name: "Namibia",
+    type: "country",
+    connections: ["South Africa", "Angola"],
+    importRisk: 30,
+    exportRisk: 40,
+    overallRisk: 35,
+    newsHighlights: [
+      "Mining sector diversification",
+      "Walvis Bay port expansion",
+      "Political stability",
     ],
   },
   {
@@ -587,29 +662,17 @@ const countryRisks: CountryRiskData[] = [
     name: "Peru",
     type: "country",
     connections: ["Chile", "Brazil", "Panama Canal"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
+    importRisk: 35,
+    exportRisk: 45,
+    overallRisk: 40,
     newsHighlights: [
-      "Pacific commodity exports remain important",
-      "Canal access influences route flexibility",
-    ],
-  },
-  {
-    id: "Ethiopia",
-    name: "Ethiopia",
-    type: "country",
-    connections: ["Djibouti", "Bab-el-Mandeb"],
-    importRisk: 0,
-    exportRisk: 0,
-    overallRisk: 0,
-    newsHighlights: [
-      "Trade access highly dependent on external port routes",
-      "Logistics resilience tied to Red Sea corridor stability",
+      "Copper production expansion",
+      "Political uncertainty affecting policy",
+      "Mining sector investments",
     ],
   },
 
-  // chokepoints
+  // Chokepoints
   {
     id: "Suez Canal",
     name: "Suez Canal",
@@ -696,34 +759,16 @@ const countryRisks: CountryRiskData[] = [
   },
 ]
 
-const chokeToCountriesMap: Record<string, any> = {
-  "Suez Canal": ["Egypt", "Israel"],
-  "Panama Canal": ["Panama", "Cuba", "United States"],
-  "Strait of Hormuz": ["Iran", "Oman", "Saudi Arabia", "United Arab Emirates"],
-  "Strait of Malacca": ["Singapore", "Malaysia", "Indonesia"],
-  "Bab-el-Mandeb": ["Yemen", "Djibouti", "Ethiopia"],
-  "Bosphorus": ["Turkey", "Greece", "Romania", "Bulgaria"],
-}
-
 export default function SupplyChainCrisisDetector() {
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
-  const [isRouteBuilderOpen, setIsRouteBuilderOpen] = useState(false)
-  const [isProductBuilderOpen, setIsProductBuilderOpen] = useState(false)
-  const [customRoute, setCustomRoute] = useState<CustomRoute | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
   const [selectedRoute, setSelectedRoute] = useState<ProductSupplyRoute | null>(null)
   const [showRiskZones, setShowRiskZones] = useState(false)
-  const [isRelocationOpen, setIsRelocationOpen] = useState(false)
-  const [isRouteFinderOpen, setIsRouteFinderOpen] = useState(false)
   const [foundRoutes, setFoundRoutes] = useState<FoundRoute[]>([])
   const [selectedFoundRouteId, setSelectedFoundRouteId] = useState<string | null>(null)
   const [storedProducts, setStoredProducts] = useState<StoredProduct[]>([])
   const [decompositionTree, setDecompositionTree] = useState<DecompositionTree | null>(null)
   const [activeTree, setActiveTree] = useState<DecompositionTree | null>(null)
   const [selectedDecompNodeId, setSelectedDecompNodeId] = useState<string | null>(null)
-  const [isInventorySidebarOpen, setIsInventorySidebarOpen] = useState(false)
-  const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
-  const [altScanLoading, setAltScanLoading] = useState(false)
   const [riskSnapshots, setRiskSnapshots] = useState<Record<string, CountryRiskEvaluation>>({})
   const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false)
   const [riskLoadingIds, setRiskLoadingIds] = useState<Record<string, boolean>>({})
@@ -734,18 +779,43 @@ export default function SupplyChainCrisisDetector() {
     completedChunks: 0,
     totalChunks: 0,
   })
-  const [mapAddRequest, setMapAddRequest] = useState<{
-    country: string
-    itemType: ItemType
-  } | null>(null)
   const [safeRouteContext, setSafeRouteContext] = useState<{
     origin: string
     destination: string
     itemName: string
+    componentId?: string
+    productId?: string
   } | null>(null)
   const [alternativesPanelOpen, setAlternativesPanelOpen] = useState(false)
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
+  const [routesPanelProduct, setRoutesPanelProduct] = useState<StoredProduct | null>(null)
+  const [isAlertsPanelOpen, setIsAlertsPanelOpen] = useState(false)
+
+  // Alternative supplier scanning
+  const [alternativesMap, setAlternativesMap] = useState<Record<string, AlternativeEntry[]>>({})
+  const [altScanLoading, setAltScanLoading] = useState(false)
+
+  // Map ref for demo mode control
+  const mapRef = useRef<SupplyChainMapRef>(null)
+
+  // Track route animation state for ActionBar
+  const [isRouteAnimating, setIsRouteAnimating] = useState(false)
+
+  // Generate alerts from products
+  const alerts = useMemo<AlertData[]>(() => {
+    if (storedProducts.length === 0) return []
+    return generateAlertsFromProducts(storedProducts, countryRisks)
+  }, [storedProducts, countryRisks])
+
+  // Handle route animation with state tracking
+  const handleAnimateRoutes = useCallback(() => {
+    if (isRouteAnimating) return
+    setIsRouteAnimating(true)
+    mapRef.current?.animateRoutes(2500, undefined, () => {
+      setIsRouteAnimating(false)
+    })
+  }, [isRouteAnimating])
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -805,19 +875,57 @@ export default function SupplyChainCrisisDetector() {
     })
   }, [riskSnapshots])
 
-  // Calculate insights from products
-  const insights = useMemo(() => {
-    if (products.length === 0) return undefined
-    return analyzeSupplyChain(products, resolvedCountryRisks)
-  }, [products, resolvedCountryRisks])
-
-  // Convert stored products to map products for the right panel
+  // Convert storedProducts to the map's Product[] format for route rendering
   const mapProducts = useMemo(() => {
-    return storedProducts
-      .map((sp, i) => storedProductToMapProduct(sp, i))
-      .filter((mp): mp is MapProduct => mp !== null)
+    return syncStoredToProducts(storedProducts, [])
   }, [storedProducts])
 
+  // Calculate insights from stored products
+  const insights = useMemo<SupplyChainInsights | undefined>(() => {
+    if (storedProducts.length === 0) return undefined
+    const product = storedProducts[storedProducts.length - 1] // Get the most recently added product
+    const tree = product.tree
+    const products = convertTreeToAnalyzerProducts(tree)
+    return analyzeSupplyChain(products, countryRisks)
+  }, [storedProducts, countryRisks])
+
+  // Convert insights to SupplyChainInsightsData format for the sidebar
+  const insightsData = useMemo<SupplyChainInsightsData | null>(() => {
+    if (!insights) return null
+    return {
+      healthScore: 100 - (insights.highRiskComponents.length > 0
+        ? insights.highRiskComponents.reduce((sum, c) => sum + c.risk, 0) / insights.highRiskComponents.length
+        : 0),
+      riskBreakdown: {
+        geopolitical: insights.riskBreakdown?.geopolitical ?? 30,
+        logistics: insights.riskBreakdown?.logistics ?? 25,
+        priceVolatility: insights.riskBreakdown?.priceVolatility ?? 20,
+      },
+      highRiskComponents: insights.highRiskComponents.map(c => ({
+        componentId: c.componentId,
+        componentName: c.componentName,
+        country: c.country,
+        risk: c.risk,
+        productId: c.productId,
+      })),
+      priceImpact: {
+        estimated: insights.priceImpact?.estimated ?? "+5%",
+        factors: insights.priceImpact?.factors ?? [],
+      },
+      recommendations: insights.recommendations ?? [],
+    }
+  }, [insights])
+
+  // Calculate risk level from insights
+  const riskLevel = useMemo<"low" | "medium" | "high">(() => {
+    if (!insights) return "low"
+    const avgRisk = insights.highRiskComponents.reduce((sum, c) => sum + c.risk, 0) / Math.max(insights.highRiskComponents.length, 1)
+    if (avgRisk > 70) return "high"
+    if (avgRisk > 40) return "medium"
+    return "low"
+  }, [insights])
+
+  // Load cached risk snapshots
   useEffect(() => {
     const loadSnapshots = async () => {
       try {
@@ -840,6 +948,7 @@ export default function SupplyChainCrisisDetector() {
     loadSnapshots()
   }, [])
 
+  // Save risk snapshots
   useEffect(() => {
     if (!hasLoadedSnapshots) return
     if (!Object.keys(riskSnapshots).length) return
@@ -855,8 +964,9 @@ export default function SupplyChainCrisisDetector() {
     }
 
     save()
-  }, [hasLoadedSnapshots, hasCompleteSnapshots,riskSnapshots])
+  }, [hasLoadedSnapshots, hasCompleteSnapshots, riskSnapshots])
 
+  // Bulk evaluate countries
   useEffect(() => {
     if (!hasLoadedSnapshots) return
     if (!countryRisks.length) return
@@ -927,7 +1037,7 @@ export default function SupplyChainCrisisDetector() {
     return () => {
       cancelled = true
     }
-  }, [hasLoadedSnapshots, hasCompleteSnapshots, riskSnapshots, countryRisks])
+  }, [countryRisks, hasLoadedSnapshots, hasCompleteSnapshots, riskSnapshots])
 
   // Initialize route graph with country risks data
   useEffect(() => {
@@ -939,224 +1049,41 @@ export default function SupplyChainCrisisDetector() {
     }
   }, [resolvedCountryRisks])
 
-  // Sync storedProducts → right-panel products (additive; keeps local edits)
-  useEffect(() => {
-    setProducts((prev) => syncStoredToProducts(storedProducts, prev))
-  }, [storedProducts])
-
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setSelectedCountry(null)
-    setCustomRoute(null)
     setSelectedRoute(null)
-  }
+  }, [])
 
-  const handleRouteClick = (route: ProductSupplyRoute) => {
+  const handleRouteClick = useCallback((route: ProductSupplyRoute) => {
     setSelectedRoute(route)
-    setIsProductBuilderOpen(false)
-    setIsRouteBuilderOpen(false)
-  }
+  }, [])
 
-  const handleProductAdd = (product: StoredProduct) => {
+  const handleProductAdd = useCallback((product: StoredProduct) => {
     setStoredProducts((prev) => [...prev, product])
-  }
+  }, [])
 
-  const handleTreeChange = (tree: DecompositionTree | null) => {
+  const handleTreeChange = useCallback((tree: DecompositionTree | null) => {
     setActiveTree(tree)
-  }
+  }, [])
 
-  const handleNodeSelect = (nodeId: string | null) => {
+  const handleProductUpdate = useCallback((updated: StoredProduct) => {
+    setStoredProducts((prev) =>
+      prev.map((sp) => sp.id === updated.id ? updated : sp)
+    )
+  }, [])
+
+  const handleNodeSelect = useCallback((nodeId: string | null) => {
     setSelectedDecompNodeId(nodeId)
-  }
+  }, [])
 
-  const handleInventoryProductSelect = useCallback(
-    async (storedProduct: StoredProduct) => {
-      setIsProductBuilderOpen(true)
-      setIsRouteBuilderOpen(false)
-      setIsRelocationOpen(false)
-      setAlternativesMap({})
-      setAltScanLoading(true)
+  const handleRouteFound = useCallback((routes: FoundRoute[]) => {
+    setFoundRoutes(routes)
+    if (routes.length > 0) {
+      setSelectedFoundRouteId(routes[0].id)
+    }
+  }, [])
 
-      // Check server-side JSON cache first
-      try {
-        const cacheRes = await fetch(
-          `/api/alternatives-cache?productId=${encodeURIComponent(storedProduct.id)}`,
-        )
-        const cacheData = await cacheRes.json()
-        if (cacheData.alternatives && Object.keys(cacheData.alternatives).length > 0) {
-          setAlternativesMap(cacheData.alternatives)
-          setAltScanLoading(false)
-          return
-        }
-      } catch {
-        /* cache miss — continue to fetch */
-      }
-
-      const tree = storedProduct.tree
-      const THRESHOLD = 60
-      const highRiskItems: {
-        id: string
-        name: string
-        type: string
-        country: string
-        risk: number
-      }[] = []
-
-      const walkTree = (nodeId: string) => {
-        const node = tree.nodes[nodeId]
-        if (!node) return
-        const entries = Object.entries(node.geographic_concentration)
-        if (entries.length > 0) {
-          entries.sort((a, b) => b[1] - a[1])
-          const country = entries[0][0]
-          const cr = resolvedCountryRisks.find((c) => c.name === country)
-          if (cr && cr.overallRisk >= THRESHOLD) {
-            highRiskItems.push({
-              id: node.id,
-              name: node.name,
-              type: node.type,
-              country,
-              risk: cr.overallRisk,
-            })
-          }
-        }
-        node.children.forEach(walkTree)
-      }
-      walkTree(tree.root_id)
-
-      if (highRiskItems.length === 0) {
-        setAltScanLoading(false)
-        return
-      }
-
-      highRiskItems.sort((a, b) => b.risk - a.risk)
-
-      const results: Record<string, AlternativeEntry[]> = {}
-      await Promise.allSettled(
-        highRiskItems.map(async (item) => {
-          try {
-            const res = await fetch("/api/ai/alternatives", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                country: item.country,
-                itemType: item.type,
-                itemName: item.name,
-                currentRisk: item.risk,
-              }),
-            })
-            const data = await res.json()
-            if (data.alternatives) {
-              results[item.id] = data.alternatives
-            }
-          } catch {
-            /* skip failed */
-          }
-        }),
-      )
-      setAlternativesMap(results)
-      setAltScanLoading(false)
-
-      // Persist to server-side JSON cache
-      if (Object.keys(results).length > 0) {
-        fetch("/api/alternatives-cache", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            productId: storedProduct.id,
-            alternatives: results,
-          }),
-        }).catch(() => {})
-      }
-    },
-    [resolvedCountryRisks],
-  )
-
-  const handleAddToInventory = useCallback(
-    (product: Product) => {
-      if (storedProducts.some((sp) => sp.id === product.id)) return
-
-      const buildNodes = (
-        item: { id: string; name: string; type: string; country: string; riskPrediction: number; children: any[] },
-        tier: number,
-      ): Record<string, any> => {
-        const nodeType =
-          item.type === "product" ? "product" :
-          item.type === "component" ? "component" :
-          item.type === "material" ? "material" : "geography"
-
-        const node = {
-          id: item.id,
-          name: item.name || item.type,
-          tier,
-          type: nodeType,
-          status: "verified" as const,
-          confidence: 0.8,
-          geographic_concentration: { [item.country]: 100 },
-          risk_score: item.riskPrediction,
-          risk_factors: [],
-          source: "inferred" as const,
-          search_evidence: null,
-          correction: null,
-          children: item.children.map((c: any) => c.id),
-        }
-
-        let all: Record<string, any> = { [item.id]: node }
-        for (const child of item.children) {
-          all = { ...all, ...buildNodes(child, tier + 1) }
-        }
-        return all
-      }
-
-      const rootId = product.id
-      const rootNode = {
-        id: rootId,
-        name: product.name || "Unnamed",
-        type: "product",
-        country: product.country,
-        riskPrediction: product.riskPrediction,
-        children: product.components,
-      }
-      const nodes = buildNodes(rootNode, 0)
-
-      const tree: DecompositionTree = {
-        product: product.name || "Unnamed",
-        phase: "verified",
-        nodes,
-        root_id: rootId,
-        metadata: {
-          total_nodes: Object.keys(nodes).length,
-          verified_count: Object.keys(nodes).length,
-          corrected_count: 0,
-          avg_confidence: 0.8,
-        },
-      }
-
-      const stored: StoredProduct = {
-        id: product.id,
-        name: product.name || "Unnamed",
-        suppliers: [],
-        tree,
-        durationMs: 0,
-        createdAt: Date.now(),
-      }
-
-      setStoredProducts((prev) => [...prev, stored])
-    },
-    [storedProducts],
-  )
-
-  const handleToggleInventory = () => {
-    setIsInventorySidebarOpen((prev) => !prev)
-  }
-
-  const countryOptions = useMemo(
-    () =>
-      resolvedCountryRisks
-        .filter((c) => c.type === "country")
-        .map((c) => ({ id: c.id, name: c.name })),
-    [resolvedCountryRisks],
-  )
-
+  // Apply alternative supplier to a tree node
   const handleApplyAlternative = useCallback(
     (nodeId: string, newCountry: string) => {
       const cr = resolvedCountryRisks.find((c) => c.name === newCountry)
@@ -1185,21 +1112,50 @@ export default function SupplyChainCrisisDetector() {
     },
     [resolvedCountryRisks],
   )
-  const handleFindSafeRouteForProduct = (origin: string, destination: string, itemName: string) => {
-    setSafeRouteContext({ origin, destination, itemName })
-    setIsRouteFinderOpen(true)
-    setIsProductBuilderOpen(false)
-  }
 
-  const handleClearFoundRoutes = () => {
-    setFoundRoutes([])
-    setSelectedFoundRouteId(null)
-    setSafeRouteContext(null)
-  }
+  // Handle "Find Safe Routes" from product card - extracts high-risk countries
+  const handleFindSafeRoute = useCallback((product: StoredProduct, targetCountry?: string) => {
+    const highRiskCountries = extractHighRiskCountries(product, 60)
+    // Use product's destination country, then targetCountry param, then default to United States
+    const destination = product.destinationCountry || targetCountry || "United States"
 
-  // Handler for viewing supplier alternatives
-  const handleViewAlternatives = (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => {
-    // Find the component risk from insights
+    if (highRiskCountries.length === 0) {
+      // No high-risk countries found, use the product's main country if available
+      const rootNode = product.tree.nodes[product.tree.root_id]
+      const mainCountry = rootNode
+        ? Object.keys(rootNode.geographic_concentration)[0] || "China"
+        : "China"
+
+      setSafeRouteContext({
+        origin: mainCountry,
+        destination,
+        itemName: product.name,
+        productId: product.id,
+      })
+    } else {
+      // Use the highest-risk country as origin
+      const highestRisk = highRiskCountries[0]
+      setSafeRouteContext({
+        origin: highestRisk.country,
+        destination,
+        itemName: `${product.name} - ${highestRisk.nodeName}`,
+        componentId: highestRisk.nodeId,
+        productId: product.id,
+      })
+    }
+  }, [])
+
+  const handleFindSafeRouteFromInsights = useCallback((
+    origin: string,
+    destination: string,
+    itemName: string,
+    componentId?: string,
+    productId?: string
+  ) => {
+    setSafeRouteContext({ origin, destination, itemName, componentId, productId })
+  }, [])
+
+  const handleViewAlternatives = useCallback((component: ComponentRiskForInsights, parentCountry: string) => {
     if (insights) {
       const componentRisk = insights.highRiskComponents.find(c => c.componentId === component.componentId)
       if (componentRisk) {
@@ -1207,10 +1163,9 @@ export default function SupplyChainCrisisDetector() {
         setAlternativesPanelOpen(true)
       }
     }
-  }
+  }, [insights])
 
-  // Handler for alert click
-  const handleAlertClick = (alert: AlertData) => {
+  const handleAlertClick = useCallback((alert: AlertData) => {
     if (alert.relatedComponentId && insights) {
       const componentRisk = insights.highRiskComponents.find(c => c.componentId === alert.relatedComponentId)
       if (componentRisk) {
@@ -1218,252 +1173,96 @@ export default function SupplyChainCrisisDetector() {
         setAlternativesPanelOpen(true)
       }
     }
-  }
+  }, [insights])
+
+  const handleClear = useCallback(() => {
+    setSelectedCountry(null)
+    setSelectedRoute(null)
+    setFoundRoutes([])
+    setSelectedFoundRouteId(null)
+    setSafeRouteContext(null)
+  }, [])
+
+  // Convert resolvedCountryRisks to format expected by UnifiedSidebar
+  const sidebarCountryRisks = useMemo(() => {
+    return resolvedCountryRisks
+      .filter(c => c.type === "country")
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        importRisk: c.importRisk,
+        exportRisk: c.exportRisk,
+        overallRisk: c.overallRisk,
+        newsHighlights: c.newsHighlights,
+      }))
+  }, [resolvedCountryRisks])
 
   return (
-    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
-      {/* Left Navigation Sidebar */}
-      <NavSidebar
-        onInventoryClick={handleToggleInventory}
-        isInventoryOpen={isInventorySidebarOpen}
-        onLocationClick={() => setIsInventorySidebarOpen(false)}
-        isLocationActive={!isInventorySidebarOpen}
+    <div className="flex h-screen w-full overflow-hidden bg-background">
+      {/* Unified Sidebar - THE central hub */}
+      <UnifiedSidebar
+        countryRisks={sidebarCountryRisks}
+        selectedCountry={selectedCountry}
+        onCountrySelect={setSelectedCountry}
+        onReset={handleReset}
+        products={storedProducts}
+        onProductAdd={handleProductAdd}
+        onProductUpdate={handleProductUpdate}
+        onTreeChange={handleTreeChange}
+        onNodeSelect={handleNodeSelect}
+        productCount={storedProducts.length}
+        riskLevel={riskLevel}
+        onFindSafeRoute={handleFindSafeRoute}
+        onRouteFound={handleRouteFound}
+        preselectedOrigin={safeRouteContext?.origin}
+        preselectedDestination={safeRouteContext?.destination}
+        routeContext={safeRouteContext ? {
+          componentId: safeRouteContext.componentId,
+          productId: safeRouteContext.productId,
+        } : null}
+        insights={insightsData}
+        onFindSafeRouteFromInsights={handleFindSafeRouteFromInsights}
+        onViewAlternatives={handleViewAlternatives}
+        routesPanelProduct={routesPanelProduct}
+        onRoutesPanelProductChange={setRoutesPanelProduct}
       />
 
-      {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
-      {isInventorySidebarOpen ? (
-        <InventorySidebar
-          products={storedProducts}
-          onProductAdd={handleProductAdd}
-          onTreeChange={handleTreeChange}
-          onNodeSelect={handleNodeSelect}
-          onProductSelect={handleInventoryProductSelect}
-          countryOptions={countryOptions}
-          alternativesMap={alternativesMap}
-          altScanLoading={altScanLoading}
-          onApplyAlternative={handleApplyAlternative}
-          onFindSafeRoute={handleFindSafeRouteForProduct}
-          insights={insights}
-          onViewAlternatives={handleViewAlternatives}
-          rightPanelProducts={products.map((p) => ({
-            id: p.id,
-            name: p.name,
-            country: p.country,
-            components: p.components.map((c) => ({
-              name: c.name,
-              type: c.type,
-              country: c.country,
-              children: c.children,
-            })),
-          }))}
-        />
-      ) : (
-        <RiskSidebar
-          countryRisks={resolvedCountryRisks}
-          selectedCountry={selectedCountry}
-          onCountrySelect={setSelectedCountry}
-          onReset={handleReset}
-        />
-      )}
-
       {/* Main Map Area */}
-      <div className="relative h-full w-full overflow-hidden">
-        {/* Alert Banner - positioned below action buttons */}
+      <div className="relative flex-1 h-full overflow-hidden animate-map-in">
+        {/* Alert Banner */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
-            insights={insights}
+            alerts={alerts}
             onAlertClick={handleAlertClick}
           />
         </div>
 
+        {/* Action Bar */}
+        <ActionBar
+          showRiskZones={showRiskZones}
+          isRouteSummaryOpen={isRouteSummaryOpen}
+          productCount={storedProducts.length}
+          onToggleRiskZones={() => setShowRiskZones(!showRiskZones)}
+          onToggleRouteSummary={() => setIsRouteSummaryOpen(!isRouteSummaryOpen)}
+          onClear={handleClear}
+          onAnimateRoutes={handleAnimateRoutes}
+          isAnimating={isRouteAnimating}
+        />
+
+        {/* Supply Chain Map */}
         <SupplyChainMap
           countryRisks={resolvedCountryRisks}
           onCountrySelect={setSelectedCountry}
           selectedCountry={selectedCountry}
-          customRoute={customRoute}
-          products={products}
+          customRoute={null}
+          products={mapProducts}
           selectedRouteId={selectedRoute?.id ?? null}
           onRouteClick={handleRouteClick}
           showRiskZones={showRiskZones}
-          onAddItemAtCountry={(country, itemType) => {
-            setMapAddRequest({ country, itemType })
-            setIsProductBuilderOpen(true)
-          }}
+          onAddItemAtCountry={() => {}}
           foundRoutes={foundRoutes}
           selectedFoundRouteId={selectedFoundRouteId}
-        />
-
-        {/* Action Buttons */}
-        <div className="absolute left-4 top-4 z-10 flex gap-2">
-          <Button
-            variant={isRouteBuilderOpen || customRoute ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              isRouteBuilderOpen || customRoute
-                ? "bg-primary text-primary-foreground glow-primary"
-                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-            )}
-            onClick={() => {
-              setIsRouteBuilderOpen(!isRouteBuilderOpen)
-              setIsProductBuilderOpen(false)
-            }}
-          >
-            <Route className="h-4 w-4" />
-            {customRoute ? `${customRoute.totalRisk}% Risk` : "Build Route"}
-          </Button>
-
-          <Button
-            variant={isProductBuilderOpen || products.length > 0 ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              isProductBuilderOpen || products.length > 0
-                ? "bg-primary text-primary-foreground glow-primary"
-                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-            )}
-            onClick={() => {
-              setIsProductBuilderOpen(!isProductBuilderOpen)
-              setIsRouteBuilderOpen(false)
-              setIsRelocationOpen(false)
-            }}
-          >
-            <Package className="h-4 w-4" />
-            {products.length > 0 ? `${products.length} Product${products.length > 1 ? 's' : ''}` : "Products"}
-          </Button>
-
-          <Button
-            variant={isRelocationOpen ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              isRelocationOpen
-                ? "bg-primary text-primary-foreground glow-primary"
-                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-            )}
-            onClick={() => {
-              setIsRelocationOpen(!isRelocationOpen)
-              setIsRouteBuilderOpen(false)
-              setIsProductBuilderOpen(false)
-            }}
-          >
-            <Factory className="h-4 w-4" />
-            Relocation
-          </Button>
-
-          <Button
-            variant={isRouteFinderOpen ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              isRouteFinderOpen
-                ? "bg-primary text-primary-foreground glow-primary"
-                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-            )}
-            onClick={() => {
-              setIsRouteFinderOpen(!isRouteFinderOpen)
-              setIsRouteBuilderOpen(false)
-              setIsProductBuilderOpen(false)
-              setIsRelocationOpen(false)
-            }}
-          >
-            <Navigation className="h-4 w-4" />
-            Safe Routes
-          </Button>
-
-          <Button
-            variant={showRiskZones ? "default" : "secondary"}
-            size="sm"
-            className={cn(
-              "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-              showRiskZones
-                ? "bg-primary text-primary-foreground glow-primary"
-                : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-            )}
-            onClick={() => setShowRiskZones(!showRiskZones)}
-          >
-            <Globe className="h-4 w-4" />
-            Risk Zones
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            className="gap-2 font-medium glass-panel border-primary/20 shadow-lg hover:border-primary/40 hover:bg-muted/50 sleek-button cursor-pointer"
-            onClick={() => {
-              setSelectedCountry(null)
-              setSelectedRoute(null)
-            }}
-          >
-            <Layers className="h-4 w-4" />
-            Clear
-          </Button>
-
-          {/* Route Summary Button */}
-          {products.length > 0 && (
-            <Button
-              variant={isRouteSummaryOpen ? "default" : "secondary"}
-              size="sm"
-              className={cn(
-                "gap-2 font-medium shadow-lg transition-all duration-200 sleek-button cursor-pointer",
-                isRouteSummaryOpen
-                  ? "bg-primary text-primary-foreground glow-primary"
-                  : "glass-panel border-primary/20 hover:border-primary/40 hover:bg-muted/50"
-              )}
-              onClick={() => setIsRouteSummaryOpen(!isRouteSummaryOpen)}
-            >
-              <BarChart3 className="h-4 w-4" />
-              Routes
-            </Button>
-          )}
-        </div>
-
-        {/* Route Builder Panel */}
-        <RouteBuilder
-          isOpen={isRouteBuilderOpen}
-          onClose={() => setIsRouteBuilderOpen(false)}
-          countryRisks={countryRisks}
-          customRoute={customRoute}
-          onRouteChange={setCustomRoute}
-        />
-
-        {/* Safe Route Finder Panel */}
-        <RouteFinderPanel
-          isOpen={isRouteFinderOpen}
-          onClose={() => {
-            setIsRouteFinderOpen(false)
-            setSafeRouteContext(null)
-          }}
-          countryRisks={resolvedCountryRisks}
-          onRouteFound={(routes) => {
-            setFoundRoutes(routes)
-            if (routes.length > 0) {
-              setSelectedFoundRouteId(routes[0].id)
-            }
-          }}
-          preselectedOrigin={safeRouteContext?.origin}
-          preselectedDestination={safeRouteContext?.destination}
-        />
-
-        {/* Product Supply Chain Panel */}
-        <ProductSupplyChain
-          isOpen={isProductBuilderOpen}
-          onClose={() => setIsProductBuilderOpen(false)}
-          countryRisks={countryRisks}
-          products={products}
-          onProductsChange={setProducts}
-          preloadedAlternatives={alternativesMap}
-          altScanLoading={altScanLoading}
-          onAddToInventory={handleAddToInventory}
-          inventoryProductIds={storedProducts.map((p) => p.id)}
-          mapAddRequest={mapAddRequest}
-          onClearMapAddRequest={() => setMapAddRequest(null)}
-          onFindSafeRoute={handleFindSafeRouteForProduct}
-          foundRoutes={foundRoutes}
-          selectedFoundRouteId={selectedFoundRouteId}
-          onClearFoundRoutes={handleClearFoundRoutes}
-          onViewAlternatives={handleViewAlternatives}
-          mapProducts={mapProducts}
+          ref={mapRef}
         />
 
         {/* Path Details Panel - shows when a route is clicked */}
@@ -1473,23 +1272,14 @@ export default function SupplyChainCrisisDetector() {
           onClose={() => setSelectedRoute(null)}
         />
 
-        {/* Relocation Advisor Panel */}
-        <RelocationPanel
-          isOpen={isRelocationOpen}
-          onClose={() => setIsRelocationOpen(false)}
-          countryRisks={countryRisks}
-          onCountrySelect={setSelectedCountry}
-        />
-
         {/* Route Summary Panel */}
         <RouteSummary
           isOpen={isRouteSummaryOpen}
           onClose={() => setIsRouteSummaryOpen(false)}
-          products={products}
+          products={mapProducts}
           countryRisks={resolvedCountryRisks}
           onRouteClick={(origin, destination) => {
             setSafeRouteContext({ origin, destination, itemName: 'Selected Route' })
-            setIsRouteFinderOpen(true)
             setIsRouteSummaryOpen(false)
           }}
         />
@@ -1499,19 +1289,66 @@ export default function SupplyChainCrisisDetector() {
           isOpen={alternativesPanelOpen}
           onClose={() => setAlternativesPanelOpen(false)}
           componentRisk={selectedComponentRisk}
-          destinationCountry={products[0]?.destinationCountry || 'United States'}
+          destinationCountry="United States"
           onSelectAlternative={(alternative) => {
-            // Handle alternative selection - could update the supply chain
+            // Handle alternative selection
           }}
           onViewRoute={(origin, destination) => {
             setSafeRouteContext({ origin, destination, itemName: 'Alternative Route' })
-            setIsRouteFinderOpen(true)
             setAlternativesPanelOpen(false)
           }}
           onReplaceSupplier={(alternative) => {
-            // Handle supplier replacement in supply chain
+            if (selectedComponentRisk) {
+              handleApplyAlternative(selectedComponentRisk.componentId, alternative.country)
+            }
             setAlternativesPanelOpen(false)
           }}
+        />
+
+        {/* Product Supply Chain Routes Panel */}
+        <ProductSupplyChainRoutesPanel
+          isOpen={routesPanelProduct !== null}
+          onClose={() => setRoutesPanelProduct(null)}
+          product={routesPanelProduct}
+          countryRisks={resolvedCountryRisks as RouteCountryRiskData[]}
+          onVisualizeRoutes={handleRouteFound}
+        />
+
+        {/* Alerts Sidebar */}
+        <AlertsSidebar
+          isOpen={isAlertsPanelOpen}
+          onClose={() => setIsAlertsPanelOpen(false)}
+          alerts={alerts}
+          countryRisks={sidebarCountryRisks}
+          onDismiss={(alertId: string) => {
+            // In a real app, this would remove the alert from state
+            console.log('Dismissed alert:', alertId)
+          }}
+          onViewAlternatives={(alert) => {
+            if (alert.relatedComponentId && insights) {
+              const componentRisk = insights.highRiskComponents.find(c => c.componentId === alert.relatedComponentId)
+              if (componentRisk) {
+                setSelectedComponentRisk(componentRisk)
+                setAlternativesPanelOpen(true)
+                setIsAlertsPanelOpen(false)
+              }
+            }
+          }}
+        />
+
+        {/* Navigation Sidebar */}
+        <NavSidebar
+          onInventoryClick={() => {
+            // Toggle inventory view - handled by UnifiedSidebar
+          }}
+          isInventoryOpen={false}
+          onLocationClick={() => setSelectedCountry(null)}
+          isLocationActive={selectedCountry !== null}
+          onAlertsClick={() => setIsAlertsPanelOpen(!isAlertsPanelOpen)}
+          isAlertsActive={isAlertsPanelOpen}
+          productCount={storedProducts.length}
+          riskLevel={riskLevel}
+          alertCount={alerts.length}
         />
       </div>
     </div>

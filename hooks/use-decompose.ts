@@ -28,7 +28,7 @@ export function useDecompose() {
   const abortRef = useRef<AbortController | null>(null);
 
   const decompose = useCallback(
-    async (product: string, suppliers: string[]) => {
+    async (product: string, suppliers: string[], destination?: string) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -47,7 +47,7 @@ export function useDecompose() {
         const resp = await fetch("/api/decompose", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ product, suppliers }),
+          body: JSON.stringify({ product, suppliers, destination }),
           signal: controller.signal,
         });
 
