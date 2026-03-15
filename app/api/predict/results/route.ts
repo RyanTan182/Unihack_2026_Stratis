@@ -3,10 +3,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { miroFishClient } from "@/lib/mirofish/client"
 import type { PredictionResult, SentimentDataPoint, AffectedCountry, MiroFishAction } from "@/lib/mirofish/types"
-import { activeSimulations } from "../trigger/route"
-
-// Cache generated reports to avoid re-triggering on repeated calls
-const reportCache = new Map<string, string>()
 
 async function computeSentimentByRound(simulationId: string): Promise<SentimentDataPoint[]> {
   try {
@@ -258,16 +254,27 @@ function parseReportForPrediction(
 }
 
 export async function GET(request: NextRequest) {
-  const simulationId = request.nextUrl.searchParams.get("simulationId")
+  const pipelineId = request.nextUrl.searchParams.get("simulationId")
 
-  if (!simulationId) {
+  if (!pipelineId) {
     return NextResponse.json({ error: "simulationId parameter required" }, { status: 400 })
   }
 
   try {
-    const meta = activeSimulations.get(simulationId)
-    const countries = meta?.countries || []
-    const scenario = meta?.scenario || ""
+    // Get pipeline metadata (scenario, countries) from MiroFish
+    const pipelineRes = await miroFishClient.getPipelineStatus(pipelineId)
+    const pipelineData = pipelineRes.success ? pipelineRes.data : null
+    const metadata = (pipelineData?.metadata ?? {}) as Record<string, unknown>
+    const countries = (metadata.countries as string[]) || []
+    const scenario = (metadata.scenario as string) || ""
+    const simulationId = (pipelineData?.simulation_id as string) || ""
+
+    if (!simulationId) {
+      return NextResponse.json(
+        { error: "Simulation not yet created — pipeline still in progress" },
+        { status: 425 }
+      )
+    }
 
     // Get run status for confidence calculation
     let currentRound = 10
@@ -293,26 +300,23 @@ export async function GET(request: NextRequest) {
 
     const countryDeltas = computeSentimentPerCountry(allActions, countries)
 
-    // Generate report (cached to avoid duplicate generation)
-    let fullReport = reportCache.get(simulationId) || ""
+    // Generate report
+    let fullReport = ""
 
-    if (!fullReport) {
-      const reportRes = await miroFishClient.generateReport(simulationId)
+    const reportRes = await miroFishClient.generateReport(simulationId)
 
-      if (reportRes.success && reportRes.data?.report_id) {
-        const reportId = reportRes.data.report_id
-        let attempts = 0
-        while (attempts < 30) {
-          const report = await miroFishClient.getReport(reportId)
-          if (report.success && report.data?.markdown_content) {
-            fullReport = report.data.markdown_content
-            reportCache.set(simulationId, fullReport)
-            break
-          }
-          if (report.data?.status === "failed" || report.data?.status === "error") break
-          await new Promise((resolve) => setTimeout(resolve, 5000))
-          attempts++
+    if (reportRes.success && reportRes.data?.report_id) {
+      const reportId = reportRes.data.report_id
+      let attempts = 0
+      while (attempts < 30) {
+        const report = await miroFishClient.getReport(reportId)
+        if (report.success && report.data?.markdown_content) {
+          fullReport = report.data.markdown_content
+          break
         }
+        if (report.data?.status === "failed" || report.data?.status === "error") break
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+        attempts++
       }
     }
 
@@ -322,7 +326,6 @@ export async function GET(request: NextRequest) {
       const fallback = await buildFallbackContent(simulationId, scenario, countries)
       fullReport = fallback.report
       fallbackFindings = fallback.findings
-      reportCache.set(simulationId, fullReport)
     }
 
     // Compute sentiment
@@ -355,7 +358,7 @@ export async function GET(request: NextRequest) {
         : ("stable" as const)
 
     const result: PredictionResult = {
-      simulationId,
+      simulationId: pipelineId,
       prediction: {
         ...parsed,
         riskDirection,

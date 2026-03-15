@@ -14,5 +14,9 @@ node_modules/
 .superpowers/
 decomposition-demo/
 docs/
-/mirofish/
+/mirofish/node_modules/
+/mirofish/backend/.venv/
+/mirofish/backend/uploads/
+/mirofish/frontend/node_modules/
+/mirofish/.git.bak/
 data/alternatives-cache.json

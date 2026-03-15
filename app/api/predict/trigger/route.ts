@@ -5,19 +5,6 @@ import { miroFishClient } from "@/lib/mirofish/client"
 import { buildSeedDocument, buildSimulationRequirement } from "@/lib/mirofish/seed-builder"
 import type { TriggerRequest, TriggerResponse } from "@/lib/mirofish/types"
 
-// In-memory store for active simulations (shared across routes via module scope)
-// NOTE: This works in local dev (next dev) but will NOT persist across serverless functions.
-// For the hackathon demo running locally, this is fine.
-export const activeSimulations = new Map<
-  string,
-  {
-    scenario: string
-    countries: string[]
-    startedAt: number
-    projectId: string
-  }
->()
-
 export async function POST(request: NextRequest) {
   try {
     const body: TriggerRequest = await request.json()
@@ -34,7 +21,7 @@ export async function POST(request: NextRequest) {
     const healthy = await miroFishClient.healthCheck()
     if (!healthy) {
       return NextResponse.json(
-        { error: "MiroFish service unavailable — ensure Docker is running" },
+        { error: "MiroFish service unavailable — ensure the backend is running" },
         { status: 503 }
       )
     }
@@ -87,22 +74,22 @@ export async function POST(request: NextRequest) {
 
     const simulationRequirement = buildSimulationRequirement(scenario)
 
-    // Run full MiroFish pipeline (ontology → graph → create → prepare → start)
-    const { simulationId, projectId } = await miroFishClient.runFullPipeline(
+    // Start pipeline asynchronously on MiroFish (returns immediately)
+    const pipelineRes = await miroFishClient.startPipeline(
       seedMarkdown,
-      simulationRequirement
+      simulationRequirement,
+      { scenario, countries }
     )
 
-    // Store simulation metadata
-    activeSimulations.set(simulationId, {
-      scenario,
-      countries,
-      startedAt: Date.now(),
-      projectId,
-    })
+    if (!pipelineRes.success || !pipelineRes.data?.pipeline_id) {
+      return NextResponse.json(
+        { error: `Pipeline start failed: ${pipelineRes.error || "No pipeline_id returned"}` },
+        { status: 500 }
+      )
+    }
 
     const response: TriggerResponse = {
-      simulationId,
+      simulationId: pipelineRes.data.pipeline_id,
       status: "started",
       estimatedMinutes: 15,
     }

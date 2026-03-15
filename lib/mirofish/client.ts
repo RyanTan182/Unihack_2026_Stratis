@@ -118,6 +118,30 @@ export class MiroFishClient {
     return res.json()
   }
 
+  // --- Pipeline endpoints (async, non-blocking) ---
+
+  async startPipeline(
+    seedMarkdown: string,
+    simulationRequirement: string,
+    metadata: Record<string, unknown> = {}
+  ): Promise<MiroFishTaskResponse> {
+    const res = await fetch(`${this.baseUrl}/pipeline/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        seed_markdown: seedMarkdown,
+        simulation_requirement: simulationRequirement,
+        metadata,
+      }),
+    })
+    return res.json()
+  }
+
+  async getPipelineStatus(pipelineId: string): Promise<MiroFishTaskResponse> {
+    const res = await fetch(`${this.baseUrl}/pipeline/${pipelineId}/status`)
+    return res.json()
+  }
+
   // --- High-level orchestration ---
 
   private async waitForTask(taskId: string, stepName: string): Promise<MiroFishTaskStatus> {
