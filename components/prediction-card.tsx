@@ -13,6 +13,7 @@ import {
   ChevronUp,
   Clock,
   Target,
+  Download,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { PredictionResult, RiskDirection, ProductImpact } from "@/lib/mirofish/types"
@@ -259,13 +260,122 @@ export function PredictionCard({ result, productImpacts }: PredictionCardProps) 
             </ul>
           </div>
 
-          {/* Full Report */}
+          {/* Full Report Download */}
           {result.fullReport && (
             <div>
-              <h4 className="text-xs font-medium mb-2 text-muted-foreground">Full Report</h4>
-              <div className="max-h-60 overflow-y-auto rounded-md bg-background/50 p-3 text-xs whitespace-pre-wrap">
-                {result.fullReport}
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 text-xs"
+                onClick={async () => {
+                  const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } = await import("docx")
+                  const { saveAs } = await import("file-saver")
+
+                  const doc = new Document({
+                    sections: [{
+                      properties: {},
+                      children: [
+                        // Title
+                        new Paragraph({
+                          children: [new TextRun({ text: "Crisis Simulation Report", bold: true, size: 32, font: "Calibri" })],
+                          heading: HeadingLevel.HEADING_1,
+                          spacing: { after: 200 },
+                        }),
+                        // Scenario summary
+                        new Paragraph({
+                          children: [new TextRun({ text: "Scenario: ", bold: true, size: 24, font: "Calibri" }), new TextRun({ text: prediction.summary, size: 24, font: "Calibri" })],
+                          spacing: { after: 120 },
+                        }),
+                        // Metadata
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: `Timeline: ${prediction.timelineMonths} months  |  Confidence: ${Math.round(prediction.confidence * 100)}%  |  Risk Direction: ${prediction.riskDirection}`, size: 20, font: "Calibri", color: "666666" }),
+                          ],
+                          spacing: { after: 200 },
+                        }),
+                        // Divider
+                        new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } }, spacing: { after: 200 } }),
+                        // Affected Countries heading
+                        new Paragraph({
+                          children: [new TextRun({ text: "Affected Countries", bold: true, size: 26, font: "Calibri" })],
+                          heading: HeadingLevel.HEADING_2,
+                          spacing: { after: 120 },
+                        }),
+                        ...prediction.affectedCountries.map((c) =>
+                          new Paragraph({
+                            children: [
+                              new TextRun({ text: `${c.country}: `, bold: true, size: 22, font: "Calibri" }),
+                              new TextRun({ text: `Risk ${c.currentRisk} → ${c.predictedRisk} (${c.direction})`, size: 22, font: "Calibri", color: c.direction === "up" ? "CC0000" : c.direction === "down" ? "008800" : "666666" }),
+                            ],
+                            spacing: { after: 60 },
+                          })
+                        ),
+                        // Divider
+                        new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } }, spacing: { before: 120, after: 200 } }),
+                        // Key Findings heading
+                        new Paragraph({
+                          children: [new TextRun({ text: "Key Findings", bold: true, size: 26, font: "Calibri" })],
+                          heading: HeadingLevel.HEADING_2,
+                          spacing: { after: 120 },
+                        }),
+                        ...prediction.keyFindings.map((finding) =>
+                          new Paragraph({
+                            children: [new TextRun({ text: `•  ${finding}`, size: 22, font: "Calibri" })],
+                            spacing: { after: 60 },
+                          })
+                        ),
+                        // Divider
+                        new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } }, spacing: { before: 120, after: 200 } }),
+                        // Supply Chain Impact
+                        ...(productImpacts && productImpacts.length > 0
+                          ? [
+                              new Paragraph({
+                                children: [new TextRun({ text: "Supply Chain Impact", bold: true, size: 26, font: "Calibri" })],
+                                heading: HeadingLevel.HEADING_2,
+                                spacing: { after: 120 },
+                              }),
+                              ...productImpacts.map((impact) =>
+                                new Paragraph({
+                                  children: [
+                                    new TextRun({ text: `${impact.productName}: `, bold: true, size: 22, font: "Calibri" }),
+                                    new TextRun({ text: `${impact.overallSeverity.toUpperCase()} severity, estimated price impact: ${impact.estimatedPriceImpact}`, size: 22, font: "Calibri" }),
+                                  ],
+                                  spacing: { after: 60 },
+                                })
+                              ),
+                              new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } }, spacing: { before: 120, after: 200 } }),
+                            ]
+                          : []),
+                        // Full Report heading
+                        new Paragraph({
+                          children: [new TextRun({ text: "Full Analysis Report", bold: true, size: 26, font: "Calibri" })],
+                          heading: HeadingLevel.HEADING_2,
+                          spacing: { after: 120 },
+                        }),
+                        ...result.fullReport.split("\n").filter(Boolean).map((line) =>
+                          new Paragraph({
+                            children: [new TextRun({ text: line, size: 22, font: "Calibri" })],
+                            spacing: { after: 80 },
+                          })
+                        ),
+                        // Footer
+                        new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" } }, spacing: { before: 200, after: 120 } }),
+                        new Paragraph({
+                          children: [new TextRun({ text: `Generated by Stratis Crisis Simulation  •  ${new Date().toLocaleDateString()}`, size: 18, font: "Calibri", color: "999999", italics: true })],
+                          alignment: AlignmentType.CENTER,
+                        }),
+                      ],
+                    }],
+                  })
+
+                  const blob = await Packer.toBlob(doc)
+                  const filename = `crisis-report-${prediction.summary.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}.docx`
+                  saveAs(blob, filename)
+                }}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download Full Report (.docx)
+              </Button>
             </div>
           )}
         </div>

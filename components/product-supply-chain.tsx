@@ -734,12 +734,12 @@ export function ProductSupplyChain({
   if (!isOpen) return null
 
   return (
-    <div className="absolute right-4 top-100 z-20 w-[380px] animate-in slide-in-from-right-4">
-      <Card className="max-h-[calc(100vh-6rem)] overflow-hidden border-border/50 bg-card/60 shadow-2xl backdrop-blur-xl">
-        <CardContent className="p-0">
+    <div className="w-[380px] animate-in slide-in-from-bottom-4">
+      <Card className="max-h-[calc(100vh-120px)] overflow-hidden border-border/50 bg-card/60 shadow-2xl backdrop-blur-xl">
+        <CardContent className="p-0 flex flex-col min-h-0 max-h-[inherit]">
           {view === "list" ? (
             // Product List View
-            <div className="flex flex-col">
+            <div className="flex flex-col min-h-0 flex-1">
               <div className="flex items-center justify-between border-b border-border/50 p-4">
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">Products</h2>
@@ -750,7 +750,7 @@ export function ProductSupplyChain({
                 </Button>
               </div>
 
-              <div className="max-h-[60vh] space-y-3 overflow-y-auto p-4">
+              <div className="flex-1 min-h-0 space-y-3 overflow-y-auto p-4">
                 {products.length === 0 ? (
                   <EmptyState
                     icon={<Package className="h-7 w-7 text-muted-foreground/50" />}
@@ -847,7 +847,7 @@ export function ProductSupplyChain({
             </div>
           ) : (
             // Product Detail View
-            <div className="flex flex-col">
+            <div className="flex flex-col min-h-0 flex-1">
               <div className="border-b border-border/50 p-4">
                 <Button
                   variant="ghost"
@@ -956,7 +956,7 @@ export function ProductSupplyChain({
                 )}
               </div>
 
-              <div className="max-h-[50vh] space-y-2 overflow-y-auto p-4">
+              <div className="flex-1 min-h-0 space-y-2 overflow-y-auto p-4">
                 {selectedProduct?.components.map((component, index) => (
                   <SupplyChainItemRow
                     key={component.id}

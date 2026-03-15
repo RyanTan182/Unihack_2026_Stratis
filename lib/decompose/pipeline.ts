@@ -7,6 +7,12 @@ const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const SYSTEM_PROMPT = `You are a supply chain decomposition expert with deep knowledge of global manufacturing, raw materials sourcing, and geopolitical supply chain risks. You decompose products into their full dependency tree. Output ONLY valid JSON. No markdown, no explanation.`;
 
+const FALLBACK_MODELS = [
+  "moonshotai/kimi-k2.5",
+  "google/gemini-2.5-flash",
+  "meta-llama/llama-4-scout",
+];
+
 function getModel(): string {
   return process.env.OPENROUTER_MODEL || "anthropic/claude-opus-4-6";
 }
@@ -35,9 +41,10 @@ Requirements:
 Return JSON: { product, phase: "verified", nodes: { "node-id": { id, name, tier, type, status, confidence, geographic_concentration: {country: pct}, risk_score, risk_factors: [], source: "knowledge", search_evidence: null, correction: null, children: [] } }, root_id, metadata: { total_nodes, verified_count, corrected_count: 0, avg_confidence } }`;
 }
 
-async function llmCall(
+async function llmCallWithModel(
   system: string,
   user: string,
+  model: string,
   temperature: number = 0.3,
   signal?: AbortSignal
 ): Promise<string> {
@@ -48,7 +55,7 @@ async function llmCall(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: getModel(),
+      model,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -59,11 +66,40 @@ async function llmCall(
   });
 
   if (!resp.ok) {
-    throw new Error(`OpenRouter API error: ${resp.status}`);
+    const status = resp.status;
+    const body = await resp.text().catch(() => "");
+    throw new Error(`OpenRouter API error: ${status}${body ? ` - ${body}` : ""}`)
   }
 
   const data = await resp.json();
   return data.choices[0].message.content || "{}";
+}
+
+async function llmCall(
+  system: string,
+  user: string,
+  temperature: number = 0.3,
+  signal?: AbortSignal
+): Promise<string> {
+  const primary = getModel();
+  try {
+    return await llmCallWithModel(system, user, primary, temperature, signal);
+  } catch (err) {
+    const msg = (err as Error).message || "";
+    // 402 = payment required, 429 = rate limit — try fallback models
+    if (msg.includes(": 402") || msg.includes(": 429")) {
+      console.warn(`Primary model ${primary} failed (${msg}), trying fallbacks...`);
+      for (const fallback of FALLBACK_MODELS) {
+        try {
+          console.log(`Trying fallback model: ${fallback}`);
+          return await llmCallWithModel(system, user, fallback, temperature, signal);
+        } catch (fallbackErr) {
+          console.warn(`Fallback ${fallback} failed: ${(fallbackErr as Error).message}`);
+        }
+      }
+    }
+    throw err;
+  }
 }
 
 function parseJson(raw: string): Record<string, unknown> {

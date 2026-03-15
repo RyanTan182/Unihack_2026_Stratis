@@ -276,43 +276,139 @@ async function fetchGdelt(country: string): Promise<Article[]> {
 
 // --- Route handler ---
 
-export async function GET(request: NextRequest) {
-  const country = request.nextUrl.searchParams.get("country")
-  if (!country) {
-    return NextResponse.json({ error: "country parameter required" }, { status: 400 })
+// --- Global news fetchers ---
+
+async function fetchPerplexityGlobal(): Promise<Article[]> {
+  const apiKey = process.env.PERPLEXITY_API_KEY
+  if (!apiKey) return []
+
+  const query = "global supply chain disruption trade risk tariff sanctions shipping logistics news 2026"
+
+  const body = {
+    query,
+    max_results: 10,
+    max_tokens_per_page: 512,
   }
 
-  const cached = getCached(country)
+  const res = await fetch("https://api.perplexity.ai/search", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) return []
+
+  const data = await res.json()
+  const results: { title?: string; url?: string; date?: string }[] = data.results ?? []
+
+  return results
+    .filter((r) => r.title && r.url)
+    .map((r) => ({
+      title: (r.title ?? "Untitled").replace(/\s+/g, " ").trim(),
+      url: r.url ?? "",
+      date: r.date ?? "",
+      source: extractDomain(r.url ?? ""),
+    }))
+    .filter((a) => hasEconomicRelevance(a.title))
+    .slice(0, 10)
+}
+
+async function fetchGdeltGlobal(): Promise<Article[]> {
+  const themeClause = GDELT_THEMES.map((t) => `theme:${t}`).join(" OR ")
+  const query = `(${themeClause}) sourcelang:english`
+
+  const params = new URLSearchParams({
+    query,
+    mode: "ArtList",
+    maxrecords: "50",
+    format: "json",
+    sort: "HybridRel",
+    timespan: "1month",
+  })
+
+  const url = `${GDELT_BASE}?${params.toString()}`
+  const res = await fetch(url, { next: { revalidate: 300 } })
+
+  if (!res.ok) return []
+
+  const text = await res.text()
+  if (!text || text.trim().startsWith("<!")) return []
+
+  const data = JSON.parse(text)
+  return (data.articles ?? [])
+    .filter((a: { title?: string }) => a.title && hasEconomicRelevance(a.title ?? ""))
+    .slice(0, 10)
+    .map(
+      (a: { title?: string; url?: string; seendate?: string; domain?: string }) => ({
+        title: (a.title ?? "Untitled").replace(/\s+/g, " ").trim(),
+        url: a.url ?? "",
+        date: a.seendate ?? "",
+        source: a.domain ?? "",
+      }),
+    )
+}
+
+// --- Route handler ---
+
+export async function GET(request: NextRequest) {
+  const country = request.nextUrl.searchParams.get("country")
+  const cacheKey = country || "__global__"
+
+  const cached = getCached(cacheKey)
   if (cached) {
     return NextResponse.json({ articles: cached, source: "cache" })
   }
 
-  const countryCode = COUNTRY_TO_CODE[country]
-
   let articles: Article[] = []
   let source = "none"
 
-  // Primary: Perplexity Search API (works with or without ISO code)
-  if (process.env.PERPLEXITY_API_KEY) {
-    try {
-      articles = await fetchPerplexity(country, countryCode)
-      if (articles.length > 0) source = "perplexity"
-    } catch {
-      // Perplexity failed, will fall through to GDELT
+  if (country) {
+    const countryCode = COUNTRY_TO_CODE[country]
+
+    // Primary: Perplexity Search API (works with or without ISO code)
+    if (process.env.PERPLEXITY_API_KEY) {
+      try {
+        articles = await fetchPerplexity(country, countryCode)
+        if (articles.length > 0) source = "perplexity"
+      } catch {
+        // Perplexity failed, will fall through to GDELT
+      }
+    }
+
+    // Fallback: GDELT with improved query
+    if (articles.length === 0) {
+      try {
+        articles = await fetchGdelt(country)
+        if (articles.length > 0) source = "gdelt"
+      } catch {
+        // Both sources failed
+      }
+    }
+  } else {
+    // Global news — no country specified
+    if (process.env.PERPLEXITY_API_KEY) {
+      try {
+        articles = await fetchPerplexityGlobal()
+        if (articles.length > 0) source = "perplexity"
+      } catch {
+        // fall through to GDELT
+      }
+    }
+
+    if (articles.length === 0) {
+      try {
+        articles = await fetchGdeltGlobal()
+        if (articles.length > 0) source = "gdelt"
+      } catch {
+        // Both sources failed
+      }
     }
   }
 
-  // Fallback: GDELT with improved query
-  if (articles.length === 0) {
-    try {
-      articles = await fetchGdelt(country)
-      if (articles.length > 0) source = "gdelt"
-    } catch {
-      // Both sources failed
-    }
-  }
-
-  setCache(country, articles)
+  setCache(cacheKey, articles)
 
   return NextResponse.json({ articles, source })
 }

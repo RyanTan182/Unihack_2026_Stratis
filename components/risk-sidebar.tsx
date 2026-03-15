@@ -9,6 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { cn } from "@/lib/utils"
 import { InventorySidebar } from "./inventory-sidebar"
+import { PredictionAlert } from "@/components/prediction-alert"
+import type { PredictionResult } from "@/lib/mirofish/types"
 
 interface CountryRisk {
   id: string
@@ -42,6 +44,8 @@ interface RiskSidebarProps {
   onInventoryClick?: () => void
   isInventoryOpen?: boolean
   onReset: () => void
+  predictions?: PredictionResult[]
+  onPredictionClick?: () => void
 }
 
 const riskMetrics: RiskMetric[] = [
@@ -192,7 +196,7 @@ const writeCachedNews = (country: string, articles: NewsArticle[]) => {
   )
 }
 
-export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onInventoryClick, isInventoryOpen, onReset }: RiskSidebarProps) {
+export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onInventoryClick, isInventoryOpen, onReset, predictions, onPredictionClick }: RiskSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"inventory" | "risk">("risk")
   const [expandedMetrics, setExpandedMetrics] = useState<string[]>(["political-stability", "trade-barriers"])
@@ -206,16 +210,13 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
   const selectedCountryData = countryRisks.find((c) => c.id === selectedCountry || c.name === selectedCountry)
   const countryForNews = selectedCountryData?.name ?? selectedCountry
 
-  useEffect(() => {
-    if (!countryForNews) {
-      setLiveNews([])
-      return
-    }
+  const newsCacheKey = countryForNews || "__global__"
 
+  useEffect(() => {
     const storage = getSessionStorage()
     if (storage) {
       sweepNewsCache(storage)
-      const cached = readCachedNews(countryForNews)
+      const cached = readCachedNews(newsCacheKey)
       if (cached) {
         setLiveNews(cached)
         setNewsLoading(false)
@@ -228,15 +229,15 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
 
     const fetchNews = async (attempt: number): Promise<void> => {
       try {
-        const res = await fetch(
-          `/api/news?country=${encodeURIComponent(countryForNews)}`,
-          { signal: controller.signal },
-        )
+        const url = countryForNews
+          ? `/api/news?country=${encodeURIComponent(countryForNews)}`
+          : `/api/news`
+        const res = await fetch(url, { signal: controller.signal })
         const data = await res.json()
         if (!controller.signal.aborted) {
           const articles = data.articles ?? []
           setLiveNews(articles)
-          writeCachedNews(countryForNews, articles)
+          writeCachedNews(newsCacheKey, articles)
           setNewsLoading(false)
         }
       } catch (err: unknown) {
@@ -255,7 +256,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
     fetchNews(0)
 
     return () => controller.abort()
-  }, [countryForNews])
+  }, [countryForNews, newsCacheKey])
 
   const toggleMetric = (metricId: string) => {
     setExpandedMetrics((prev) =>
@@ -287,8 +288,8 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                 </div>
               </div>
 
-              {/* Selected Country Details */}
-              {countryForNews && (
+              {/* Selected Country Details or Global News */}
+              {countryForNews ? (
                 <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:border-primary/30">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-foreground">{selectedCountryData?.name ?? countryForNews}</h3>
@@ -336,6 +337,21 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                     <p className="mt-3 text-xs text-muted-foreground">No risk data available — showing supply chain news only.</p>
                   )}
 
+                  {/* Prediction Alerts for Selected Country */}
+                  {predictions?.map((result) => {
+                    const match = result.prediction.affectedCountries.find(
+                      (c) => c.country.toLowerCase() === (selectedCountryData?.name ?? countryForNews ?? "").toLowerCase()
+                    )
+                    if (!match) return null
+                    return (
+                      <PredictionAlert
+                        key={result.simulationId}
+                        prediction={match}
+                        onClick={onPredictionClick}
+                      />
+                    )
+                  })}
+
                   <div className="mt-4">
                     <div className="flex items-center gap-2">
                       <Radio className="h-3 w-3 text-primary" />
@@ -369,6 +385,55 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                       </ul>
                     ) : (
                       <p className="mt-2 text-xs text-muted-foreground">No recent news found.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:border-primary/30">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-foreground">Global Monitor</h3>
+                    <div className="flex items-center gap-1 rounded-full border border-primary/50 px-2 py-0.5 text-xs font-medium text-primary">
+                      <Radio className="h-3 w-3 animate-pulse" />
+                      Live
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[10px] text-muted-foreground">
+                    Select a country on the map for detailed risk analysis. Showing global supply chain news.
+                  </p>
+
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2">
+                      <Radio className="h-3 w-3 text-primary" />
+                      <p className="text-[10px] font-medium text-muted-foreground">Global News Feed</p>
+                    </div>
+                    {newsLoading ? (
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Fetching global news...
+                      </div>
+                    ) : liveNews.length > 0 ? (
+                      <ul className="mt-2 space-y-1.5">
+                        {liveNews.slice(0, 5).map((article, i) => (
+                          <li key={i} className="group">
+                            <a
+                              href={article.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-start gap-2 rounded-lg p-2 text-xs text-foreground transition-colors hover:bg-muted/50"
+                            >
+                              <span className="mt-0.5 flex h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                              <div className="flex-1">
+                                <p className="line-clamp-2 leading-relaxed group-hover:text-primary">{article.title}</p>
+                                {article.source && (
+                                  <p className="mt-1 text-[10px] text-muted-foreground">{article.source}</p>
+                                )}
+                              </div>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-2 text-xs text-muted-foreground">No recent global news found.</p>
                     )}
                   </div>
                 </div>
