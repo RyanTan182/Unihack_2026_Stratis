@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { Product, SupplyChainItem } from "@/components/product-supply-chain"
 import type { CountryRiskData } from "@/lib/route-types"
 import { findRoutes } from "@/lib/route-finder"
@@ -217,7 +217,7 @@ export function RouteSummary({
                   "font-semibold",
                   stats.avgRisk >= 60 ? "text-red-400" :
                   stats.avgRisk >= 40 ? "text-yellow-400" : "text-emerald-400"
-                )}>{stats.avgRisk}%</span>
+                )}>{formatRisk(stats.avgRisk)}%</span>
               </span>
             </div>
             <Button
@@ -320,7 +320,7 @@ export function RouteSummary({
                         className={cn("text-[9px] font-mono border-0 px-1", riskInfo.color)}
                         variant="outline"
                       >
-                        {route.risk}%
+                        {formatRisk(route.risk)}%
                       </Badge>
                       <span className="text-[10px] text-muted-foreground">{route.days}</span>
                     </button>

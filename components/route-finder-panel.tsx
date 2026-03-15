@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import { findRoutes } from "@/lib/route-finder"
 import type { FoundRoute, FindOptions } from "@/lib/route-types"
 import type { CountryRiskData } from "@/lib/route-types"
@@ -37,14 +37,26 @@ interface RouteFinderPanelProps {
   preselectedDestination?: string
 }
 
+import { CHOKEPOINT_RISKS } from "@/lib/chokepoints"
+
+const CHOKEPOINT_DISPLAY_NAMES: Record<string, string> = {
+  "Strait of Hormuz": "Hormuz",
+  "Strait of Malacca": "Malacca",
+  "Panama Canal": "Panama",
+}
+
 const CHOKEPOINTS = [
-  { id: "Strait of Hormuz", name: "Hormuz", risk: 78 },
-  { id: "Bab-el-Mandeb", name: "Bab-el-Mandeb", risk: 83 },
-  { id: "Suez Canal", name: "Suez Canal", risk: 64 },
-  { id: "Strait of Malacca", name: "Malacca", risk: 61 },
-  { id: "Panama Canal", name: "Panama", risk: 58 },
-  { id: "Bosphorus", name: "Bosphorus", risk: 57 },
-]
+  "Strait of Hormuz",
+  "Bab-el-Mandeb",
+  "Suez Canal",
+  "Strait of Malacca",
+  "Panama Canal",
+  "Bosphorus",
+].map((id) => ({
+  id,
+  name: CHOKEPOINT_DISPLAY_NAMES[id] ?? id,
+  risk: CHOKEPOINT_RISKS[id] ?? 0,
+}))
 
 export function RouteFinderPanel({
   isOpen,
@@ -214,7 +226,7 @@ export function RouteFinderPanel({
                       Recommended
                     </Badge>
                     <span className={cn("text-xl font-bold", getRiskColor(route.totalRisk))}>
-                      {route.totalRisk}%
+                      {formatRisk(route.totalRisk)}%
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground leading-relaxed">
@@ -243,7 +255,7 @@ export function RouteFinderPanel({
                           {route.nodes.map((n) => n.name).join(" → ")}
                         </div>
                         <span className={cn("font-medium", getRiskColor(route.totalRisk))}>
-                          {route.totalRisk}%
+                          {formatRisk(route.totalRisk)}%
                         </span>
                       </div>
                     ))}

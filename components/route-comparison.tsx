@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { FoundRoute } from "@/lib/route-types"
 
 import { getRiskLevel } from "@/lib/risk-calculator"
@@ -111,7 +111,7 @@ export function RouteComparison({
                                 riskLevel.textColor
                               )}
                             >
-                              {route.totalRisk}%
+                              {formatRisk(route.totalRisk)}%
                             </Badge>
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -187,7 +187,7 @@ export function RouteComparison({
                               "text-[10px] font-medium",
                               getRiskLevel(risk).textColor
                             )}>
-                                {risk}%
+                                {formatRisk(risk)}%
                             </div>
                           </div>
                         ))}

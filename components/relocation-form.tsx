@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type {
   IndustryType,
   RiskConcern,
@@ -147,7 +147,7 @@ export function RelocationForm({ onSubmit, isLoading, countryOptions }: Relocati
                     <div className="flex items-center justify-between gap-4">
                       <span>{country.name}</span>
                       <span className={cn("text-xs font-medium", getRiskLevel(country.overallRisk).color)}>
-                        {country.overallRisk}%
+                        {formatRisk(country.overallRisk)}%
                       </span>
                     </div>
                   </SelectItem>

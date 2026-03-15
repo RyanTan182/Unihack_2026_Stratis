@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import { InventorySidebar } from "./inventory-sidebar"
 
 interface CountryRisk {
@@ -42,6 +42,8 @@ interface RiskSidebarProps {
   onInventoryClick?: () => void
   isInventoryOpen?: boolean
   onReset: () => void
+  riskLoadingIds?: Record<string, boolean>
+  isBulkEvaluating?: boolean
 }
 
 const riskMetrics: RiskMetric[] = [
@@ -92,6 +94,14 @@ const riskMetrics: RiskMetric[] = [
     source: "ILO Database",
     sourceUrl: "https://ilo.org",
     isActive: false,
+  },
+  {
+    id: "worker-rights",
+    name: "Worker Rights & Forced Labor",
+    description: "Labor rights violations, modern slavery, child labor, hazardous conditions",
+    source: "Walk Free, ILO, US DOL",
+    sourceUrl: "https://walkfree.org",
+    isActive: true,
   },
   {
     id: "port-congestion",
@@ -192,7 +202,7 @@ const writeCachedNews = (country: string, articles: NewsArticle[]) => {
   )
 }
 
-export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onInventoryClick, isInventoryOpen, onReset }: RiskSidebarProps) {
+export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, onInventoryClick, isInventoryOpen, onReset, riskLoadingIds = {}, isBulkEvaluating = false }: RiskSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<"inventory" | "risk">("risk")
   const [expandedMetrics, setExpandedMetrics] = useState<string[]>(["political-stability", "trade-barriers"])
@@ -292,47 +302,68 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                 <div className="rounded-xl border border-border/50 bg-card/50 p-4 transition-all hover:border-primary/30">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-foreground">{selectedCountryData?.name ?? countryForNews}</h3>
-                    {selectedCountryData && (
-                      <div className={cn(
-                        "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-                        selectedCountryData.overallRisk >= 60 ? "border-red-500/50 text-red-400" :
-                        selectedCountryData.overallRisk >= 40 ? "border-yellow-500/50 text-yellow-400" :
-                        "border-emerald-500/50 text-emerald-400"
-                      )}>
-                        {selectedCountryData.overallRisk >= 60 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {selectedCountryData.overallRisk}%
-                      </div>
-                    )}
+                    {selectedCountryData && (() => {
+                      const isLoading = riskLoadingIds[selectedCountryData.id] || (selectedCountryData.overallRisk === 0 && isBulkEvaluating)
+                      return isLoading ? (
+                        <div className="flex items-center gap-1.5 rounded-full border border-primary/30 px-2 py-0.5 text-xs font-medium text-primary">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Analyzing...
+                        </div>
+                      ) : (
+                        <div className={cn(
+                          "flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                          selectedCountryData.overallRisk >= 60 ? "border-red-500/50 text-red-400" :
+                          selectedCountryData.overallRisk >= 40 ? "border-yellow-500/50 text-yellow-400" :
+                          selectedCountryData.overallRisk > 0 ? "border-emerald-500/50 text-emerald-400" :
+                          "border-muted-foreground/30 text-muted-foreground"
+                        )}>
+                          {selectedCountryData.overallRisk >= 60 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                          {selectedCountryData.overallRisk > 0 ? `${formatRisk(selectedCountryData.overallRisk)}%` : 'No data'}
+                        </div>
+                      )
+                    })()}
                   </div>
 
-                  {selectedCountryData ? (
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-lg bg-muted/30 p-2.5">
-                        <p className="text-[10px] text-muted-foreground">Import Risk</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary transition-all duration-500"
-                              style={{ width: `${selectedCountryData.importRisk}%` }}
-                            />
+                  {selectedCountryData ? (() => {
+                    const isLoading = riskLoadingIds[selectedCountryData.id] || (selectedCountryData.overallRisk === 0 && isBulkEvaluating)
+                    return isLoading ? (
+                      <div className="mt-4 flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Evaluating risk factors...
+                      </div>
+                    ) : (
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-lg bg-muted/30 p-2.5">
+                          <p className="text-[10px] text-muted-foreground">Import Risk</p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-primary transition-all duration-500"
+                                style={{ width: `${selectedCountryData.importRisk}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-foreground">
+                              {selectedCountryData.importRisk > 0 ? `${formatRisk(selectedCountryData.importRisk)}%` : '—'}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-foreground">{selectedCountryData.importRisk}%</span>
+                        </div>
+                        <div className="rounded-lg bg-muted/30 p-2.5">
+                          <p className="text-[10px] text-muted-foreground">Export Risk</p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-chart-2 transition-all duration-500"
+                                style={{ width: `${selectedCountryData.exportRisk}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-foreground">
+                              {selectedCountryData.exportRisk > 0 ? `${formatRisk(selectedCountryData.exportRisk)}%` : '—'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="rounded-lg bg-muted/30 p-2.5">
-                        <p className="text-[10px] text-muted-foreground">Export Risk</p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-chart-2 transition-all duration-500"
-                              style={{ width: `${selectedCountryData.exportRisk}%` }}
-                            />
-                          </div>
-                          <span className="text-xs font-medium text-foreground">{selectedCountryData.exportRisk}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
+                    )
+                  })() : (
                     <p className="mt-3 text-xs text-muted-foreground">No risk data available — showing supply chain news only.</p>
                   )}
 

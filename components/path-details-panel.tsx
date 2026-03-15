@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { ProductSupplyRoute } from "@/components/supply-chain-map"
 
 interface CountryRisk {
@@ -52,16 +52,16 @@ export function PathDetailsPanel({ route, countryRisks, onClose }: PathDetailsPa
 
   const dangerReasons: string[] = []
   if (isComponentHighRisk) {
-    dangerReasons.push(`Component "${route.fromItem}" has a predicted risk of ${componentRisk}%, exceeding the 60% threshold`)
+    dangerReasons.push(`Component "${route.fromItem}" has a predicted risk of ${formatRisk(componentRisk)}%, exceeding the 60% threshold`)
   }
   if (isPathHighRisk) {
     dangerReasons.push(`The shipping path between ${route.fromCountry} and ${route.toCountry} averages ${route.riskScore}% risk`)
   }
   if (fromCountryData && fromCountryData.overallRisk >= 60) {
-    dangerReasons.push(`Origin country ${route.fromCountry} is rated high risk (${fromCountryData.overallRisk}%)`)
+    dangerReasons.push(`Origin country ${route.fromCountry} is rated high risk (${formatRisk(fromCountryData.overallRisk)}%)`)
   }
   if (toCountryData && toCountryData.overallRisk >= 60) {
-    dangerReasons.push(`Destination country ${route.toCountry} is rated high risk (${toCountryData.overallRisk}%)`)
+    dangerReasons.push(`Destination country ${route.toCountry} is rated high risk (${formatRisk(toCountryData.overallRisk)}%)`)
   }
   if (route.chokepoints.length > 0) {
     dangerReasons.push(`Route passes through ${route.chokepoints.length} chokepoint${route.chokepoints.length > 1 ? "s" : ""}: ${route.chokepoints.join(", ")}`)
@@ -141,7 +141,7 @@ export function PathDetailsPanel({ route, countryRisks, onClose }: PathDetailsPa
                 <span className="text-xs font-medium text-foreground">Component Risk</span>
               </div>
               <span className={cn("text-xs font-semibold", componentRiskLevel.textColor)}>
-                {componentRisk}%
+                {formatRisk(componentRisk)}%
               </span>
             </div>
             <Progress value={componentRisk} className="h-1.5" />
@@ -162,12 +162,12 @@ export function PathDetailsPanel({ route, countryRisks, onClose }: PathDetailsPa
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Overall Risk</span>
-                    <span className="font-medium text-foreground">{fromCountryData.overallRisk}%</span>
+                    <span className="font-medium text-foreground">{formatRisk(fromCountryData.overallRisk)}%</span>
                   </div>
                   <Progress value={fromCountryData.overallRisk} className="h-1.5" />
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>Import: {fromCountryData.importRisk}%</span>
-                    <span>Export: {fromCountryData.exportRisk}%</span>
+                    <span>Import: {formatRisk(fromCountryData.importRisk)}%</span>
+                    <span>Export: {formatRisk(fromCountryData.exportRisk)}%</span>
                   </div>
                 </div>
               )}
@@ -179,12 +179,12 @@ export function PathDetailsPanel({ route, countryRisks, onClose }: PathDetailsPa
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Overall Risk</span>
-                    <span className="font-medium text-foreground">{toCountryData.overallRisk}%</span>
+                    <span className="font-medium text-foreground">{formatRisk(toCountryData.overallRisk)}%</span>
                   </div>
                   <Progress value={toCountryData.overallRisk} className="h-1.5" />
                   <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>Import: {toCountryData.importRisk}%</span>
-                    <span>Export: {toCountryData.exportRisk}%</span>
+                    <span>Import: {formatRisk(toCountryData.importRisk)}%</span>
+                    <span>Export: {formatRisk(toCountryData.exportRisk)}%</span>
                   </div>
                 </div>
               )}

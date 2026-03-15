@@ -6,6 +6,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Format a risk value to at most 2 decimal places
+ * Examples: 76.456 → "76.46", 76.4 → "76.4", 80 → "80"
+ */
+export function formatRisk(risk: number): string {
+  const rounded = Math.round(risk * 100) / 100
+  // Remove trailing zeros after decimal point
+  return parseFloat(rounded.toFixed(2)).toString()
+}
+
 // Types for supply chain traversal
 interface TraversalResult {
   uniqueCountries: string[]

@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { RelocationRecommendation } from "@/lib/relocation-types"
 
 interface RelocationResultsProps {
@@ -128,7 +128,7 @@ export function RelocationResults({
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground">Current: {currentCountryName}</span>
             <span className={cn("text-xs font-medium", currentRiskLevel.textColor)}>
-              {currentCountryRisk}% Risk
+              {formatRisk(currentCountryRisk)}% Risk
             </span>
           </div>
           <Progress value={currentCountryRisk} className="h-1.5" />
