@@ -189,53 +189,65 @@
     "nodeType": "country",
     "importFactors": {
       "tariff": {
-        "score": 20,
-        "confidence": 0.8,
-        "rationale": "Low likelihood of import tariffs or sanctions affecting imports.",
-        "evidence": []
+        "score": 10,
+        "confidence": 0.9,
+        "rationale": "Germany is part of the European Union, which maintains low tariffs and is committed to free trade within the bloc.",
+        "evidence": [
+          "EU trade agreements generally promote low tariffs."
+        ]
       },
       "conflict": {
-        "score": 10,
-        "confidence": 0.8,
-        "rationale": "Germany is not currently involved in conflicts affecting supply chains.",
-        "evidence": []
+        "score": 15,
+        "confidence": 0.9,
+        "rationale": "Germany is geopolitically stable with no recent conflicts.",
+        "evidence": [
+          "Stable geopolitical situation in Europe."
+        ]
       },
       "policy": {
-        "score": 30,
-        "confidence": 0.8,
-        "rationale": "Stable industrial policies with minimal recent restrictions.",
-        "evidence": []
+        "score": 20,
+        "confidence": 0.9,
+        "rationale": "Germany follows EU trade policies which favor stability and predictability.",
+        "evidence": [
+          "EU trade policies are stable with regard to tariffs and regulations."
+        ]
       }
     },
     "exportFactors": {
       "tariff": {
         "score": 10,
-        "confidence": 0.8,
-        "rationale": "Low risk of export duties or sanctions impacting exports.",
-        "evidence": []
+        "confidence": 0.9,
+        "rationale": "Germany's exports to the EU face minimal tariffs, and trade policies are aligned within the bloc.",
+        "evidence": [
+          "EU trade policies facilitate free export."
+        ]
       },
       "conflict": {
-        "score": 10,
-        "confidence": 0.8,
-        "rationale": "No ongoing conflicts affecting export routes.",
-        "evidence": []
+        "score": 15,
+        "confidence": 0.9,
+        "rationale": "Stable external and internal environment for exports.",
+        "evidence": [
+          "No recent conflicts affecting exports."
+        ]
       },
       "policy": {
         "score": 20,
-        "confidence": 0.8,
-        "rationale": "Stable export policies, no recent restrictions.",
-        "evidence": []
+        "confidence": 0.9,
+        "rationale": "EU's export policies are consistent and supportive of German industries.",
+        "evidence": [
+          "Stable export regulations within EU."
+        ]
       }
     },
-    "summary": "Germany faces minimal supply-chain risks due to tariffs, conflict, or policy disruptions.",
+    "summary": "Germany exhibits low supply chain risk on both import and export sides, driven by stable policies, peaceful environment, and low tariffs.",
     "assumptions": [
-      "Germany remains geopolitically stable.",
-      "No major trade policy shifts or sanctions affecting Germany."
+      "EU trade policies remain unchanged.",
+      "Germany continues to align with EU's economic stability."
     ],
-    "importRisk": 19,
-    "exportRisk": 13,
-    "overallRisk": 16,
-    "computedAt": "2026-03-14T12:32:08.078Z",
+    "importRisk": 15,
+    "exportRisk": 15,
+    "overallRisk": 15,
+    "computedAt": "2026-03-14T11:55:37.779Z",
     "articles": []
   },
   "India": {

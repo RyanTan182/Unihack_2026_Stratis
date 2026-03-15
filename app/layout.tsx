@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ToastContainer } from '@/components/ui/toast-notification'
+import { Toaster } from "sonner"
 import './globals.css'
 
 const geist = Geist({
@@ -48,6 +49,7 @@ export default function RootLayout({
         {children}
         <Analytics />
         <ToastContainer />
+        <Toaster position="top-right" />
       </body>
     </html>
   )

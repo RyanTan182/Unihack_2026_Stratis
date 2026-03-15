@@ -13,4 +13,6 @@ node_modules/
 .playwright-mcp/
 .superpowers/
 decomposition-demo/
+docs/
+/mirofish/
 data/alternatives-cache.json

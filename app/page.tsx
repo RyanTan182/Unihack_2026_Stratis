@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
 import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
+import { MapLegend } from "@/components/map-legend"
 import type { ItemType } from "@/components/supply-chain-map"
 import { RouteBuilder, type CustomRoute } from "@/components/route-builder"
 import { ProductSupplyChain, type Product } from "@/components/product-supply-chain"
@@ -36,6 +36,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { RouteMode } from "@/lib/route-types"
+import { PredictionsPanel } from "@/components/predictions-panel"
+import { usePredictions } from "@/hooks/use-predictions"
+import { toast } from "sonner"
+import { computeProductImpacts } from "@/lib/mirofish/supply-chain-impact"
+import type { ProductImpact } from "@/lib/mirofish/types"
 
 export type AlternativeEntry = { country: string; risk: string; reason: string }
 
@@ -775,6 +780,62 @@ export default function SupplyChainCrisisDetector() {
   const [selectedComponentRisk, setSelectedComponentRisk] = useState<ComponentRiskData | null>(null)
   const [isRouteSummaryOpen, setIsRouteSummaryOpen] = useState(false)
   const [routeMode, setRouteMode] = useState<RouteMode>("shortest")
+  const [isPredictionsOpen, setIsPredictionsOpen] = useState(false)
+  const predictions = usePredictions()
+
+  // Compute product impacts for all completed predictions
+  const productImpactsBySimulation = useMemo(() => {
+    const map: Record<string, ProductImpact[]> = {}
+    for (const result of predictions.completedPredictions) {
+      map[result.simulationId] = computeProductImpacts(result, storedProducts, riskSnapshots)
+    }
+    return map
+  }, [predictions.completedPredictions, storedProducts, riskSnapshots])
+
+  useEffect(() => {
+    for (const result of predictions.completedPredictions) {
+      // Check for product-specific critical impacts
+      const impacts = productImpactsBySimulation[result.simulationId] || []
+      const criticalImpacts = impacts.filter(
+        (i) => i.overallSeverity === "critical" || i.overallSeverity === "high"
+      )
+
+      if (criticalImpacts.length > 0) {
+        const productList = criticalImpacts
+          .slice(0, 3)
+          .map((i) => `${i.productName} (${i.estimatedPriceImpact})`)
+          .join(", ")
+        toast.error(
+          `Supply Chain Alert: ${criticalImpacts.length} product${criticalImpacts.length > 1 ? "s" : ""} at risk`,
+          {
+            description: productList,
+            action: {
+              label: "View Details",
+              onClick: () => setIsPredictionsOpen(true),
+            },
+            id: `supply-chain-${result.simulationId}`,
+          }
+        )
+      }
+
+      // Country-level alerts
+      for (const country of result.prediction.affectedCountries) {
+        if (country.predictedRisk - country.currentRisk > 20) {
+          toast.warning(
+            `Prediction Alert: ${result.prediction.summary}`,
+            {
+              description: `${country.country} risk predicted to rise from ${country.currentRisk} to ${country.predictedRisk}`,
+              action: {
+                label: "View Details",
+                onClick: () => setIsPredictionsOpen(true),
+              },
+              id: `prediction-${result.simulationId}-${country.country}`,
+            }
+          )
+        }
+      }
+    }
+  }, [predictions.completedPredictions, productImpactsBySimulation])
 
   const requiredCountryIds = useMemo(() => {
     return countryRisks
@@ -1252,30 +1313,26 @@ export default function SupplyChainCrisisDetector() {
   const [currentMethod, setCurrentMethod] = useState<string>("Relocation");
   const methodOptions = ["Safe Routes", "Relocation"];
 
-  const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization">("risk")
+  const [activeTab, setActiveTab] = useState<"inventory" | "risk" | "optimization" | "simulation">("risk")
 
   const tabs = [
     { id: "inventory" as const, icon: Package, label: "Inventory" },
     { id: "optimization" as const, icon: Sparkles, label: "Optimization" },
     { id: "risk" as const, icon: AlertTriangle, label: "Risk" },
+    { id: "simulation" as const, icon: Zap, label: "Simulation" },
   ]
 
   return (
-    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
-      {/* Left Navigation Sidebar */}
-      <NavSidebar
-        onInventoryClick={handleToggleInventory}
-        isInventoryOpen={isInventorySidebarOpen}
-        onLocationClick={() => setIsInventorySidebarOpen(false)}
-        isLocationActive={!isInventorySidebarOpen}
-      />
-
+    <div className="grid h-screen w-full grid-cols-[380px_1fr] overflow-hidden bg-background">
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
       <div>
         <div className="border-b border-sidebar-border px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Zap className="h-5 w-5 text-primary" />
+              <div className="flex flex-col items-center gap-1.5">
+                <img src="/logo.png" alt="Stratis" className="h-9 w-9 object-contain aspect-square" />
+                <span className="text-[11px] font-semibold tracking-wider text-primary uppercase">Stratis</span>
+              </div>
               <div>
                 <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
                 <p className="text-[10px] text-muted-foreground">Real-time intelligence</p>
@@ -1291,7 +1348,10 @@ export default function SupplyChainCrisisDetector() {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id)
+                setIsPredictionsOpen(tab.id === "simulation")
+              }}
               className={cn(
                 "relative flex flex-1 cursor-pointer flex-col items-center gap-1 px-2 py-3 text-xs transition-colors",
                 activeTab === tab.id
@@ -1393,12 +1453,28 @@ export default function SupplyChainCrisisDetector() {
           onInventoryClick={handleToggleInventory}
           isInventoryOpen={isInventorySidebarOpen}
           onReset={handleReset}
+          predictions={predictions.completedPredictions}
+          onPredictionClick={() => setIsPredictionsOpen(true)}
+        />
+      )}
+
+      {activeTab == "simulation" && (
+        <PredictionsPanel
+          isOpen={true}
+          onClose={() => setActiveTab("risk")}
+          activePredictions={predictions.activePredictions}
+          completedPredictions={predictions.completedPredictions}
+          isTriggering={predictions.isTriggering}
+          error={predictions.error}
+          onTrigger={predictions.triggerPrediction}
+          productImpactsBySimulation={productImpactsBySimulation}
+          inline
         />
       )}
       </div>
 
       {/* Main Map Area */}
-      <div className="relative h-full w-full overflow-hidden">
+      <div className="relative h-full max-h-screen w-full overflow-hidden">
         {/* Alert Banner - positioned below action buttons */}
         <div className="absolute left-4 right-4 top-20 z-20">
           <AlertBanner
@@ -1424,6 +1500,8 @@ export default function SupplyChainCrisisDetector() {
           selectedFoundRouteId={selectedFoundRouteId}
           routeMode={routeMode}
         />
+
+        <MapLegend products={products} />
 
         {/* Action Buttons */}
         <div className="absolute left-4 top-4 z-10 flex gap-2">
@@ -1585,45 +1663,49 @@ export default function SupplyChainCrisisDetector() {
           preselectedDestination={safeRouteContext?.destination}
         />
 
-        {/* Product Supply Chain Panel */}
-        <ProductSupplyChain
-          isOpen={isProductBuilderOpen}
-          onClose={() => setIsProductBuilderOpen(false)}
-          countryRisks={countryRisks}
-          products={products}
-          onProductsChange={setProducts}
-          preloadedAlternatives={alternativesMap}
-          altScanLoading={altScanLoading}
-          onAddToInventory={handleAddToInventory}
-          inventoryProductIds={storedProducts.map((p) => p.id)}
-          mapAddRequest={mapAddRequest}
-          onClearMapAddRequest={() => setMapAddRequest(null)}
-          onFindSafeRoute={handleFindSafeRouteForProduct}
-          foundRoutes={foundRoutes}
-          selectedFoundRouteId={selectedFoundRouteId}
-          onClearFoundRoutes={handleClearFoundRoutes}
-          onViewAlternatives={handleViewAlternatives}
-          mapProducts={mapProducts}
-        />
+        {/* Bottom-left stacking container for product & route panels */}
+        <div className="absolute bottom-4 right-4 z-20 flex flex-col-reverse items-end gap-3">
+          {isProductBuilderOpen && (
+            <ProductSupplyChain
+              isOpen={isProductBuilderOpen}
+              onClose={() => setIsProductBuilderOpen(false)}
+              countryRisks={countryRisks}
+              products={products}
+              onProductsChange={setProducts}
+              preloadedAlternatives={alternativesMap}
+              altScanLoading={altScanLoading}
+              onAddToInventory={handleAddToInventory}
+              inventoryProductIds={storedProducts.map((p) => p.id)}
+              mapAddRequest={mapAddRequest}
+              onClearMapAddRequest={() => setMapAddRequest(null)}
+              onFindSafeRoute={handleFindSafeRouteForProduct}
+              foundRoutes={foundRoutes}
+              selectedFoundRouteId={selectedFoundRouteId}
+              onClearFoundRoutes={handleClearFoundRoutes}
+              onViewAlternatives={handleViewAlternatives}
+              mapProducts={mapProducts}
+            />
+          )}
+          {isRouteSummaryOpen && (
+            <RouteSummary
+              isOpen={isRouteSummaryOpen}
+              onClose={() => setIsRouteSummaryOpen(false)}
+              products={products}
+              countryRisks={resolvedCountryRisks}
+              onRouteClick={(origin, destination) => {
+                setSafeRouteContext({ origin, destination, itemName: 'Selected Route' })
+                setIsRouteFinderOpen(true)
+                setIsRouteSummaryOpen(false)
+              }}
+            />
+          )}
+        </div>
 
         {/* Path Details Panel - shows when a route is clicked */}
         <PathDetailsPanel
           route={selectedRoute}
           countryRisks={resolvedCountryRisks}
           onClose={() => setSelectedRoute(null)}
-        />
-
-        {/* Route Summary Panel */}
-        <RouteSummary
-          isOpen={isRouteSummaryOpen}
-          onClose={() => setIsRouteSummaryOpen(false)}
-          products={products}
-          countryRisks={resolvedCountryRisks}
-          onRouteClick={(origin, destination) => {
-            setSafeRouteContext({ origin, destination, itemName: 'Selected Route' })
-            setIsRouteFinderOpen(true)
-            setIsRouteSummaryOpen(false)
-          }}
         />
 
         {/* Supplier Recommendations Panel */}
@@ -1645,6 +1727,7 @@ export default function SupplyChainCrisisDetector() {
             setAlternativesPanelOpen(false)
           }}
         />
+
       </div>
     </div>
   )
