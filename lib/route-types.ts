@@ -161,3 +161,5 @@ export interface CountryRiskData {
   overallRisk: number
   newsHighlights: string[]
 }
+
+export type RouteMode = "shortest" | "safest";

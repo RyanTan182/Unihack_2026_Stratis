@@ -2381,9 +2381,9 @@
       "Regional stability persists.",
       "Trade policies remain unchanged."
     ],
-    "importRisk": 24,
-    "exportRisk": 24,
-    "overallRisk": 24,
+    "importRisk": 70,
+    "exportRisk": 70,
+    "overallRisk": 70,
     "computedAt": "2026-03-14T12:35:20.158Z",
     "articles": []
   },
