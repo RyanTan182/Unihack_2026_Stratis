@@ -702,6 +702,26 @@ const countryRisks: CountryRiskData[] = [
       "Regional conflict risk can propagate into maritime insurance and routing",
     ],
   },
+  {
+    id: "Pacific Ocean 1",
+    name: "Pacific Ocean 1",
+    type: "chokepoint",
+    connections: ["Panama Canal", "United States", "Mexico", "Canada", "Chile", "Peru", "Pacific Ocean 2"],
+    importRisk: 0,
+    exportRisk: 0,
+    overallRisk: 0,
+    newsHighlights: []
+  },
+  {
+    id: "Pacific Ocean 2",
+    name: "Pacific Ocean 2",
+    type: "chokepoint",
+    connections: ["Japan", "China", "South Korea", "Australia", "Indonesia", "Philippines", "Russia", "Pacific Ocean 1"],
+    importRisk: 0,
+    exportRisk: 0,
+    overallRisk: 0,
+    newsHighlights: []
+  }
 ]
 
 const chokeToCountriesMap: Record<string, any> = {
@@ -1314,6 +1334,7 @@ export default function SupplyChainCrisisDetector() {
             })),
           }))}
           onRouteModeChange={(mode: RouteMode) => setRouteMode(mode)}
+          setIsRouteBuilderOpen={(isOpen: boolean) => setIsProductBuilderOpen(isOpen)}
         />
       )}
 

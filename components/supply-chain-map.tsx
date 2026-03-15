@@ -202,6 +202,8 @@ const nodeCoordinates: Record<string, [number, number]> = {
   "Strait of Malacca": [101.0, 3.0],
   "Bab-el-Mandeb": [43.3, 12.6],
   "Bosphorus": [29.1, 41.1],
+  "Pacific Ocean 1": [-180, 0],
+  "Pacific Ocean 2": [180, 0],
 }
 
 function extractNodeConnections(nodes: CountryRisk[]): NodeConnection[] {
@@ -528,6 +530,13 @@ function generateArcLine(
   return points
 }
 
+function isPacificBridgeSegment(a: string, b: string): boolean {
+  return (
+    (a === "Pacific Ocean 1" && b === "Pacific Ocean 2") ||
+    (a === "Pacific Ocean 2" && b === "Pacific Ocean 1")
+  )
+}
+
 // Custom dark map style for Stratis - OLED black matching sidebar
 const mapStyle: mapboxgl.Style = {
   version: 8,
@@ -777,25 +786,26 @@ export function SupplyChainMap({
 
   // Generate GeoJSON for network connections
   const networkGeoJSON = useMemo(() => {
-    const features = nodeConnections.map((edge) => {
-      const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
-      return {
-        type: "Feature" as const,
-        properties: {
-          id: edge.id,
-          isChokepoint,
-          avgRisk: edge.avgRisk,
-          // Use primary cyan for chokepoints, muted slate for regular connections
-          color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
-          width: isChokepoint ? 1.5 : 1,
-          opacity: isChokepoint ? 0.35 : 0.2,
-        },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
-        },
-      }
-    })
+    const features = nodeConnections
+      .filter((edge) => !isPacificBridgeSegment(edge.from, edge.to))
+      .map((edge) => {
+        const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
+        return {
+          type: "Feature" as const,
+          properties: {
+            id: edge.id,
+            isChokepoint,
+            avgRisk: edge.avgRisk,
+            color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
+            width: isChokepoint ? 1.5 : 1,
+            opacity: isChokepoint ? 0.35 : 0.2,
+          },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
+          },
+        }
+      })
 
     return {
       type: "FeatureCollection" as const,
@@ -815,6 +825,8 @@ export function SupplyChainMap({
         const fromCoords = nodeCoordinates[segment.fromNode]
         const toCoords = nodeCoordinates[segment.toNode]
         if (!fromCoords || !toCoords) return
+
+        if ((segment.fromNode == "Pacific Ocean 1" && segment.toNode == "Pacific Ocean 2") || (segment.toNode == "Pacific Ocean 1" && segment.fromNode == "Pacific Ocean 2")) return
 
         const segmentIsDangerous = segment.riskScore >= 60
         const isHighRisk = segmentIsDangerous || route.isDangerous
