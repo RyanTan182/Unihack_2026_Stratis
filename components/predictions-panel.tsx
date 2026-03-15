@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   X,
   Zap,
@@ -140,7 +141,7 @@ export function PredictionsPanel({
       )}
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1 min-h-0">
         {/* What-If Input */}
         <div className={cn("border-b border-border space-y-3", inline ? "p-3" : "p-4")}>
           <h3 className="text-sm font-medium flex items-center gap-2">
@@ -277,13 +278,13 @@ export function PredictionsPanel({
             </div>
           )}
         </div>
-      </div>
+      </ScrollArea>
     </>
   )
 
   if (inline) {
     return (
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex h-full w-full flex-col bg-sidebar">
         {content}
       </div>
     )
