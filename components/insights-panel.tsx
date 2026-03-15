@@ -11,6 +11,7 @@ import {
   DollarSign,
   Target,
   Zap,
+  Factory,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -61,6 +62,7 @@ interface InsightsPanelProps {
   insights: SupplyChainInsightsData
   onFindSafeRoute?: (origin: string, destination: string, itemName: string) => void
   onViewAlternatives?: (component: ComponentRiskForInsights, parentCountry: string) => void
+  onRelocationClick?: (country: string, componentName: string) => void
 }
 
 // Local helper function to avoid importing from supply-chain-analyzer
@@ -78,6 +80,7 @@ export function InsightsPanel({
   insights,
   onFindSafeRoute,
   onViewAlternatives,
+  onRelocationClick,
 }: InsightsPanelProps) {
   if (!isOpen) return null
 
@@ -220,6 +223,17 @@ export function InsightsPanel({
                           title="View alternatives"
                         >
                           <Target className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {onRelocationClick && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-primary hover:text-primary hover:bg-primary/10"
+                          onClick={() => onRelocationClick(comp.country, comp.componentName)}
+                          title="Find relocation options"
+                        >
+                          <Factory className="h-3 w-3" />
                         </Button>
                       )}
                     </div>

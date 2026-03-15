@@ -720,6 +720,8 @@ interface InventorySidebarProps {
   onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
   rightPanelProducts?: { id: string; name: string; country: string; components: { name: string; type: string; country: string; children: any[] }[] }[]
   onRouteModeChange?: (mode: RouteMode) => void
+  setIsRouteBuilderOpen: (isOpen: boolean) => void
+  onRelocationClick?: (country: string, componentName?: string) => void
 }
 
 function createManualStoredProduct(
@@ -803,7 +805,9 @@ export function InventorySidebar({
   insights,
   onViewAlternatives,
   rightPanelProducts = [],
-  onRouteModeChange
+  onRouteModeChange,
+  setIsRouteBuilderOpen,
+  onRelocationClick,
 }: InventorySidebarProps) {
   const [view, setView] = useState<"list" | "chooser" | "form" | "manual" | "tree" | "detail">("list")
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
@@ -1512,6 +1516,7 @@ export function InventorySidebar({
             insights={insights}
             onFindSafeRoute={onFindSafeRoute}
             onViewAlternatives={onViewAlternatives}
+            onRelocationClick={onRelocationClick}
           />
         )}
 

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { NavSidebar } from "@/components/nav-sidebar"
 import { RiskSidebar } from "@/components/risk-sidebar"
 import { InventorySidebar } from "@/components/inventory-sidebar"
 import { SupplyChainMap, type ProductSupplyRoute } from "@/components/supply-chain-map"
@@ -1249,6 +1248,15 @@ export default function SupplyChainCrisisDetector() {
     }
   }
 
+  // Handler for relocation click from high-risk component
+  const handleRelocationClick = useCallback((country: string, componentName?: string) => {
+    // Switch to optimization tab and set method to Relocation
+    setActiveTab("optimization")
+    setCurrentMethod("Relocation")
+    // Set the selected country to pre-fill the relocation form
+    setSelectedCountry(country)
+  }, [])
+
   const [currentMethod, setCurrentMethod] = useState<string>("Relocation");
   const methodOptions = ["Safe Routes", "Relocation"];
 
@@ -1261,24 +1269,18 @@ export default function SupplyChainCrisisDetector() {
   ]
 
   return (
-    <div className="grid h-screen w-full grid-cols-[56px_320px_1fr] overflow-hidden bg-background">
-      {/* Left Navigation Sidebar */}
-      <NavSidebar
-        onInventoryClick={handleToggleInventory}
-        isInventoryOpen={isInventorySidebarOpen}
-        onLocationClick={() => setIsInventorySidebarOpen(false)}
-        isLocationActive={!isInventorySidebarOpen}
-      />
-
+    <div className="grid h-screen w-full grid-cols-[320px_1fr] overflow-hidden bg-background">
       {/* Left-side panel: either Inventory or Supply Chain Crisis (Risk) */}
-      <div>
+      <div className="flex flex-col h-full">
         <div className="border-b border-sidebar-border px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Zap className="h-5 w-5 text-primary" />
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 shadow-lg glow-primary">
+                <Zap className="h-5 w-5 text-primary-foreground" />
+              </div>
               <div>
-                <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
-                <p className="text-[10px] text-muted-foreground">Real-time intelligence</p>
+                <h1 className="text-sm font-semibold text-foreground">Stratis</h1>
+                <p className="text-[10px] text-muted-foreground">Supply Chain Intelligence</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1307,7 +1309,8 @@ export default function SupplyChainCrisisDetector() {
             </button>
           ))}
         </div>
-      {activeTab == "inventory" && (
+        <div className="flex-1 min-h-0 overflow-hidden">
+        {activeTab == "inventory" && (
         <InventorySidebar
           products={storedProducts}
           onProductAdd={handleProductAdd}
@@ -1334,6 +1337,8 @@ export default function SupplyChainCrisisDetector() {
             })),
           }))}
           onRouteModeChange={(mode: RouteMode) => setRouteMode(mode)}
+          setIsRouteBuilderOpen={(isOpen: boolean) => setIsProductBuilderOpen(isOpen)}
+          onRelocationClick={handleRelocationClick}
         />
       )}
 
@@ -1393,8 +1398,11 @@ export default function SupplyChainCrisisDetector() {
           onInventoryClick={handleToggleInventory}
           isInventoryOpen={isInventorySidebarOpen}
           onReset={handleReset}
+          riskLoadingIds={riskLoadingIds}
+          isBulkEvaluating={isBulkEvaluating}
         />
       )}
+        </div>
       </div>
 
       {/* Main Map Area */}
