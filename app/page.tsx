@@ -78,7 +78,7 @@ const countryRisks: CountryRiskData[] = [
     id: "United States",
     name: "United States",
     type: "country",
-    connections: ["Canada", "Mexico", "Panama Canal", "United Kingdom", "Germany", "France"],
+    connections: ["Canada", "Mexico", "Panama Canal", "United Kingdom", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -91,7 +91,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Germany",
     name: "Germany",
     type: "country",
-    connections: ["Netherlands", "France", "Poland", "Suez Canal", "United States", "Canada", "Mexico"],
+    connections: ["Netherlands", "Poland", "Suez Canal"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -170,7 +170,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Mexico",
     name: "Mexico",
     type: "country",
-    connections: ["United States", "Panama Canal", "United Kingdom", "Germany", "France"],
+    connections: ["United States", "Panama Canal", "United Kingdom", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -349,7 +349,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Canada",
     name: "Canada",
     type: "country",
-    connections: ["United States", "Panama Canal", "Germany", "France"],
+    connections: ["United States", "Panama Canal", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -641,7 +641,7 @@ const countryRisks: CountryRiskData[] = [
     id: "Panama Canal",
     name: "Panama Canal",
     type: "chokepoint",
-    connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "United Kingdom", "Germany", "France", "Japan"],
+    connections: ["Panama", "United States", "Mexico", "Canada", "Brazil", "Argentina", "Chile", "Peru", "United Kingdom", "Germany", "France"],
     importRisk: 0,
     exportRisk: 0,
     overallRisk: 0,
@@ -707,6 +707,26 @@ const countryRisks: CountryRiskData[] = [
       "Regional conflict risk can propagate into maritime insurance and routing",
     ],
   },
+  {
+    id: "Pacific Ocean 1",
+    name: "Pacific Ocean 1",
+    type: "chokepoint",
+    connections: ["Panama Canal", "United States", "Mexico", "Canada", "Chile", "Peru", "Pacific Ocean 2"],
+    importRisk: 0,
+    exportRisk: 0,
+    overallRisk: 0,
+    newsHighlights: []
+  },
+  {
+    id: "Pacific Ocean 2",
+    name: "Pacific Ocean 2",
+    type: "chokepoint",
+    connections: ["Japan", "China", "South Korea", "Australia", "Indonesia", "Philippines", "Russia", "Pacific Ocean 1"],
+    importRisk: 0,
+    exportRisk: 0,
+    overallRisk: 0,
+    newsHighlights: []
+  }
 ]
 
 const chokeToCountriesMap: Record<string, any> = {

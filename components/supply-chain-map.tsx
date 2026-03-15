@@ -202,6 +202,8 @@ const nodeCoordinates: Record<string, [number, number]> = {
   "Strait of Malacca": [101.0, 3.0],
   "Bab-el-Mandeb": [43.3, 12.6],
   "Bosphorus": [29.1, 41.1],
+  "Pacific Ocean 1": [-180, 0],
+  "Pacific Ocean 2": [180, 0],
 }
 
 function extractNodeConnections(nodes: CountryRisk[]): NodeConnection[] {
@@ -255,6 +257,59 @@ function buildAdjacencyMap(nodes: CountryRisk[]): globalThis.Map<string, string[
   return new globalThis.Map(
     Array.from(graph.entries()).map((entry: [string, Set<string>]) => [entry[0], Array.from(entry[1])])
   )
+}
+
+function buildChokepointOnlyAdjacencyMap(
+  nodes: CountryRisk[]
+): globalThis.Map<string, string[]> {
+  const nodeMap = new globalThis.Map(nodes.map((node) => [node.id, node]))
+  const graph: globalThis.Map<string, Set<string>> = new globalThis.Map()
+
+  const ensureNode = (id: string) => {
+    if (!graph.has(id)) graph.set(id, new Set())
+  }
+
+  for (const node of nodes) {
+    ensureNode(node.id)
+
+    for (const connectedId of node.connections || []) {
+      const connectedNode = nodeMap.get(connectedId)
+      if (!connectedNode) continue
+
+      const aIsCountry = node.type === "country"
+      const bIsCountry = connectedNode.type === "country"
+
+      // country-country は禁止
+      if (aIsCountry && bIsCountry) continue
+
+      // 許可:
+      // country <-> chokepoint
+      // chokepoint <-> chokepoint
+      graph.get(node.id)!.add(connectedId)
+      ensureNode(connectedId)
+      graph.get(connectedId)!.add(node.id)
+    }
+  }
+
+  return new globalThis.Map(
+    Array.from(graph.entries()).map(([id, neighbors]) => [id, Array.from(neighbors)])
+  )
+}
+
+function hasOnlyChokepointsAsIntermediateNodes(
+  path: string[],
+  nodeMap: globalThis.Map<string, CountryRisk>
+): boolean {
+  if (path.length <= 2) return true
+
+  for (let i = 1; i < path.length - 1; i++) {
+    const node = nodeMap.get(path[i])
+    if (!node || node.type !== "chokepoint") {
+      return false
+    }
+  }
+
+  return true
 }
 
 function findShortestPath(
@@ -420,8 +475,10 @@ function extractProductRoutes(
 ): ProductSupplyRoute[] {
   const routes: ProductSupplyRoute[] = []
   const DANGER_THRESHOLD = 60
-  const graph = buildAdjacencyMap(countryRisks)
-  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(countryRisks.map((n) => [n.id, n]))
+  const graph = buildChokepointOnlyAdjacencyMap(countryRisks)
+  const nodeMap: globalThis.Map<string, CountryRisk> = new globalThis.Map(
+    countryRisks.map((n) => [n.id, n])
+  )
 
   const getNodeRisk = (nodeId: string): number => {
     return nodeMap.get(nodeId)?.overallRisk ?? 30
@@ -440,6 +497,12 @@ function extractProductRoutes(
         routeMode === "safest"
           ? findSafestPath(graph, countryRisks, item.country, parentCountry)
           : findShortestPath(graph, item.country, parentCountry)
+
+      // 途中に国が混ざっていたら不採用
+      if (!hasOnlyChokepointsAsIntermediateNodes(pathNodes, nodeMap)) {
+        return
+      }
+
       const segments = buildRouteSegmentsFromPath(pathNodes, countryRisks)
       const chokepoints = extractChokepointsFromPath(pathNodes, nodeMap)
 
@@ -526,6 +589,13 @@ function generateArcLine(
   }
 
   return points
+}
+
+function isPacificBridgeSegment(a: string, b: string): boolean {
+  return (
+    (a === "Pacific Ocean 1" && b === "Pacific Ocean 2") ||
+    (a === "Pacific Ocean 2" && b === "Pacific Ocean 1")
+  )
 }
 
 // Custom dark map style for Stratis - OLED black matching sidebar
@@ -777,25 +847,26 @@ export function SupplyChainMap({
 
   // Generate GeoJSON for network connections
   const networkGeoJSON = useMemo(() => {
-    const features = nodeConnections.map((edge) => {
-      const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
-      return {
-        type: "Feature" as const,
-        properties: {
-          id: edge.id,
-          isChokepoint,
-          avgRisk: edge.avgRisk,
-          // Use primary cyan for chokepoints, muted slate for regular connections
-          color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
-          width: isChokepoint ? 1.5 : 1,
-          opacity: isChokepoint ? 0.35 : 0.2,
-        },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
-        },
-      }
-    })
+    const features = nodeConnections
+      .filter((edge) => !isPacificBridgeSegment(edge.from, edge.to))
+      .map((edge) => {
+        const isChokepoint = edge.fromType === "chokepoint" || edge.toType === "chokepoint"
+        return {
+          type: "Feature" as const,
+          properties: {
+            id: edge.id,
+            isChokepoint,
+            avgRisk: edge.avgRisk,
+            color: isChokepoint ? getRiskColor(edge.avgRisk) : "#475569",
+            width: isChokepoint ? 1.5 : 1,
+            opacity: isChokepoint ? 0.35 : 0.2,
+          },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: generateArcLine(edge.fromCoords, edge.toCoords),
+          },
+        }
+      })
 
     return {
       type: "FeatureCollection" as const,
@@ -815,6 +886,8 @@ export function SupplyChainMap({
         const fromCoords = nodeCoordinates[segment.fromNode]
         const toCoords = nodeCoordinates[segment.toNode]
         if (!fromCoords || !toCoords) return
+
+        if ((segment.fromNode == "Pacific Ocean 1" && segment.toNode == "Pacific Ocean 2") || (segment.toNode == "Pacific Ocean 1" && segment.fromNode == "Pacific Ocean 2")) return
 
         const segmentIsDangerous = segment.riskScore >= 60
         const isHighRisk = segmentIsDangerous || route.isDangerous
