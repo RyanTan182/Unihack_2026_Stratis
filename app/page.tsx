@@ -1329,11 +1329,9 @@ export default function SupplyChainCrisisDetector() {
         <div className="border-b border-sidebar-border px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex flex-col items-center gap-0.5">
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 shadow-lg">
-                  <Zap className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="text-[9px] font-semibold tracking-wider text-primary uppercase">Stratis</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <img src="/logo.png" alt="Stratis" className="h-9 w-9 object-contain aspect-square" />
+                <span className="text-[11px] font-semibold tracking-wider text-primary uppercase">Stratis</span>
               </div>
               <div>
                 <h1 className="text-sm font-semibold text-foreground">Crisis Monitor</h1>
