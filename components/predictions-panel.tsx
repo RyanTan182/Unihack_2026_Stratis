@@ -142,7 +142,7 @@ export function PredictionsPanel({
       )}
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1 overflow-y-auto">
         {/* Demo Mode Banner */}
         {process.env.NEXT_PUBLIC_MOCK_PREDICTIONS === "true" && (
           <div className={cn("border-b border-border bg-amber-500/10", inline ? "p-3" : "p-4")}>
