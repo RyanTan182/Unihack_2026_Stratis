@@ -40,7 +40,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { FoundRoute } from "@/lib/route-types"
 import type { SupplyChainInsights, ComponentRisk as ComponentRiskData } from "@/lib/supply-chain-analyzer"
 import type { MapProduct, MapSupplyChainItem } from "@/lib/decompose/to-map-product"
@@ -381,7 +381,7 @@ function SupplyChainItemRow({
                       className="cursor-pointer gap-1 border-0 text-[10px] font-medium"
                     >
                       <AlertTriangle className="h-3 w-3" />
-                      {countryData?.overallRisk}%
+                      {formatRisk(countryData?.overallRisk ?? 0)}%
                     </Badge>
                   </button>
                 </PopoverTrigger>
@@ -390,7 +390,7 @@ function SupplyChainItemRow({
                     <div>
                       <p className="text-sm font-semibold text-foreground">{item.country}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        Risk: {countryData!.overallRisk}% — Import: {countryData!.importRisk}% / Export: {countryData!.exportRisk}%
+                        Risk: {formatRisk(countryData!.overallRisk)}% — Import: {formatRisk(countryData!.importRisk)}% / Export: {formatRisk(countryData!.exportRisk)}%
                       </p>
                     </div>
 
@@ -792,7 +792,7 @@ export function ProductSupplyChain({
                         <div className="rounded-lg bg-card/50 border border-border/30 p-3">
                           <p className="text-[10px] text-muted-foreground">Highest Risk</p>
                           <p className={cn("text-xl font-bold mt-0.5", analysis.highestRisk >= 60 ? "text-red-400" : "text-emerald-400")}>
-                            {analysis.highestRisk}%
+                            {formatRisk(analysis.highestRisk)}%
                           </p>
                         </div>
                       </div>
@@ -822,7 +822,7 @@ export function ProductSupplyChain({
                             {analysis.riskLocations.slice(0, 3).map((loc) => (
                               <div key={loc.country} className="flex items-center justify-between rounded-lg bg-red-500/5 border border-red-500/10 px-3 py-2">
                                 <span className="text-sm font-medium text-foreground">{loc.country}</span>
-                                <span className="text-xs font-semibold text-red-400">{loc.risk}% risk</span>
+                                <span className="text-xs font-semibold text-red-400">{formatRisk(loc.risk)}% risk</span>
                               </div>
                             ))}
                           </div>

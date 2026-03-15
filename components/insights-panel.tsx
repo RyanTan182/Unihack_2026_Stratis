@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 
 // Define types locally to avoid circular imports
 interface PriceFactor {
@@ -198,7 +198,7 @@ export function InsightsPanel({
                     </div>
                     <div className="flex items-center gap-1">
                       <Badge variant="destructive" className="text-xs">
-                        {comp.risk}%
+                        {formatRisk(comp.risk)}%
                       </Badge>
                       {onFindSafeRoute && (
                         <Button

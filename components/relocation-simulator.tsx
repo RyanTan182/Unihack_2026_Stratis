@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { ImpactTimeline } from "@/components/impact-timeline"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { RelocationSimulation } from "@/lib/relocation-types"
 
 interface RelocationSimulatorProps {
@@ -88,8 +88,8 @@ Target Location: ${simulation.proposed.country}
 
 Risk Analysis
 -------------
-Current Risk: ${simulation.current.overallRisk}%
-Proposed Risk: ${simulation.proposed.overallRisk}%
+Current Risk: ${formatRisk(simulation.current.overallRisk)}%
+Proposed Risk: ${formatRisk(simulation.proposed.overallRisk)}%
 Risk Reduction: ${simulation.impact.riskReduction}
 
 Cost & Timeline
@@ -211,7 +211,7 @@ ${simulation.impact.recommendations.join("\n")}
                   <div className="flex items-center gap-2">
                     <Progress value={simulation.current.overallRisk} className="h-1.5 flex-1" />
                     <span className={cn("text-xs font-medium", getRiskLevel(simulation.current.overallRisk).color)}>
-                      {simulation.current.overallRisk}%
+                      {formatRisk(simulation.current.overallRisk)}%
                     </span>
                   </div>
                 </div>
@@ -226,7 +226,7 @@ ${simulation.impact.recommendations.join("\n")}
                   <div className="flex items-center gap-2">
                     <Progress value={simulation.proposed.overallRisk} className="h-1.5 flex-1 [&>div]:bg-emerald-500" />
                     <span className={cn("text-xs font-medium", getRiskLevel(simulation.proposed.overallRisk).color)}>
-                      {simulation.proposed.overallRisk}%
+                      {formatRisk(simulation.proposed.overallRisk)}%
                     </span>
                   </div>
                 </div>

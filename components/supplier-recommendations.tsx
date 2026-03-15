@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { SupplierAlternative, ComponentRisk } from "@/lib/supply-chain-analyzer"
 import { getRiskLevel } from "@/lib/supply-chain-analyzer"
 
@@ -159,7 +159,7 @@ export function SupplierRecommendations({
                   </div>
                 </div>
                 <Badge className={cn("font-mono", riskInfo.color)}>
-                  {componentRisk.risk}% Risk
+                  {formatRisk(componentRisk.risk)}% Risk
                 </Badge>
               </div>
 
@@ -194,7 +194,7 @@ export function SupplierRecommendations({
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground">Current</span>
                     <Badge variant="outline" className="text-xs border-red-500/30 text-red-400">
-                      {componentRisk.risk}%
+                      {formatRisk(componentRisk.risk)}%
                     </Badge>
                   </div>
                   <p className="font-medium text-sm mb-2">{componentRisk.country}</p>
@@ -202,7 +202,7 @@ export function SupplierRecommendations({
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="text-muted-foreground">Risk</span>
-                        <span className="text-red-400">{componentRisk.risk}%</span>
+                        <span className="text-red-400">{formatRisk(componentRisk.risk)}%</span>
                       </div>
                       <Progress value={componentRisk.risk} className="h-1.5 bg-muted" />
                     </div>
@@ -232,7 +232,7 @@ export function SupplierRecommendations({
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-muted-foreground">Alternative</span>
                       <Badge variant="outline" className="text-xs border-emerald-500/30 text-emerald-400">
-                        {bestAlternative.risk}%
+                        {formatRisk(bestAlternative.risk)}%
                       </Badge>
                     </div>
                     <p className="font-medium text-sm mb-2">{bestAlternative.country}</p>
@@ -240,7 +240,7 @@ export function SupplierRecommendations({
                       <div>
                         <div className="flex items-center justify-between text-xs mb-1">
                           <span className="text-muted-foreground">Risk</span>
-                          <span className="text-emerald-400">{bestAlternative.risk}%</span>
+                          <span className="text-emerald-400">{formatRisk(bestAlternative.risk)}%</span>
                         </div>
                         <Progress value={bestAlternative.risk} className="h-1.5 bg-muted" />
                       </div>
@@ -305,7 +305,7 @@ export function SupplierRecommendations({
                             bottom: `${alt.risk}%`,
                             transform: 'translate(-50%, 50%)'
                           }}
-                          title={`${alt.country}: ${alt.risk}% risk, ${alt.costFactor} cost`}
+                          title={`${alt.country}: ${formatRisk(alt.risk)}% risk, ${alt.costFactor} cost`}
                         />
                       )
                     })}
@@ -355,7 +355,7 @@ export function SupplierRecommendations({
                             </div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <Badge variant="outline" className={cn("text-[10px] font-mono", altRiskInfo.textColor)}>
-                                {alt.risk}%
+                                {formatRisk(alt.risk)}%
                               </Badge>
                               {riskReduction > 0 && (
                                 <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-400">
@@ -394,7 +394,7 @@ export function SupplierRecommendations({
                             alt.routeRisk < 40 ? "text-emerald-400" :
                             alt.routeRisk < 60 ? "text-yellow-400" : "text-orange-400"
                           )}>
-                            {alt.routeRisk}%
+                            {formatRisk(alt.routeRisk)}%
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -483,7 +483,7 @@ export function SupplierRecommendations({
                               <p className="font-medium">{alt.country}</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <Badge variant="outline" className={cn("text-xs font-mono", altRiskInfo.textColor)}>
-                                  {alt.risk}% Risk
+                                  {formatRisk(alt.risk)}% Risk
                                 </Badge>
                                 {riskReduction > 0 && (
                                   <Badge variant="outline" className="text-xs border-emerald-500/30 text-emerald-400">
@@ -522,7 +522,7 @@ export function SupplierRecommendations({
                               alt.routeRisk < 40 ? "text-emerald-400" :
                               alt.routeRisk < 60 ? "text-yellow-400" : "text-orange-400"
                             )}>
-                              {alt.routeRisk}%
+                              {formatRisk(alt.routeRisk)}%
                             </span>
                           </div>
                           <Button

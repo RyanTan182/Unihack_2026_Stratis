@@ -22,7 +22,7 @@ import { PriceRiskTimeline } from "@/components/price-risk-timeline"
 import { AlertBanner, type AlertData } from "@/components/alert-banner"
 import { Button } from "@/components/ui/button"
 import { Route, Package, Layers, Globe, Factory, Navigation, X, BarChart3, AlertTriangle, Zap, Radio, FactoryIcon, SparkleIcon, Sparkles } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { FoundRoute } from "@/lib/route-types"
 import { getRouteGraph } from "@/lib/route-graph"
 import { CountryRiskEvaluation } from "./lib/risk-client"
@@ -1443,7 +1443,7 @@ export default function SupplyChainCrisisDetector() {
             }}
           >
             <Route className="h-4 w-4" />
-            {customRoute ? `${customRoute.totalRisk}% Risk` : "Build Route"}
+            {customRoute ? `${formatRisk(customRoute.totalRisk)}% Risk` : "Build Route"}
           </Button>
           */}
 

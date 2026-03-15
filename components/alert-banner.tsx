@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import type { SupplyChainInsights, Recommendation } from "@/lib/supply-chain-analyzer"
 
 export interface AlertData {
@@ -63,7 +63,7 @@ export function AlertBanner({
         type: 'high_risk',
         severity: 'critical',
         title: `${criticalComponents.length} High-Risk Component${criticalComponents.length > 1 ? 's' : ''} Detected`,
-        description: `${criticalComponents[0].componentName} from ${criticalComponents[0].country} has ${criticalComponents[0].risk}% risk`,
+        description: `${criticalComponents[0].componentName} from ${criticalComponents[0].country} has ${formatRisk(criticalComponents[0].risk)}% risk`,
         action: 'View alternatives',
         relatedComponentId: criticalComponents[0].componentId,
       })
@@ -99,7 +99,7 @@ export function AlertBanner({
         type: 'route_disruption',
         severity: 'warning',
         title: `Critical Chokepoint${criticalChokepoints.length > 1 ? 's' : ''}: ${criticalChokepoints[0].name}`,
-        description: `${criticalChokepoints[0].risk}% risk affecting ${criticalChokepoints[0].affectedComponents.length} components`,
+        description: `${formatRisk(criticalChokepoints[0].risk)}% risk affecting ${criticalChokepoints[0].affectedComponents.length} components`,
         action: 'Find alternatives',
       })
     }

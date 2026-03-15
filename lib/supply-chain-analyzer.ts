@@ -14,6 +14,7 @@ import type { CountryRiskData } from './route-types'
 import { findRoutes } from './route-finder'
 import { getRiskLevel } from './risk-calculator'
 import { getLaborCostIndex, getMarketAccess, getInfrastructureRating } from './trade-agreements'
+import { formatRisk } from './utils'
 
 // ============= Types =============
 
@@ -332,7 +333,7 @@ function calculatePriceImpact(
       source: 'Risk Premium',
       impact: 'increase',
       magnitude: Math.round((countryRisk.overallRisk - 50) / 5),
-      description: `High geopolitical risk (${countryRisk.overallRisk}%) affecting pricing`
+      description: `High geopolitical risk (${formatRisk(countryRisk.overallRisk)}%) affecting pricing`
     })
   }
 
@@ -428,7 +429,7 @@ function generateRecommendations(
         id: `rec-critical-${comp.componentId}`,
         type: 'critical',
         title: `High-risk dependency: ${comp.componentName}`,
-        description: `${comp.componentName} from ${comp.country} has no identified alternatives and ${comp.risk}% risk.`,
+        description: `${comp.componentName} from ${comp.country} has no identified alternatives and ${formatRisk(comp.risk)}% risk.`,
         action: 'Consider developing backup suppliers or building inventory buffer',
         componentId: comp.componentId
       })
@@ -453,7 +454,7 @@ function generateRecommendations(
       id: `rec-choke-${chokepoint.name}`,
       type: 'critical',
       title: `Critical chokepoint: ${chokepoint.name}`,
-      description: `${chokepoint.name} has ${chokepoint.risk}% risk and affects ${chokepoint.affectedComponents.length} components with no alternatives.`,
+      description: `${chokepoint.name} has ${formatRisk(chokepoint.risk)}% risk and affects ${chokepoint.affectedComponents.length} components with no alternatives.`,
       action: 'Develop contingency routing or consider geographic diversification'
     })
   }
@@ -486,7 +487,7 @@ function generateRecommendations(
         id: 'rec-diversify',
         type: 'info',
         title: 'Supply chain concentration risk',
-        description: `${dominantCountry[1]} components sourced from ${dominantCountry[0]} (${risk.overallRisk}% risk).`,
+        description: `${dominantCountry[1]} components sourced from ${dominantCountry[0]} (${formatRisk(risk.overallRisk)}% risk).`,
         action: 'Consider diversifying suppliers across multiple countries'
       })
     }

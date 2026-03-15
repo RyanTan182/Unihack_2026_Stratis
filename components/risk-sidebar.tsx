@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import { InventorySidebar } from "./inventory-sidebar"
 
 interface CountryRisk {
@@ -300,7 +300,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                         "border-emerald-500/50 text-emerald-400"
                       )}>
                         {selectedCountryData.overallRisk >= 60 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {selectedCountryData.overallRisk}%
+                        {formatRisk(selectedCountryData.overallRisk)}%
                       </div>
                     )}
                   </div>
@@ -316,7 +316,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                               style={{ width: `${selectedCountryData.importRisk}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium text-foreground">{selectedCountryData.importRisk}%</span>
+                          <span className="text-xs font-medium text-foreground">{formatRisk(selectedCountryData.importRisk)}%</span>
                         </div>
                       </div>
                       <div className="rounded-lg bg-muted/30 p-2.5">
@@ -328,7 +328,7 @@ export function RiskSidebar({ countryRisks, selectedCountry, onCountrySelect, on
                               style={{ width: `${selectedCountryData.exportRisk}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium text-foreground">{selectedCountryData.exportRisk}%</span>
+                          <span className="text-xs font-medium text-foreground">{formatRisk(selectedCountryData.exportRisk)}%</span>
                         </div>
                       </div>
                     </div>

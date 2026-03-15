@@ -30,7 +30,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import { EmptyState } from "@/components/ui/empty-state"
 
 interface CountryRisk {
@@ -277,7 +277,7 @@ export function RouteBuilder({
                       <div className="flex items-center justify-between gap-4">
                         <span>{country.name}</span>
                         <span className={cn("text-xs font-medium", getRiskLevel(country.overallRisk).textColor)}>
-                          {country.overallRisk}%
+                          {formatRisk(country.overallRisk)}%
                         </span>
                       </div>
                     </SelectItem>
@@ -329,7 +329,7 @@ export function RouteBuilder({
                                 Segment Risk
                               </span>
                               <span className={cn("text-xs font-medium", getRiskLevel(segmentRisk).textColor)}>
-                                {segmentRisk}%
+                                {formatRisk(segmentRisk)}%
                               </span>
                             </div>
                             <Progress value={segmentRisk} className="mt-1 h-1" />
@@ -386,8 +386,8 @@ export function RouteBuilder({
                             </span>
                           </div>
                           <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
-                            <span>Import: {waypoint.country.importRisk}%</span>
-                            <span>Export: {waypoint.country.exportRisk}%</span>
+                            <span>Import: {formatRisk(waypoint.country.importRisk)}%</span>
+                            <span>Export: {formatRisk(waypoint.country.exportRisk)}%</span>
                           </div>
                         </div>
 
@@ -430,7 +430,7 @@ export function RouteBuilder({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Route Risk</p>
-                        <p className="text-3xl font-bold text-foreground mt-1">{totalRisk}%</p>
+                        <p className="text-3xl font-bold text-foreground mt-1">{formatRisk(totalRisk)}%</p>
                       </div>
                       <div className="text-right">
                         <span className={cn(

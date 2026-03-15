@@ -16,7 +16,7 @@ import mapboxgl from "mapbox-gl"
 import "mapbox-gl/dist/mapbox-gl.css"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"
-import { extractChokepointsFromPath } from "@/lib/utils"
+import { extractChokepointsFromPath, formatRisk } from "@/lib/utils"
 import { Package, Boxes, Box, Fuel } from "lucide-react"
 import { FoundRoutesLayer } from "@/components/found-routes-layer"
 import type { FoundRoute, RouteMode } from "@/lib/route-types"
@@ -1363,7 +1363,7 @@ export function SupplyChainMap({
                           className="text-xs font-medium"
                           style={{ color: getRiskColor(node.overallRisk) }}
                         >
-                          {node.overallRisk}%
+                          {formatRisk(node.overallRisk)}%
                         </span>
                       </div>
                       {isActive && (

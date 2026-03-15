@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { cn } from "@/lib/utils"
+import { cn, formatRisk } from "@/lib/utils"
 import { findRoutes } from "@/lib/route-finder"
 import type { FoundRoute, FindOptions } from "@/lib/route-types"
 import type { CountryRiskData } from "@/lib/route-types"
@@ -214,7 +214,7 @@ export function RouteFinderPanel({
                       Recommended
                     </Badge>
                     <span className={cn("text-xl font-bold", getRiskColor(route.totalRisk))}>
-                      {route.totalRisk}%
+                      {formatRisk(route.totalRisk)}%
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground leading-relaxed">
@@ -243,7 +243,7 @@ export function RouteFinderPanel({
                           {route.nodes.map((n) => n.name).join(" → ")}
                         </div>
                         <span className={cn("font-medium", getRiskColor(route.totalRisk))}>
-                          {route.totalRisk}%
+                          {formatRisk(route.totalRisk)}%
                         </span>
                       </div>
                     ))}
