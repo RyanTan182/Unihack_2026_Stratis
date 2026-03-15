@@ -14,10 +14,3 @@ node_modules/
 .superpowers/
 decomposition-demo/
 data/alternatives-cache.json
-
-.claude/
-.mcp.json
-.ttadk/
-design-system/
-plan/
-specs/
