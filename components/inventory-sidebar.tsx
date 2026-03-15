@@ -587,15 +587,13 @@ function ProductCard({
   onClick,
   onOpenInBuilder,
   onSafeRoutes,
-  onRouteModeChange,
-  setIsRouteBuilderOpen
+  onRouteModeChange
 }: {
   product: StoredProduct
   onClick: () => void
   onOpenInBuilder?: (product: StoredProduct) => void
   onSafeRoutes?: (product: StoredProduct) => void
   onRouteModeChange?: (mode: RouteMode) => void
-  setIsRouteBuilderOpen: (isOpen: boolean) => void
 }) {
   const rootNode = product.tree.nodes[product.tree.root_id]
   const score = rootNode?.risk_score ?? 0
@@ -657,7 +655,6 @@ function ProductCard({
             e.stopPropagation()
             onOpenInBuilder?.(product)
             onRouteModeChange?.("shortest")
-            setIsRouteBuilderOpen(true)
           }}
         >
           <Activity className="h-4 w-4" />
@@ -671,7 +668,6 @@ function ProductCard({
             e.stopPropagation()
             onSafeRoutes?.(product)
             onRouteModeChange?.("safest")
-            setIsRouteBuilderOpen(true)
           }}
         >
           <Navigation className="h-4 w-4" />
@@ -724,7 +720,6 @@ interface InventorySidebarProps {
   onViewAlternatives?: (component: { componentId: string; componentName: string; country: string; risk: number }, parentCountry: string) => void
   rightPanelProducts?: { id: string; name: string; country: string; components: { name: string; type: string; country: string; children: any[] }[] }[]
   onRouteModeChange?: (mode: RouteMode) => void
-  setIsRouteBuilderOpen: (isOpen: boolean) => void 
 }
 
 function createManualStoredProduct(
@@ -808,8 +803,7 @@ export function InventorySidebar({
   insights,
   onViewAlternatives,
   rightPanelProducts = [],
-  onRouteModeChange,
-  setIsRouteBuilderOpen
+  onRouteModeChange
 }: InventorySidebarProps) {
   const [view, setView] = useState<"list" | "chooser" | "form" | "manual" | "tree" | "detail">("list")
   const [activeProductId, setActiveProductId] = useState<string | null>(null)
@@ -1087,7 +1081,6 @@ export function InventorySidebar({
                   onOpenInBuilder={(p) => onOpenInBuilder?.(p)}
                   onSafeRoutes={(p) => handleSafeRoutesForProduct(p)}
                   onRouteModeChange={onRouteModeChange}
-                  setIsRouteBuilderOpen={setIsRouteBuilderOpen}
                 />
               ))
             )}

@@ -2062,9 +2062,9 @@
     "assumptions": [
       "Conflicts directly impact port operations and regional shipping costs, influencing trade risks."
     ],
-    "importRisk": 58,
-    "exportRisk": 57,
-    "overallRisk": 58,
+    "importRisk": 90,
+    "exportRisk": 90,
+    "overallRisk": 90,
     "computedAt": "2026-03-14T12:33:55.337Z",
     "articles": [
       {
@@ -2204,9 +2204,9 @@
       "Egypt remains politically stable.",
       "Regional dynamics are predictable and stable."
     ],
-    "importRisk": 39,
-    "exportRisk": 39,
-    "overallRisk": 39,
+    "importRisk": 55,
+    "exportRisk": 55,
+    "overallRisk": 55,
     "computedAt": "2026-03-14T12:35:20.158Z",
     "articles": []
   },
@@ -2381,9 +2381,9 @@
       "Regional stability persists.",
       "Trade policies remain unchanged."
     ],
-    "importRisk": 70,
-    "exportRisk": 70,
-    "overallRisk": 70,
+    "importRisk": 20,
+    "exportRisk": 20,
+    "overallRisk": 20,
     "computedAt": "2026-03-14T12:35:20.158Z",
     "articles": []
   },
@@ -2438,9 +2438,9 @@
       "Regional stability is maintained.",
       "No major geopolitical conflicts escalate."
     ],
-    "importRisk": 31,
-    "exportRisk": 31,
-    "overallRisk": 31,
+    "importRisk": 75,
+    "exportRisk": 75,
+    "overallRisk": 75,
     "computedAt": "2026-03-14T12:35:20.158Z",
     "articles": []
   },
@@ -2493,9 +2493,9 @@
       "Regional stability persists.",
       "Trade policies remain unchanged."
     ],
-    "importRisk": 29,
-    "exportRisk": 29,
-    "overallRisk": 29,
+    "importRisk": 70,
+    "exportRisk": 60,
+    "overallRisk": 65,
     "computedAt": "2026-03-14T12:35:20.159Z",
     "articles": []
   },
@@ -2603,9 +2603,9 @@
       "Regional stability continues.",
       "Trade policies remain adaptable to regional changes."
     ],
-    "importRisk": 27,
-    "exportRisk": 27,
-    "overallRisk": 27,
+    "importRisk": 70,
+    "exportRisk": 70,
+    "overallRisk": 70,
     "computedAt": "2026-03-14T12:35:20.159Z",
     "articles": []
   },
